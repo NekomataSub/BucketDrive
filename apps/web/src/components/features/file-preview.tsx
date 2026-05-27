@@ -122,22 +122,25 @@ function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
   const isMarkdown = mimeType === "text/markdown" || mimeType === "text/x-markdown"
 
   if (isMarkdown) {
-    // Simple markdown rendering: convert # headings and **bold**
-    const html = content
-      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mb-2 mt-4">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mb-2 mt-5">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mb-3 mt-6">$1</h1>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-surface-hover rounded text-sm font-mono">$1</code>')
-      .replace(/\n/g, '<br />')
-
     return (
       <div className="h-full overflow-auto p-6">
-        <div
-          className="prose prose-sm max-w-none dark:prose-invert text-text-primary"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+        <div className="space-y-2 text-sm leading-relaxed text-text-primary">
+          {content.split("\n").map((line, index) => {
+            if (line.startsWith("### ")) {
+              return <h3 key={index} className="pt-3 text-lg font-semibold">{line.slice(4)}</h3>
+            }
+            if (line.startsWith("## ")) {
+              return <h2 key={index} className="pt-4 text-xl font-semibold">{line.slice(3)}</h2>
+            }
+            if (line.startsWith("# ")) {
+              return <h1 key={index} className="pt-5 text-2xl font-bold">{line.slice(2)}</h1>
+            }
+            if (!line.trim()) {
+              return <div key={index} className="h-2" />
+            }
+            return <p key={index} className="whitespace-pre-wrap break-words">{line}</p>
+          })}
+        </div>
       </div>
     )
   }

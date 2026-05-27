@@ -4,7 +4,7 @@ import { useUploadStore, type UploadItem } from "@/stores/upload-store"
 import {
   useInitiateUpload,
   useCompleteUpload,
-  useGetUploadSession,
+  getUploadSession,
   useGetPartSignedUrls,
   useCancelUpload,
   useUploadVideoThumbnail,
@@ -19,7 +19,7 @@ export function useUploadProcessor(workspaceId: string) {
   const { items, updateItem, setOpen } = useUploadStore()
   const initiateMutation = useInitiateUpload()
   const completeMutation = useCompleteUpload()
-  const getPartUrlsMutation = useGetPartSignedUrls(workspaceId, null)
+  const getPartUrlsMutation = useGetPartSignedUrls(workspaceId)
   const cancelMutation = useCancelUpload(workspaceId)
   const videoThumbnailMutation = useUploadVideoThumbnail(workspaceId)
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
@@ -163,9 +163,9 @@ export function useUploadProcessor(workspaceId: string) {
       const doneChunks = item.chunks.filter((c) => c.status === "done" && c.etag)
       if (doneChunks.length > 0 && sessionId) {
         try {
-          const serverSession = await useGetUploadSession(workspaceId, sessionId).refetch()
-          if (serverSession.data) {
-            const serverDone = new Set(serverSession.data.completedParts.map((p) => p.partNumber))
+          const serverSession = await getUploadSession(workspaceId, sessionId)
+          if (serverSession) {
+            const serverDone = new Set(serverSession.completedParts.map((p) => p.partNumber))
             updateItem(item.id, {
               chunks: item.chunks.map((c) =>
                 serverDone.has(c.partNumber) ? { ...c, status: "done" } : c,
@@ -207,6 +207,7 @@ export function useUploadProcessor(workspaceId: string) {
           })
 
           const partUrls = await getPartUrlsMutation.mutateAsync({
+            sessionId,
             partNumbers: batch,
           })
 

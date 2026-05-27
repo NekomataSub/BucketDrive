@@ -348,7 +348,7 @@ files.post("/batch-upload", requirePermission("files.upload"), async (c) => {
   const results: Array<{
     clientId: string
     fileId: string
-    folderId: string
+    folderId: string | null
     uploadId: string
     sessionId?: string
     signedUrl?: string
@@ -378,7 +378,7 @@ files.post("/batch-upload", requirePermission("files.upload"), async (c) => {
       results.push({
         clientId: item.clientId,
         fileId: crypto.randomUUID(),
-        folderId: folderId ?? "",
+        folderId,
         uploadId: initiate.uploadId,
         sessionId: initiate.sessionId,
         signedUrl: initiate.signedUrl,
@@ -404,33 +404,148 @@ files.post("/batch-upload", requirePermission("files.upload"), async (c) => {
   )
 })
 
+files.get("/uploads/:sessionId", requirePermission("files.upload"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const sessionId = c.req.param("sessionId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!sessionId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const storage = createStorageProvider(c.env)
+  const service = new UploadService(storage)
+
+  try {
+    const result = await service.getUploadSession(sessionId, {
+      workspaceId,
+      userId: user.id,
+    })
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof UploadError) {
+      const statusMap: Record<string, number> = {
+        NOT_FOUND: 404,
+        FORBIDDEN: 403,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
+    }
+    throw err
+  }
+})
+
+files.post("/uploads/:sessionId/parts", requirePermission("files.upload"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const sessionId = c.req.param("sessionId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!sessionId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const body = GetUploadPartSignedUrlRequest.parse(await c.req.json())
+  const storage = createStorageProvider(c.env)
+  const service = new UploadService(storage)
+
+  try {
+    const result = await service.generatePartSignedUrls(sessionId, body.partNumbers, {
+      workspaceId,
+      userId: user.id,
+    })
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof UploadError) {
+      const statusMap: Record<string, number> = {
+        NOT_FOUND: 404,
+        FORBIDDEN: 403,
+        CONFLICT: 409,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
+    }
+    throw err
+  }
+})
+
+files.delete("/uploads/:sessionId", requirePermission("files.upload"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const sessionId = c.req.param("sessionId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!sessionId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const storage = createStorageProvider(c.env)
+  const service = new UploadService(storage)
+
+  try {
+    await service.cancelUpload(sessionId, {
+      workspaceId,
+      userId: user.id,
+    })
+    return c.json({ success: true, message: "Upload cancelled" })
+  } catch (err) {
+    if (err instanceof UploadError) {
+      const statusMap: Record<string, number> = {
+        NOT_FOUND: 404,
+        FORBIDDEN: 403,
+        CONFLICT: 409,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
+    }
+    throw err
+  }
+})
+
 files.get("/:fileId", requirePermission("files.read"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
   const fileId = c.req.param("fileId")
   const db = getDB()
   const user = c.get("user")
 
+  if (!workspaceId || !fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and fileId are required" }, 400)
+  }
+
   const file = await db
     .select()
     .from(fileObject)
-    .where(eq(fileObject.id, fileId))
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
     .get()
 
   if (!file) {
     return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
   }
 
-  const [hydrated] = await hydrateFiles(db, file.workspaceId, user.id, [file])
+  const [hydrated] = await hydrateFiles(db, workspaceId, user.id, [file])
   return c.json(hydrated ?? file)
 })
 
 files.get("/:fileId/preview", requirePermission("files.read"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
   const fileId = c.req.param("fileId")
   const db = getDB()
+
+  if (!workspaceId || !fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and fileId are required" }, 400)
+  }
 
   const file = await db
     .select()
     .from(fileObject)
-    .where(eq(fileObject.id, fileId))
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
     .get()
 
   if (!file || file.isDeleted) {
@@ -450,13 +565,18 @@ files.get("/:fileId/preview", requirePermission("files.read"), async (c) => {
 })
 
 files.get("/:fileId/download", requirePermission("files.read"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
   const fileId = c.req.param("fileId")
   const db = getDB()
+
+  if (!workspaceId || !fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and fileId are required" }, 400)
+  }
 
   const file = await db
     .select()
     .from(fileObject)
-    .where(eq(fileObject.id, fileId))
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
     .get()
 
   if (!file || file.isDeleted) {
@@ -511,6 +631,23 @@ files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
   }
 
   if (body.folderId !== undefined) {
+    if (body.folderId !== null) {
+      const targetFolder = await db
+        .select({ id: folder.id })
+        .from(folder)
+        .where(
+          and(
+            eq(folder.id, body.folderId),
+            eq(folder.workspaceId, workspaceId),
+            eq(folder.isDeleted, false),
+          ),
+        )
+        .get()
+
+      if (!targetFolder) {
+        return c.json({ code: "PARENT_NOT_FOUND", message: "Folder not found" }, 404)
+      }
+    }
     updateSet.folderId = body.folderId
   }
 
@@ -745,104 +882,19 @@ files.delete("/:fileId/permanent", async (c) => {
   }
 })
 
-files.get("/uploads/:sessionId", requirePermission("files.upload"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  const sessionId = c.req.param("sessionId")
-
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-  if (!sessionId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
-  }
-
-  const storage = createStorageProvider(c.env)
-  const service = new UploadService(storage)
-
-  try {
-    const result = await service.getUploadSession(sessionId)
-    return c.json(result)
-  } catch (err) {
-    if (err instanceof UploadError) {
-      const statusMap: Record<string, number> = {
-        NOT_FOUND: 404,
-      }
-      const status = statusMap[err.code] ?? 400
-      return c.json({ code: err.code, message: err.message }, status as never)
-    }
-    throw err
-  }
-})
-
-files.post("/uploads/:sessionId/parts", requirePermission("files.upload"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  const sessionId = c.req.param("sessionId")
-
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-  if (!sessionId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
-  }
-
-  const body = GetUploadPartSignedUrlRequest.parse(await c.req.json())
-  const storage = createStorageProvider(c.env)
-  const service = new UploadService(storage)
-
-  try {
-    const result = await service.generatePartSignedUrls(sessionId, body.partNumbers)
-    return c.json(result)
-  } catch (err) {
-    if (err instanceof UploadError) {
-      const statusMap: Record<string, number> = {
-        NOT_FOUND: 404,
-        CONFLICT: 409,
-      }
-      const status = statusMap[err.code] ?? 400
-      return c.json({ code: err.code, message: err.message }, status as never)
-    }
-    throw err
-  }
-})
-
-files.delete("/uploads/:sessionId", requirePermission("files.upload"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  const sessionId = c.req.param("sessionId")
-
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-  if (!sessionId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
-  }
-
-  const storage = createStorageProvider(c.env)
-  const service = new UploadService(storage)
-
-  try {
-    await service.cancelUpload(sessionId)
-    return c.json({ success: true, message: "Upload cancelled" })
-  } catch (err) {
-    if (err instanceof UploadError) {
-      const statusMap: Record<string, number> = {
-        NOT_FOUND: 404,
-        CONFLICT: 409,
-      }
-      const status = statusMap[err.code] ?? 400
-      return c.json({ code: err.code, message: err.message }, status as never)
-    }
-    throw err
-  }
-})
-
 files.get("/:fileId/thumbnail", requirePermission("files.read"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
   const fileId = c.req.param("fileId")
   const db = getDB()
+
+  if (!workspaceId || !fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and fileId are required" }, 400)
+  }
 
   const file = await db
     .select()
     .from(fileObject)
-    .where(eq(fileObject.id, fileId))
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
     .get()
 
   if (!file || file.isDeleted) {

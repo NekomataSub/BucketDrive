@@ -20,29 +20,82 @@ import type {
 } from "@bucketdrive/shared"
 
 const encoder = new TextEncoder()
+const SHARE_PASSWORD_ITERATIONS = 120_000
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
+
+function fromHex(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+  }
+  return bytes
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(buffer).set(bytes)
+  return buffer
+}
 
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16))
-  const saltHex = Array.from(salt)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-  const data = encoder.encode(password + saltHex)
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-  const hashHex = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-  return `${saltHex}:${hashHex}`
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  )
+  const hashBuffer = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      salt,
+      iterations: SHARE_PASSWORD_ITERATIONS,
+    },
+    key,
+    256,
+  )
+  return `pbkdf2:${String(SHARE_PASSWORD_ITERATIONS)}:${toHex(salt)}:${toHex(new Uint8Array(hashBuffer))}`
 }
 
 async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const [saltHex, hashHex] = storedHash.split(":")
+  const parts = storedHash.split(":")
+  if (parts[0] === "pbkdf2") {
+    const [, iterationsRaw, saltHex, hashHex] = parts
+    const iterations = Number(iterationsRaw)
+    if (!iterations || !saltHex || !hashHex) return false
+
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(password),
+      "PBKDF2",
+      false,
+      ["deriveBits"],
+    )
+    const hashBuffer = await crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        hash: "SHA-256",
+      salt: toArrayBuffer(fromHex(saltHex)),
+        iterations,
+      },
+      key,
+      256,
+    )
+    return toHex(new Uint8Array(hashBuffer)) === hashHex
+  }
+
+  const [saltHex, hashHex] = parts
   if (!saltHex || !hashHex) return false
   const data = encoder.encode(password + saltHex)
   const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-  const computedHex = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-  return computedHex === hashHex
+  return toHex(new Uint8Array(hashBuffer)) === hashHex
 }
 
 export interface CreateShareParams {
@@ -70,9 +123,17 @@ export interface UpdateShareParams {
   shareId: string
   workspaceId: string
   userId: string
+  role: WorkspaceRole
   password?: string | null
   expiresAt?: string | null
   isActive?: boolean
+}
+
+export interface RevokeShareParams {
+  shareId: string
+  workspaceId: string
+  userId: string
+  role: WorkspaceRole
 }
 
 export class SharesService {
@@ -107,7 +168,7 @@ export class SharesService {
     const db = getDB()
     const now = new Date().toISOString()
 
-    const resource = await this.findResource(params.resourceType, params.resourceId)
+    const resource = await this.findResource(params.workspaceId, params.resourceType, params.resourceId)
     if (!resource) {
       throw new ShareError("NOT_FOUND", `${params.resourceType} not found`)
     }
@@ -341,6 +402,10 @@ export class SharesService {
       throw new ShareError("SHARE_NOT_FOUND", "Share not found")
     }
 
+    if (!this.canManageShare(params.role, existing.createdBy, params.userId)) {
+      throw new ShareError("FORBIDDEN", "Cannot update this share")
+    }
+
     const updateSet: Record<string, unknown> = { updatedAt: now }
 
     if (params.password !== undefined) {
@@ -377,31 +442,35 @@ export class SharesService {
     return updated as unknown as ShareLink
   }
 
-  async revokeShare(shareId: string, workspaceId: string, userId: string): Promise<void> {
+  async revokeShare(params: RevokeShareParams): Promise<void> {
     const db = getDB()
     const now = new Date().toISOString()
 
     const existing = await db
       .select()
       .from(shareLink)
-      .where(and(eq(shareLink.id, shareId), eq(shareLink.workspaceId, workspaceId)))
+      .where(and(eq(shareLink.id, params.shareId), eq(shareLink.workspaceId, params.workspaceId)))
       .get()
 
     if (!existing) {
       throw new ShareError("SHARE_NOT_FOUND", "Share not found")
     }
 
+    if (!this.canManageShare(params.role, existing.createdBy, params.userId)) {
+      throw new ShareError("FORBIDDEN", "Cannot revoke this share")
+    }
+
     await db
       .update(shareLink)
       .set({ isActive: false, updatedAt: now })
-      .where(eq(shareLink.id, shareId))
+      .where(eq(shareLink.id, params.shareId))
       .run()
 
     await this.recordAudit({
-      workspaceId,
-      actorId: userId,
+      workspaceId: params.workspaceId,
+      actorId: params.userId,
       action: "share.revoked",
-      resourceId: shareId,
+      resourceId: params.shareId,
     })
   }
 
@@ -560,7 +629,7 @@ export class SharesService {
       const file = await db
         .select()
         .from(fileObject)
-        .where(and(eq(fileObject.id, share.resourceId), eq(fileObject.isDeleted, false)))
+        .where(and(eq(fileObject.id, share.resourceId), eq(fileObject.workspaceId, share.workspaceId), eq(fileObject.isDeleted, false)))
         .get()
 
       if (!file) {
@@ -574,7 +643,7 @@ export class SharesService {
       const f = await db
         .select()
         .from(folder)
-        .where(and(eq(folder.id, share.resourceId), eq(folder.isDeleted, false)))
+        .where(and(eq(folder.id, share.resourceId), eq(folder.workspaceId, share.workspaceId), eq(folder.isDeleted, false)))
         .get()
 
       if (!f) {
@@ -588,6 +657,7 @@ export class SharesService {
         .from(fileObject)
         .where(
           and(
+            eq(fileObject.workspaceId, share.workspaceId),
             eq(fileObject.folderId, share.resourceId),
             eq(fileObject.isDeleted, false),
           ),
@@ -606,6 +676,7 @@ export class SharesService {
         .from(folder)
         .where(
           and(
+            eq(folder.workspaceId, share.workspaceId),
             eq(folder.parentFolderId, share.resourceId),
             eq(folder.isDeleted, false),
           ),
@@ -660,6 +731,7 @@ export class SharesService {
   }
 
   private async findResource(
+    workspaceId: string,
     resourceType: "file" | "folder",
     resourceId: string,
   ) {
@@ -668,14 +740,18 @@ export class SharesService {
       return db
         .select()
         .from(fileObject)
-        .where(and(eq(fileObject.id, resourceId), eq(fileObject.isDeleted, false)))
+        .where(and(eq(fileObject.id, resourceId), eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
         .get()
     }
     return db
       .select()
       .from(folder)
-      .where(and(eq(folder.id, resourceId), eq(folder.isDeleted, false)))
+      .where(and(eq(folder.id, resourceId), eq(folder.workspaceId, workspaceId), eq(folder.isDeleted, false)))
       .get()
+  }
+
+  private canManageShare(role: WorkspaceRole, createdBy: string, userId: string): boolean {
+    return createdBy === userId || role === "owner" || role === "admin" || role === "manager"
   }
 
   private async getWorkspaceBranding(workspaceId: string): Promise<{ brandingLogoUrl: string | null; brandingName: string | null }> {
@@ -707,14 +783,14 @@ export class SharesService {
       const file = await db
         .select()
         .from(fileObject)
-        .where(eq(fileObject.id, share.resourceId))
+        .where(and(eq(fileObject.id, share.resourceId), eq(fileObject.workspaceId, share.workspaceId)))
         .get()
       resourceName = file?.originalName ?? "Unknown file"
     } else {
       const f = await db
         .select()
         .from(folder)
-        .where(eq(folder.id, share.resourceId))
+        .where(and(eq(folder.id, share.resourceId), eq(folder.workspaceId, share.workspaceId)))
         .get()
       resourceName = f?.name ?? "Unknown folder"
     }
@@ -841,7 +917,7 @@ export class SharesService {
     const targetFolder = await db
       .select()
       .from(folder)
-      .where(and(eq(folder.id, targetFolderId), eq(folder.isDeleted, false)))
+      .where(and(eq(folder.id, targetFolderId), eq(folder.workspaceId, share.workspaceId), eq(folder.isDeleted, false)))
       .get()
 
     if (!targetFolder) {
@@ -855,7 +931,7 @@ export class SharesService {
       const f = await db
         .select()
         .from(folder)
-        .where(and(eq(folder.id, currentId), eq(folder.isDeleted, false)))
+        .where(and(eq(folder.id, currentId), eq(folder.workspaceId, share.workspaceId), eq(folder.isDeleted, false)))
         .get()
 
       if (!f) break
@@ -875,6 +951,7 @@ export class SharesService {
       .from(fileObject)
       .where(
         and(
+          eq(fileObject.workspaceId, share.workspaceId),
           eq(fileObject.folderId, targetFolderId),
           eq(fileObject.isDeleted, false),
         ),
@@ -886,6 +963,7 @@ export class SharesService {
       .from(folder)
       .where(
         and(
+          eq(folder.workspaceId, share.workspaceId),
           eq(folder.parentFolderId, targetFolderId),
           eq(folder.isDeleted, false),
         ),

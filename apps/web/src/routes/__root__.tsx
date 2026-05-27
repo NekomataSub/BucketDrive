@@ -12,6 +12,7 @@ import { ShareManagementPage } from "./app/shares"
 import { SharedPage } from "./app/shared"
 import { TrashPage } from "./app/trash"
 import { ShareAccessPage } from "./share.$shareId"
+import { PlatformAdminPage } from "./dashboard.platform"
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -114,6 +115,12 @@ const trashRoute = createRoute({
   component: TrashPage,
 })
 
+const platformRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard/platform",
+  component: PlatformAdminPage,
+})
+
 const shareAccessRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/share/$shareId",
@@ -134,6 +141,7 @@ const routeTree = rootRoute.addChildren([
     sharedRoute,
     shareManagementRoute,
     trashRoute,
+    platformRoute,
   ]),
 ])
 

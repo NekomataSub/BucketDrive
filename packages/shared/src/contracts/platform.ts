@@ -55,6 +55,7 @@ export const PlatformInvitationListItemSchema = z.object({
   status: z.enum(["pending", "accepted", "revoked", "expired"]),
   expiresAt: z.string().datetime(),
   createdAt: z.string().datetime(),
+  inviteLink: z.string().optional(),
 })
 
 export const ListPlatformInvitationsResponse = z.object({

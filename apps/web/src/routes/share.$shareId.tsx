@@ -60,11 +60,10 @@ export function ShareAccessPage() {
 
   const handleBrowse = useCallback(
     async (folderId: string | null) => {
-      if (!browsePassword) return
       try {
         const result = await browseMutation.mutateAsync({
           folderId: folderId ?? undefined,
-          password: browsePassword,
+          password: browsePassword || undefined,
         })
         setBrowseData(result)
       } catch (err) {

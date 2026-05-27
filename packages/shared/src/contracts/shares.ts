@@ -77,6 +77,7 @@ export const ShareInfoResponse = z.object({
 })
 
 export const ShareBrowseRequest = z.object({
+  folderId: z.string().uuid().optional(),
   password: z.string().optional(),
 })
 

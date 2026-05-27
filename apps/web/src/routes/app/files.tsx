@@ -445,7 +445,7 @@ export function FilesPage() {
             storageKey: res.storageKey,
             totalChunks: res.totalParts,
             chunkSize: res.partSize,
-            targetFolderId: res.folderId,
+            targetFolderId: res.folderId ?? undefined,
           })
         }
       } catch {

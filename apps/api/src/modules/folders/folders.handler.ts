@@ -98,7 +98,7 @@ folders.get("/:folderId/breadcrumbs", requirePermission("folders.read"), async (
     const f = await db
       .select()
       .from(folder)
-      .where(eq(folder.id, currentFolderId))
+      .where(and(eq(folder.id, currentFolderId), eq(folder.workspaceId, workspaceId)))
       .get()
 
     if (!f) break
@@ -216,6 +216,10 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
 
   if (body.parentFolderId !== undefined && body.parentFolderId !== target.parentFolderId) {
     if (body.parentFolderId !== null) {
+      if (body.parentFolderId === folderId) {
+        return c.json({ code: "INVALID_MOVE", message: "Cannot move a folder into itself" }, 400)
+      }
+
       const parent = await db
         .select()
         .from(folder)
@@ -226,6 +230,10 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
 
       if (!parent || parent.isDeleted) {
         return c.json({ code: "PARENT_NOT_FOUND", message: "Parent folder not found" }, 404)
+      }
+
+      if (parent.path === target.path || parent.path.startsWith(`${target.path}/`)) {
+        return c.json({ code: "INVALID_MOVE", message: "Cannot move a folder into its descendant" }, 400)
       }
     }
 
@@ -247,11 +255,35 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
     updateSet.path = newPath
   }
 
+  const previousPath = target.path
+  const nextPath = typeof updateSet.path === "string" ? updateSet.path : previousPath
+
   await db
     .update(folder)
     .set(updateSet)
     .where(eq(folder.id, folderId))
     .run()
+
+  if (nextPath !== previousPath) {
+    const descendants = await db
+      .select()
+      .from(folder)
+      .where(and(eq(folder.workspaceId, workspaceId), eq(folder.isDeleted, false)))
+      .all()
+
+    for (const descendant of descendants) {
+      if (!descendant.path.startsWith(`${previousPath}/`)) continue
+
+      await db
+        .update(folder)
+        .set({
+          path: `${nextPath}${descendant.path.slice(previousPath.length)}`,
+          updatedAt: now,
+        })
+        .where(eq(folder.id, descendant.id))
+        .run()
+    }
+  }
 
   const updated = await db
     .select()

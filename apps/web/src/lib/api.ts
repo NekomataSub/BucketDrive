@@ -62,7 +62,15 @@ class ApiClient {
       headers,
     })
 
-    const data: unknown = await res.json()
+    const text = await res.text()
+    let data: unknown = null
+    if (text) {
+      try {
+        data = JSON.parse(text) as unknown
+      } catch {
+        data = { code: "INVALID_RESPONSE", message: text }
+      }
+    }
 
     if (!res.ok) {
       if (isApiError(data)) {
@@ -432,7 +440,7 @@ interface BatchUploadFolderCreated {
 interface BatchUploadItemResponse {
   clientId: string
   fileId: string
-  folderId: string
+  folderId: string | null
   uploadId: string
   sessionId?: string
   signedUrl?: string
@@ -462,14 +470,22 @@ export function useGetUploadSession(
   })
 }
 
+export function getUploadSession(
+  workspaceId: string | null,
+  sessionId: string,
+): Promise<GetUploadSessionResponse> {
+  return api.get<GetUploadSessionResponse>(
+    buildWorkspacePath(workspaceId, `/files/uploads/${sessionId}`),
+  )
+}
+
 export function useGetPartSignedUrls(
   workspaceId: string | null,
-  sessionId: string | null,
-): UseMutationResult<GetPartSignedUrlsResponse, ApiRequestError, GetPartSignedUrlsRequest> {
-  return useMutation<GetPartSignedUrlsResponse, ApiRequestError, GetPartSignedUrlsRequest>({
-    mutationFn: (body) =>
+): UseMutationResult<GetPartSignedUrlsResponse, ApiRequestError, GetPartSignedUrlsRequest & { sessionId: string }> {
+  return useMutation<GetPartSignedUrlsResponse, ApiRequestError, GetPartSignedUrlsRequest & { sessionId: string }>({
+    mutationFn: ({ sessionId, ...body }) =>
       api.post<GetPartSignedUrlsResponse>(
-        buildWorkspacePath(workspaceId, `/files/uploads/${requireId(sessionId, "sessionId")}/parts`),
+        buildWorkspacePath(workspaceId, `/files/uploads/${sessionId}/parts`),
         body,
       ),
   })
@@ -1224,23 +1240,15 @@ export function useAccessShare(
 
 export function useBrowseShare(
   shareId: string | null,
-): UseMutationResult<ShareBrowseResult, ApiRequestError, { folderId?: string; password: string }> {
+): UseMutationResult<ShareBrowseResult, ApiRequestError, { folderId?: string; password?: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation<ShareBrowseResult, ApiRequestError, { folderId?: string; password: string }>({
-    mutationFn: ({ folderId, password }) => {
-      const params = new URLSearchParams({
-        password,
-      })
-
-      if (folderId) {
-        params.set("folderId", folderId)
-      }
-
-      return api.get<ShareBrowseResult>(
-        `/api/shares/${requireId(shareId, "shareId")}/browse?${params.toString()}`,
-      )
-    },
+  return useMutation<ShareBrowseResult, ApiRequestError, { folderId?: string; password?: string }>({
+    mutationFn: (body) =>
+      api.post<ShareBrowseResult>(
+        `/api/shares/${requireId(shareId, "shareId")}/browse`,
+        body,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["shareBrowse", shareId] })
     },
@@ -1577,6 +1585,7 @@ interface PlatformInvitationData {
   status: string
   expiresAt: string
   createdAt: string
+  inviteLink?: string
 }
 
 export function usePlatformInvitations(): UseQueryResult<{ data: PlatformInvitationData[] }, ApiRequestError> {

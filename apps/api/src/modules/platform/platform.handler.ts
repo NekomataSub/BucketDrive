@@ -261,6 +261,7 @@ platform.get("/invitations", authMiddleware, requirePlatformAdmin, async (c) => 
     .select({
       id: workspaceInvitation.id,
       email: workspaceInvitation.email,
+      token: workspaceInvitation.token,
       role: workspaceInvitation.role,
       canCreateWorkspaces: workspaceInvitation.canCreateWorkspaces,
       status: workspaceInvitation.status,
@@ -277,7 +278,19 @@ platform.get("/invitations", authMiddleware, requirePlatformAdmin, async (c) => 
     )
     .all()
 
-  return c.json(ListPlatformInvitationsResponse.parse({ data: rows }))
+  const base = c.env.APP_URL?.replace(/\/$/, "") ?? ""
+  const data = rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    canCreateWorkspaces: row.canCreateWorkspaces,
+    status: row.status,
+    expiresAt: row.expiresAt,
+    createdAt: row.createdAt,
+    inviteLink: `${base}/join?token=${row.token}`,
+  }))
+
+  return c.json(ListPlatformInvitationsResponse.parse({ data }))
 })
 
 // Public: accept platform invitation

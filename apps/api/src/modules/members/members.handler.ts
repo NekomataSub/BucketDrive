@@ -135,7 +135,6 @@ members.post("/", requirePermission("users.invite"), async (c) => {
     metadata: {
       email: body.email,
       role: body.role,
-      token,
     },
   })
 

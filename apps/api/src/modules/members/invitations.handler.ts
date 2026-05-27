@@ -177,7 +177,7 @@ invitations.post("/", requirePermission("users.invite"), async (c) => {
     actorId: actor.id,
     action: "member.invited",
     resourceId: createdInvitation.id,
-    metadata: { email: body.email, role: body.role, token },
+    metadata: { email: body.email, role: body.role },
   })
 
   const ws = await db.select({ name: workspace.name, slug: workspace.slug }).from(workspace).where(eq(workspace.id, workspaceId)).get()

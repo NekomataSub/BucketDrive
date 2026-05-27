@@ -9,6 +9,14 @@ verifiable result.
 
 ## Status Overview
 
+> **Correction pass — 2026-05-27:**
+> - Mounted missing platform API/routes and added workspace creation support used by onboarding.
+> - Hardened CORS/auth trusted origins, public share browsing, share password hashing, and markdown preview rendering.
+> - Fixed upload session route ordering, multipart completion ordering, upload session ownership checks, and root batch-upload response shape.
+> - Added workspace scoping checks for file preview/download/thumbnail reads and share resource lookups.
+> - Fixed folder breadcrumb scoping, invalid descendant moves, and descendant path updates after folder move/rename.
+> - Replaced shared contract placeholder with concrete contract coverage for changed API shapes.
+
 | Day | Topic | Core Deliverable | Status |
 |---|---|---|---|
 | 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |

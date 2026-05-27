@@ -150,7 +150,7 @@ export const BatchUploadFolderCreated = z.object({
 export const BatchUploadItemResponse = z.object({
   clientId: z.string(),
   fileId: z.string().uuid(),
-  folderId: z.string().uuid(),
+  folderId: z.string().uuid().nullable(),
   uploadId: z.string().uuid(),
   sessionId: z.string().uuid().optional(),
   signedUrl: z.string().url().optional(),

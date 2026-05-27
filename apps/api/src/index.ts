@@ -14,6 +14,7 @@ import { tagsHandler } from "./modules/tags/tags.handler"
 import { notificationsHandler } from "./modules/notifications/notifications.handler"
 import { trashHandler } from "./modules/trash/trash.handler"
 import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
+import { platformHandler } from "./modules/platform/platform.handler"
 
 interface Env {
   BETTER_AUTH_SECRET?: string
@@ -33,9 +34,25 @@ interface Env {
 
 const app = new Hono<{ Bindings: Env }>()
 
+function getAllowedOrigins(env: Env): string[] {
+  return [
+    env.APP_URL,
+    env.API_URL,
+    env.BETTER_AUTH_URL,
+    "http://localhost:5173",
+    "http://localhost:8787",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8787",
+  ].filter((origin): origin is string => Boolean(origin))
+}
+
 app.use("*", securityHeaders)
 app.use("*", cors({
-  origin: (origin) => origin,
+  origin: (origin, c) => {
+    if (!origin) return null
+    const env = c.env as Env
+    return getAllowedOrigins(env).includes(origin) ? origin : null
+  },
   allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
   credentials: true,
@@ -68,6 +85,7 @@ app.route("/api/workspaces/:workspaceId/trash", trashHandler)
 app.route("/api/notifications", notificationsHandler)
 app.route("/api/shares", publicSharesHandler)
 app.route("/api/workspaces", workspacesHandler)
+app.route("/api/platform", platformHandler)
 
 app.notFound((c) => c.json({ code: "NOT_FOUND", message: "Not found" }, 404))
 

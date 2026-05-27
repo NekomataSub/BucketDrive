@@ -19,9 +19,17 @@ interface AuthEnv {
 
 export function createAuth(env: AuthEnv, requestOrigin?: string) {
   const baseURL = env.BETTER_AUTH_URL ?? env.API_URL
-  // Use the actual request origin for OAuth callbacks so cookies work
-  // even when the user accesses via 127.0.0.1 instead of localhost
-  const callbackOrigin = requestOrigin ?? env.APP_URL ?? baseURL
+  const configuredOrigins = [
+    env.APP_URL,
+    baseURL,
+    "http://localhost:5173",
+    "http://localhost:8787",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8787",
+  ].filter((origin): origin is string => Boolean(origin))
+  const trustedRequestOrigin =
+    requestOrigin && configuredOrigins.includes(requestOrigin) ? requestOrigin : undefined
+  const callbackOrigin = trustedRequestOrigin ?? env.APP_URL ?? baseURL
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
     baseURL,
@@ -70,16 +78,7 @@ export function createAuth(env: AuthEnv, requestOrigin?: string) {
       },
     },
     trustedOrigins: [
-      ...(env.APP_URL ? [env.APP_URL] : []),
-      ...(baseURL ? [baseURL] : []),
-      ...(requestOrigin ? [requestOrigin] : []),
-      // Dev fallbacks for localhost / 127.0.0.1 variants
-      ...(baseURL?.startsWith("http://localhost") ? [
-        "http://localhost:5173",
-        "http://localhost:8787",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:8787",
-      ] : []),
+      ...configuredOrigins,
     ],
     plugins: [
       organization({

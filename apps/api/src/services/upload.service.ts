@@ -2,6 +2,7 @@ import { eq, and, inArray } from "drizzle-orm"
 import { getDB } from "../lib/db"
 import {
   fileObject,
+  folder,
   uploadSession,
   uploadPart,
   bucket,
@@ -79,6 +80,11 @@ export interface GetPartSignedUrlsResult {
   signedUrls: Array<{ partNumber: number; signedUrl: string; expiresAt: string }>
 }
 
+interface UploadSessionAccess {
+  workspaceId: string
+  userId: string
+}
+
 export class UploadService {
   constructor(private storage: StorageProvider) {}
 
@@ -109,6 +115,24 @@ export class UploadService {
 
     if (!wsBucket) {
       throw new UploadError("NOT_FOUND", "No storage bucket found for workspace")
+    }
+
+    if (params.folderId) {
+      const targetFolder = await db
+        .select({ id: folder.id })
+        .from(folder)
+        .where(
+          and(
+            eq(folder.id, params.folderId),
+            eq(folder.workspaceId, params.workspaceId),
+            eq(folder.isDeleted, false),
+          ),
+        )
+        .get()
+
+      if (!targetFolder) {
+        throw new UploadError("PARENT_NOT_FOUND", "Folder not found")
+      }
     }
 
     const allFiles = await db
@@ -202,7 +226,10 @@ export class UploadService {
     }
   }
 
-  async getUploadSession(sessionId: string): Promise<GetUploadSessionResult> {
+  async getUploadSession(
+    sessionId: string,
+    access?: UploadSessionAccess,
+  ): Promise<GetUploadSessionResult> {
     const db = getDB()
 
     const session = await db
@@ -214,6 +241,7 @@ export class UploadService {
     if (!session) {
       throw new UploadError("NOT_FOUND", "Upload session not found")
     }
+    this.assertSessionAccess(session, access)
 
     const parts = await db
       .select()
@@ -241,6 +269,7 @@ export class UploadService {
   async generatePartSignedUrls(
     sessionId: string,
     partNumbers: number[],
+    access?: UploadSessionAccess,
   ): Promise<GetPartSignedUrlsResult> {
     const db = getDB()
 
@@ -253,6 +282,7 @@ export class UploadService {
     if (!session) {
       throw new UploadError("NOT_FOUND", "Upload session not found")
     }
+    this.assertSessionAccess(session, access)
 
     if (session.status === "completed" || session.status === "cancelled") {
       throw new UploadError("CONFLICT", `Upload session is ${session.status}`)
@@ -318,6 +348,28 @@ export class UploadService {
       throw new UploadError("FORBIDDEN", "Cannot complete another user's upload")
     }
 
+    if (session.workspaceId !== params.workspaceId) {
+      throw new UploadError("FORBIDDEN", "Upload session belongs to another workspace")
+    }
+
+    if (params.folderId) {
+      const targetFolder = await db
+        .select({ id: folder.id })
+        .from(folder)
+        .where(
+          and(
+            eq(folder.id, params.folderId),
+            eq(folder.workspaceId, params.workspaceId),
+            eq(folder.isDeleted, false),
+          ),
+        )
+        .get()
+
+      if (!targetFolder) {
+        throw new UploadError("PARENT_NOT_FOUND", "Folder not found")
+      }
+    }
+
     const ext = params.fileName.includes(".")
       ? (params.fileName.split(".").pop()?.toLowerCase() ?? null)
       : null
@@ -325,6 +377,31 @@ export class UploadService {
     const fileId = crypto.randomUUID()
     const now = new Date().toISOString()
     const storedKey = session.storageKey ?? `workspace/${params.workspaceId}/files/${fileId}`
+
+    if (params.parts && params.parts.length > 0) {
+      const uniquePartNumbers = new Set(params.parts.map((part) => part.partNumber))
+      if (uniquePartNumbers.size !== params.parts.length) {
+        throw new UploadError("INVALID_PARTS", "Duplicate upload parts")
+      }
+
+      for (const part of params.parts) {
+        if (part.partNumber > session.totalParts) {
+          throw new UploadError("INVALID_PARTS", "Upload part number is out of range")
+        }
+
+        await db
+          .insert(uploadPart)
+          .values({
+            id: crypto.randomUUID(),
+            uploadSessionId: session.id,
+            partNumber: part.partNumber,
+            etag: part.etag,
+            sizeBytes: part.sizeBytes,
+            uploadedAt: now,
+          })
+          .run()
+      }
+    }
 
     if (session.uploadType === "multipart") {
       const parts = await db
@@ -346,22 +423,6 @@ export class UploadService {
         storedKey,
         sortedParts.map((p) => ({ partNumber: p.partNumber, etag: p.etag })),
       )
-    }
-
-    if (params.parts && params.parts.length > 0) {
-      for (const part of params.parts) {
-        await db
-          .insert(uploadPart)
-          .values({
-            id: crypto.randomUUID(),
-            uploadSessionId: session.id,
-            partNumber: part.partNumber,
-            etag: part.etag,
-            sizeBytes: part.sizeBytes,
-            uploadedAt: now,
-          })
-          .run()
-      }
     }
 
     await db
@@ -419,7 +480,7 @@ export class UploadService {
     return created
   }
 
-  async cancelUpload(uploadId: string): Promise<void> {
+  async cancelUpload(uploadId: string, access?: UploadSessionAccess): Promise<void> {
     const db = getDB()
 
     const session = await db
@@ -431,6 +492,7 @@ export class UploadService {
     if (!session) {
       throw new UploadError("NOT_FOUND", "Upload session not found")
     }
+    this.assertSessionAccess(session, access)
 
     if (session.status === "completed") {
       throw new UploadError("CONFLICT", "Upload already completed")
@@ -469,6 +531,17 @@ export class UploadService {
 
     if (fileName.includes("\0") || fileName.includes("..")) {
       throw new UploadError("INVALID_NAME", "File name contains invalid characters")
+    }
+  }
+
+  private assertSessionAccess(
+    session: { workspaceId: string; userId: string },
+    access?: UploadSessionAccess,
+  ): void {
+    if (!access) return
+
+    if (session.workspaceId !== access.workspaceId || session.userId !== access.userId) {
+      throw new UploadError("FORBIDDEN", "Upload session is not accessible")
     }
   }
 }

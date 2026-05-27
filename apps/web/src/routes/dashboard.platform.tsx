@@ -151,7 +151,7 @@ export function PlatformAdminPage() {
           {(invitationsData?.data?.length ?? 0) === 0 ? (
             <p className="text-sm text-text-tertiary">No pending invitations.</p>
           ) : (
-            (invitationsData?.data ?? []).map((inv: { id: string; email: string; role: string; canCreateWorkspaces: boolean }) => (
+            (invitationsData?.data ?? []).map((inv: { id: string; email: string; role: string; canCreateWorkspaces: boolean; inviteLink?: string }) => (
               <div key={inv.id} className="flex items-center justify-between rounded-xl border border-border-muted bg-bg-tertiary px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-text-primary">{inv.email}</p>
@@ -159,8 +159,7 @@ export function PlatformAdminPage() {
                 </div>
                 <button
                   onClick={() => {
-                    // In a real implementation we would show the invite link here. For now just copy token.
-                    const link = `${window.location.origin}/join?token=${inv.id}`
+                    const link = inv.inviteLink ?? `${window.location.origin}/join`
                     void navigator.clipboard.writeText(link)
                     setCopiedId(inv.id)
                     setTimeout(() => { setCopiedId(null) }, 2000)
