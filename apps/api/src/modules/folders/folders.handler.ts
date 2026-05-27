@@ -11,6 +11,7 @@ import {
   BreadcrumbItemSchema,
   CreateFolderRequest,
   UpdateFolderRequest,
+  can,
 } from "@bucketdrive/shared"
 
 interface FoldersEnv {
@@ -372,7 +373,7 @@ folders.delete("/:folderId/permanent", async (c) => {
     return c.json({ code: "WORKSPACE_ACCESS_DENIED", message: "Not a workspace member" }, 403)
   }
 
-  if (role !== "owner" && role !== "admin") {
+  if (!can(role, "trash.permanent_delete")) {
     return c.json(
       { code: "FORBIDDEN", message: "Only owners and admins can permanently delete folders" },
       403,

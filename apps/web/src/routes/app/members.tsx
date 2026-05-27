@@ -10,17 +10,19 @@ import {
   useUpdateMemberRole,
    } from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
-import type { WorkspaceRole } from "@bucketdrive/shared"
+import { can, type WorkspaceRole } from "@bucketdrive/shared"
 
 const editableRoles: WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer"]
 const inviteRoles: Array<Exclude<WorkspaceRole, "owner">> = ["admin", "manager", "editor", "viewer"]
+const ownershipTransferRecipientRoles = new Set<WorkspaceRole>(["admin"])
 
 type Tab = "members" | "invitations"
 
 export function MembersPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const currentUserRole = workspace?.role ?? "viewer"
-  const isOwner = currentUserRole === "owner"
+  const isOwner = can(currentUserRole, "workspace.transfer")
+  const canManageMembers = can(currentUserRole, "users.update_roles")
 
   const membersQuery = useMembers(workspaceId)
   const invitationsQuery = useInvitations(workspaceId)
@@ -212,7 +214,7 @@ export function MembersPage() {
                           role: event.target.value as WorkspaceRole,
                         })
                       }
-                      disabled={!isOwner && currentUserRole !== "admin"}
+                      disabled={!canManageMembers}
                       className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-sm capitalize text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50"
                     >
                       {editableRoles.map((availableRole) => (
@@ -224,7 +226,7 @@ export function MembersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {isOwner && entry.role === "admin" && (
+                      {isOwner && ownershipTransferRecipientRoles.has(entry.role) && (
                         <button
                           onClick={() => setTransferTargetId(entry.userId)}
                           className="rounded-lg border border-accent/40 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
@@ -232,7 +234,7 @@ export function MembersPage() {
                           Transfer ownership
                         </button>
                       )}
-                      {(isOwner || currentUserRole === "admin") && (
+                      {can(currentUserRole, "users.remove") && (
                         <button
                           onClick={() => {
                             const confirmed = window.confirm(`Remove ${entry.name} from this workspace?`)

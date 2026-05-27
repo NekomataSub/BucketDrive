@@ -22,13 +22,13 @@ import {
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
-import type { ShareDashboardItem } from "@bucketdrive/shared"
+import { can, type ShareDashboardItem } from "@bucketdrive/shared"
 
 type ShareTab = "mine" | "workspace"
 
 export function ShareManagementPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
-  const canManageAll = workspace?.role === "owner" || workspace?.role === "admin" || workspace?.role === "manager"
+  const canManageAll = can(workspace?.role ?? "viewer", "shares.manage_all")
   const query = useSearchStore((state) => state.shares.query)
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
 

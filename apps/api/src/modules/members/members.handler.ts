@@ -33,6 +33,10 @@ const members = new Hono<{ Bindings: MembersEnv; Variables: MembersVariables }>(
 
 members.use("*", authMiddleware)
 
+function hasOwnerRole(role: string): boolean {
+  return role.split(",").includes("owner")
+}
+
 members.get("/", requirePermission("users.read"), async (c) => {
   const workspaceId = c.req.param("workspaceId")
   if (!workspaceId) {
@@ -195,7 +199,7 @@ members.patch("/:memberId", requirePermission("users.update_roles"), async (c) =
     return c.json({ code: "NOT_FOUND", message: "Member not found" }, 404)
   }
 
-  if (target.role.split(",").includes("owner") && body.role !== "owner") {
+  if (hasOwnerRole(target.role) && !hasOwnerRole(body.role)) {
     const ownerCount = await countOwners(db, workspaceId)
     if (ownerCount <= 1) {
       return c.json({ code: "FORBIDDEN", message: "Cannot demote the last owner" }, 403)
@@ -243,7 +247,7 @@ members.delete("/:memberId", requirePermission("users.remove"), async (c) => {
     return c.json({ code: "NOT_FOUND", message: "Member not found" }, 404)
   }
 
-  if (target.role.split(",").includes("owner")) {
+  if (hasOwnerRole(target.role)) {
     const ownerCount = await countOwners(db, workspaceId)
     if (ownerCount <= 1) {
       return c.json({ code: "FORBIDDEN", message: "Cannot remove the last owner" }, 403)
@@ -273,7 +277,7 @@ async function countOwners(db: ReturnType<typeof getDB>, workspaceId: string) {
     .where(eq(member.organizationId, workspaceId))
     .all()
 
-  return rows.filter((row) => row.role.split(",").includes("owner")).length
+  return rows.filter((row) => hasOwnerRole(row.role)).length
 }
 
 async function writeMemberAudit(

@@ -29,6 +29,7 @@
     "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.10.0",
+    "drizzle-orm": "^0.45.2",
     "eslint": "^10.3.0",
     "globals": "^17.6.0",
     "sql.js": "^1.14.1",

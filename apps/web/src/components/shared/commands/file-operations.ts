@@ -10,6 +10,13 @@ import {
 import { useExplorerStore } from "@/stores/explorer-store"
 import type { Command, CommandCategory } from "./types"
 
+export const FILE_COMMAND_EVENT = "bucketdrive:file-command"
+export type FileCommandAction = "rename" | "delete" | "move" | "favorite"
+
+function dispatchFileCommand(action: FileCommandAction) {
+  window.dispatchEvent(new CustomEvent<FileCommandAction>(FILE_COMMAND_EVENT, { detail: action }))
+}
+
 interface FileOperationCommandDef {
   id: string
   title: string
@@ -36,9 +43,7 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
         return totalSelected === 1
       },
       action: () => {
-        // Triggered via explorer shortcut hook or context menu
-        // The palette just closes; user can use F2 after
-        // This is a stub that could be wired to a rename modal
+        dispatchFileCommand("rename")
       },
     },
     {
@@ -53,7 +58,7 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
         return state.selectedFileIds.length + state.selectedFolderIds.length > 0
       },
       action: () => {
-        // Triggered via explorer shortcut hook
+        dispatchFileCommand("delete")
       },
     },
     {
@@ -68,7 +73,7 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
         return state.selectedFileIds.length + state.selectedFolderIds.length > 0
       },
       action: () => {
-        // Triggered via explorer shortcut hook or context menu
+        dispatchFileCommand("move")
       },
     },
     {
@@ -83,7 +88,7 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
         return state.selectedFileIds.length === 1 && state.selectedFolderIds.length === 0
       },
       action: () => {
-        // Triggered via explorer shortcut hook or context menu
+        dispatchFileCommand("favorite")
       },
     },
     {

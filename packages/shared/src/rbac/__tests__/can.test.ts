@@ -46,6 +46,7 @@ describe("can() — RBAC permission evaluation", () => {
       "workspace.settings.update",
       "workspace.delete",
       "workspace.transfer",
+      "trash.permanent_delete",
     ]
 
     it("can read, upload, rename, move, favorite, tag, share files", () => {
@@ -79,6 +80,7 @@ describe("can() — RBAC permission evaluation", () => {
       expect(can("manager", "shares.create")).toBe(true)
       expect(can("manager", "shares.update")).toBe(true)
       expect(can("manager", "shares.revoke")).toBe(true)
+      expect(can("manager", "shares.manage_all")).toBe(true)
     })
 
     it("can read analytics, audit, users, and workspace settings", () => {
@@ -108,6 +110,8 @@ describe("can() — RBAC permission evaluation", () => {
       "files.delete",
       "files.restore",
       "folders.delete",
+      "trash.permanent_delete",
+      "shares.manage_all",
       "users.invite",
       "users.remove",
       "users.update_roles",
@@ -188,6 +192,8 @@ describe("can() — RBAC permission evaluation", () => {
         "shares.create",
         "shares.update",
         "shares.revoke",
+        "shares.manage_all",
+        "trash.permanent_delete",
       ]
 
       for (const permission of writePermissions) {
@@ -216,6 +222,8 @@ describe("can() — RBAC permission evaluation", () => {
     it("cannot access shares, write, or admin features", () => {
       const deniedPermissions: Permission[] = [
         "shares.read",
+        "shares.manage_all",
+        "trash.permanent_delete",
         "files.upload",
         "files.rename",
         "files.move",

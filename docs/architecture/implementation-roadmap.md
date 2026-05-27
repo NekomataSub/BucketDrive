@@ -15,7 +15,9 @@ verifiable result.
 > - Fixed upload session route ordering, multipart completion ordering, upload session ownership checks, and root batch-upload response shape.
 > - Added workspace scoping checks for file preview/download/thumbnail reads and share resource lookups.
 > - Fixed folder breadcrumb scoping, invalid descendant moves, and descendant path updates after folder move/rename.
-> - Replaced shared contract placeholder with concrete contract coverage for changed API shapes.
+> - Replaced contract/E2E placeholders with executable coverage for changed API shapes and critical frontend/backend wiring.
+> - Added explicit RBAC permissions for permanent trash deletion and workspace-wide share management.
+> - Split heavy frontend route chunks so the production build no longer emits the 500 kB chunk warning.
 
 | Day | Topic | Core Deliverable | Status |
 |---|---|---|---|

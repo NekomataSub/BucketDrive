@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "echo 'E2E tests not yet implemented (Day 31)'"
+    "test:e2e": "node --test e2e/*.test.mjs"
   },
   "dependencies": {
     "@bucketdrive/shared": "workspace:*",

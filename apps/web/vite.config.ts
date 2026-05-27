@@ -23,5 +23,22 @@ export default defineConfig({
   build: {
     target: "es2022",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          tanstack: ["@tanstack/react-query", "@tanstack/react-router", "@tanstack/react-virtual"],
+          ui: [
+            "@radix-ui/react-context-menu",
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-toast",
+            "@radix-ui/react-tooltip",
+            "cmdk",
+            "lucide-react",
+            "framer-motion",
+          ],
+        },
+      },
+    },
   },
 })

@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import type { Command, CommandCategory } from "./types"
+import { can, type WorkspaceRole } from "@bucketdrive/shared"
 
 interface NavigationCommandDef {
   id: string
@@ -90,7 +91,7 @@ const navigationDefs: NavigationCommandDef[] = [
 ]
 
 function isAdminRole(role: string | undefined): boolean {
-  return role === "owner" || role === "admin" || role === "manager"
+  return can((role ?? "viewer") as WorkspaceRole, "analytics.read")
 }
 
 export function getNavigationCommands(

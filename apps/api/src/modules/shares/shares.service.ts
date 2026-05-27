@@ -12,6 +12,7 @@ import {
 } from "@bucketdrive/shared/db/schema"
 import type { StorageProvider } from "../../services/storage"
 import { NotificationsService } from "../notifications/notifications.service"
+import { can, ShareLinkSchema } from "@bucketdrive/shared"
 import type {
   ShareDashboardItem,
   ShareLink,
@@ -226,12 +227,12 @@ export class SharesService {
       throw new ShareError("INTERNAL_ERROR", "Failed to create share")
     }
 
-    return created as unknown as ShareLink
+    return ShareLinkSchema.parse(created)
   }
 
   async listShares(params: ListSharesParams) {
     const db = getDB()
-    const canManageAll = params.role === "admin" || params.role === "owner" || params.role === "manager"
+    const canManageAll = can(params.role, "shares.manage_all")
     const effectiveScope =
       params.scope === "workspace" && !canManageAll ? "mine" : params.scope
 
@@ -338,7 +339,7 @@ export class SharesService {
     const lockCountByShareId = new Map(lockRows.map((row) => [row.shareLinkId, row.count]))
 
     const mapped: ShareDashboardItem[] = rows.map((row) => ({
-      ...(row as unknown as ShareLink),
+      ...ShareLinkSchema.parse(row),
       resourceName: resourceNameById.get(row.resourceId) ?? "Deleted resource",
       createdByName: creatorNameById.get(row.createdBy) ?? "Unknown user",
       permissions: permissionsByShareId.get(row.id) ?? [],
@@ -375,7 +376,7 @@ export class SharesService {
   async getShare(shareId: string): Promise<ShareLink | null> {
     const db = getDB()
     const row = await db.select().from(shareLink).where(eq(shareLink.id, shareId)).get()
-    return row ? (row as unknown as ShareLink) : null
+    return row ? ShareLinkSchema.parse(row) : null
   }
 
   async getSharePermissions(shareId: string): Promise<string[]> {
@@ -439,7 +440,7 @@ export class SharesService {
       throw new ShareError("SHARE_NOT_FOUND", "Share not found after update")
     }
 
-    return updated as unknown as ShareLink
+    return ShareLinkSchema.parse(updated)
   }
 
   async revokeShare(params: RevokeShareParams): Promise<void> {
@@ -751,7 +752,7 @@ export class SharesService {
   }
 
   private canManageShare(role: WorkspaceRole, createdBy: string, userId: string): boolean {
-    return createdBy === userId || role === "owner" || role === "admin" || role === "manager"
+    return createdBy === userId || can(role, "shares.manage_all")
   }
 
   private async getWorkspaceBranding(workspaceId: string): Promise<{ brandingLogoUrl: string | null; brandingName: string | null }> {

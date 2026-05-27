@@ -4,12 +4,13 @@ import { Link } from "@tanstack/react-router"
 import { BarChart3, Files, FolderTree, HardDrive, Link2, Users } from "lucide-react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDashboardOverview  } from "@/lib/api"
+import { can } from "@bucketdrive/shared"
 
 const numberFormatter = new Intl.NumberFormat("en-US")
 
 export function DashboardPage() {
   const { workspace, workspaceId, role, isLoading: workspacesLoading } = useCurrentWorkspace()
-  const isAdmin = role === "owner" || role === "admin" || role === "manager"
+  const isAdmin = can(role ?? "viewer", "analytics.read")
 
   const overviewQuery = useDashboardOverview(workspaceId)
 

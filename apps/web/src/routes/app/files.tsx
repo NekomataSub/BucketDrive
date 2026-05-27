@@ -29,6 +29,7 @@ import { Breadcrumbs } from "@/components/features/breadcrumbs"
 import { ShareModal } from "@/components/features/share-modal"
 import { FilePreview } from "@/components/features/file-preview"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
+import { FILE_COMMAND_EVENT, type FileCommandAction } from "@/components/shared/commands/file-operations"
 import { DndContext, DragOverlay } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import { can } from "@bucketdrive/shared"
@@ -317,6 +318,48 @@ export function FilesPage() {
     },
     [files, folders, undoable],
   )
+
+  useEffect(() => {
+    function handleFileCommand(event: Event) {
+      const action = (event as CustomEvent<FileCommandAction>).detail
+      const selectedCount = selectedFileIds.length + selectedFolderIds.length
+
+      if (action === "rename" && selectedCount === 1) {
+        const fileId = selectedFileIds[0]
+        const folderId = selectedFolderIds[0]
+        if (fileId) handleRenameItem(fileId, "file")
+        if (folderId) handleRenameItem(folderId, "folder")
+      }
+
+      if (action === "delete") {
+        handleDeleteSelected()
+      }
+
+      if (action === "move" && selectedCount > 0) {
+        useExplorerStore.getState().setClipboard({
+          action: "cut",
+          fileIds: selectedFileIds,
+          folderIds: selectedFolderIds,
+        })
+      }
+
+      if (action === "favorite" && selectedFileIds.length === 1 && selectedFolderIds.length === 0) {
+        const fileId = selectedFileIds[0]
+        if (fileId) {
+          toggleFavoriteMutation.mutate({ fileId })
+        }
+      }
+    }
+
+    window.addEventListener(FILE_COMMAND_EVENT, handleFileCommand)
+    return () => window.removeEventListener(FILE_COMMAND_EVENT, handleFileCommand)
+  }, [
+    handleDeleteSelected,
+    handleRenameItem,
+    selectedFileIds,
+    selectedFolderIds,
+    toggleFavoriteMutation,
+  ])
 
   const { handleItemClick } = useExplorerShortcuts({
     items,

@@ -19,10 +19,12 @@ export const Permission = z.enum([
   "folders.delete",
   "folders.restore",
   "folders.share",
+  "trash.permanent_delete",
   "shares.read",
   "shares.create",
   "shares.update",
   "shares.revoke",
+  "shares.manage_all",
   "users.invite",
   "users.remove",
   "users.update_roles",
@@ -47,6 +49,11 @@ const SHARED_PERMISSIONS: readonly Permission[] = [
   "shares.create",
   "shares.update",
   "shares.revoke",
+]
+
+const SHARE_ADMIN_PERMISSIONS: readonly Permission[] = [
+  ...SHARED_PERMISSIONS,
+  "shares.manage_all",
 ]
 
 const EDITOR_FILE_PERMISSIONS: readonly Permission[] = [
@@ -77,7 +84,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
 const MANAGER_PERMISSIONS: readonly Permission[] = [
   ...EDITOR_FILE_PERMISSIONS,
   ...EDITOR_FOLDER_PERMISSIONS,
-  ...SHARED_PERMISSIONS,
+  ...SHARE_ADMIN_PERMISSIONS,
   "files.delete",
   "files.restore",
   "folders.delete",

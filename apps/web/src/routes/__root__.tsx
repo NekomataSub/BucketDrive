@@ -1,18 +1,38 @@
 import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@tanstack/react-router"
+import { lazy, Suspense, type ComponentType } from "react"
 import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
 import { LoginPage } from "./login"
 import { JoinPage } from "./join"
-import { DashboardPage } from "./app/dashboard"
-import { FilesPage } from "./app/files"
-import { MembersPage } from "./app/members"
-import { AuditPage } from "./app/audit"
-import { SettingsPage } from "./app/settings"
-import { ShareManagementPage } from "./app/shares"
-import { SharedPage } from "./app/shared"
-import { TrashPage } from "./app/trash"
-import { ShareAccessPage } from "./share.$shareId"
-import { PlatformAdminPage } from "./dashboard.platform"
+
+const DashboardPage = lazy(() => import("./app/dashboard").then((module) => ({ default: module.DashboardPage })))
+const FilesPage = lazy(() => import("./app/files").then((module) => ({ default: module.FilesPage })))
+const MembersPage = lazy(() => import("./app/members").then((module) => ({ default: module.MembersPage })))
+const AuditPage = lazy(() => import("./app/audit").then((module) => ({ default: module.AuditPage })))
+const SettingsPage = lazy(() => import("./app/settings").then((module) => ({ default: module.SettingsPage })))
+const ShareManagementPage = lazy(() => import("./app/shares").then((module) => ({ default: module.ShareManagementPage })))
+const SharedPage = lazy(() => import("./app/shared").then((module) => ({ default: module.SharedPage })))
+const TrashPage = lazy(() => import("./app/trash").then((module) => ({ default: module.TrashPage })))
+const ShareAccessPage = lazy(() => import("./share.$shareId").then((module) => ({ default: module.ShareAccessPage })))
+const PlatformAdminPage = lazy(() => import("./dashboard.platform").then((module) => ({ default: module.PlatformAdminPage })))
+
+function PendingSpinner() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-bg-primary">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+    </div>
+  )
+}
+
+function withSuspense(Component: ComponentType) {
+  return function SuspendedRoute() {
+    return (
+      <Suspense fallback={<PendingSpinner />}>
+        <Component />
+      </Suspense>
+    )
+  }
+}
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -70,61 +90,61 @@ const homeRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard",
-  component: DashboardPage,
+  component: withSuspense(DashboardPage),
 })
 
 const filesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/files",
-  component: FilesPage,
+  component: withSuspense(FilesPage),
 })
 
 const membersRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/members",
-  component: MembersPage,
+  component: withSuspense(MembersPage),
 })
 
 const auditRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/audit",
-  component: AuditPage,
+  component: withSuspense(AuditPage),
 })
 
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/settings",
-  component: SettingsPage,
+  component: withSuspense(SettingsPage),
 })
 
 const sharedRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/shared",
-  component: SharedPage,
+  component: withSuspense(SharedPage),
 })
 
 const shareManagementRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/shares",
-  component: ShareManagementPage,
+  component: withSuspense(ShareManagementPage),
 })
 
 const trashRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/trash",
-  component: TrashPage,
+  component: withSuspense(TrashPage),
 })
 
 const platformRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/platform",
-  component: PlatformAdminPage,
+  component: withSuspense(PlatformAdminPage),
 })
 
 const shareAccessRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/share/$shareId",
-  component: ShareAccessPage,
+  component: withSuspense(ShareAccessPage),
 })
 
 const routeTree = rootRoute.addChildren([
@@ -147,11 +167,7 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
-  defaultPendingComponent: () => (
-    <div className="flex h-screen items-center justify-center bg-bg-primary">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-    </div>
-  ),
+  defaultPendingComponent: PendingSpinner,
 })
 
 declare module "@tanstack/react-router" {
