@@ -1,14 +1,14 @@
 import { Hono } from "hono"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
-import { createStorageProvider, StorageProviderError } from "../../services/storage"
+import { buildPublicObjectUrl, createStorageProvider, StorageProviderError } from "../../services/storage"
 import { UploadService, UploadError } from "../../services/upload.service"
 import { R2ImportService } from "../../services/r2-import.service"
 import { ThumbnailService } from "../../services/thumbnail.service"
 import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import { getDB } from "../../lib/db"
 import { hydrateFiles } from "./file-query"
-import { auditLog, favorite, fileObject, fileObjectTag, fileTag, folder } from "@bucketdrive/shared/db/schema"
+import { auditLog, favorite, fileObject, fileObjectTag, fileTag, folder, workspaceSettings } from "@bucketdrive/shared/db/schema"
 import { and, eq, inArray, isNull } from "drizzle-orm"
 import {
   InitiateUploadRequest,
@@ -22,6 +22,7 @@ import {
   BatchUploadResponse,
   ImportR2Request,
   ImportR2Response,
+  DownloadUrlResponse,
   ThumbnailUrlResponse,
   can,
 } from "@bucketdrive/shared"
@@ -629,14 +630,22 @@ files.get("/:fileId/download", requirePermission("files.read"), async (c) => {
   }
 
   const storage = createStorageProvider(c.env)
-  const signedUrl = await storage.generateSignedDownloadUrl(file.storageKey)
+  const signedUrl = await storage.generateSignedDownloadUrl(file.storageKey, 900, {
+    filename: file.originalName,
+  })
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+  const settings = await db
+    .select({ r2PublicBaseUrl: workspaceSettings.r2PublicBaseUrl })
+    .from(workspaceSettings)
+    .where(eq(workspaceSettings.workspaceId, workspaceId))
+    .get()
 
-  return c.json({
+  return c.json(DownloadUrlResponse.parse({
     signedUrl,
     expiresAt,
     fileName: file.originalName,
-  })
+    publicUrl: buildPublicObjectUrl(settings?.r2PublicBaseUrl, file.storageKey) ?? undefined,
+  }))
 })
 
 files.patch("/:fileId", requirePermission("files.rename"), async (c) => {

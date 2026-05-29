@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { useEffect, useState, type ReactNode } from "react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
-import { useDashboardSettings, useUpdateDashboardSettings  } from "@/lib/api"
+import { useDashboardSettings, useUpdateDashboardSettings } from "@/lib/api"
 
 export function SettingsPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -17,6 +17,7 @@ export function SettingsPage() {
   const [allowedMimeTypes, setAllowedMimeTypes] = useState("")
   const [brandingName, setBrandingName] = useState("")
   const [brandingLogoUrl, setBrandingLogoUrl] = useState("")
+  const [r2PublicBaseUrl, setR2PublicBaseUrl] = useState("")
 
   useEffect(() => {
     const settings = settingsQuery.data
@@ -31,6 +32,7 @@ export function SettingsPage() {
     setAllowedMimeTypes(settings.allowedMimeTypes.join(", "))
     setBrandingName(settings.brandingName ?? "")
     setBrandingLogoUrl(settings.brandingLogoUrl ?? "")
+    setR2PublicBaseUrl(settings.r2PublicBaseUrl ?? "")
   }, [settingsQuery.data])
 
   if (workspacesLoading || settingsQuery.isLoading) {
@@ -81,6 +83,7 @@ export function SettingsPage() {
               .filter(Boolean),
             brandingName: brandingName.trim() || null,
             brandingLogoUrl: brandingLogoUrl.trim() || null,
+            r2PublicBaseUrl: r2PublicBaseUrl.trim().replace(/\/+$/, "") || null,
           })
         }}
       >
@@ -144,6 +147,14 @@ export function SettingsPage() {
             <input
               value={brandingLogoUrl}
               onChange={(event) => setBrandingLogoUrl(event.target.value)}
+              className={inputClasses}
+            />
+          </Field>
+          <Field label="R2 public domain">
+            <input
+              value={r2PublicBaseUrl}
+              onChange={(event) => setR2PublicBaseUrl(event.target.value)}
+              placeholder="https://files.example.com"
               className={inputClasses}
             />
           </Field>

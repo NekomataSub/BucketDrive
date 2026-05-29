@@ -42,6 +42,7 @@ export const WorkspaceSettingsSchema = z.object({
   allowedMimeTypes: z.array(z.string()).default([]),
   brandingLogoUrl: z.string().url().nullable().default(null),
   brandingName: z.string().nullable().default(null),
+  r2PublicBaseUrl: z.string().url().nullable().default(null),
 })
 
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>

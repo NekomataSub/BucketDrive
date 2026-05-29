@@ -23,6 +23,7 @@ interface SharesEnv {
   R2_ACCESS_KEY_ID?: string
   R2_SECRET_ACCESS_KEY?: string
   R2_ENDPOINT?: string
+  R2_BUCKET_NAME?: string
   DB: D1Database
 }
 
@@ -220,6 +221,49 @@ publicShares.post("/:shareId/access", async (c) => {
         SHARE_LOCKED: 423,
         SHARE_PASSWORD_RATE_LIMITED: 429,
         NOT_FOUND: 404,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
+    }
+    throw err
+  }
+})
+
+publicShares.get("/:shareId/download", async (c) => {
+  const shareId = c.req.param("shareId")
+  if (!shareId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "shareId is required" }, 400 as never)
+  }
+
+  const storage = createStorageProvider(c.env)
+  const ipAddress = c.req.header("CF-Connecting-IP") ?? c.req.header("X-Forwarded-For") ?? "unknown"
+  const userAgent = c.req.header("User-Agent") ?? undefined
+
+  const service = new SharesService()
+  try {
+    const result = await service.accessShare(shareId, storage, {
+      ipAddress,
+      userAgent,
+      downloadOnly: true,
+    })
+
+    if (result.resourceType !== "file" || !result.signedUrl) {
+      return c.json({ code: "INVALID_RESOURCE", message: "Direct download is only available for file shares" }, 400 as never)
+    }
+
+    return c.redirect(result.signedUrl, 302)
+  } catch (err) {
+    if (err instanceof ShareError) {
+      const statusMap: Record<string, number> = {
+        SHARE_NOT_FOUND: 404,
+        SHARE_REVOKED: 410,
+        SHARE_EXPIRED: 410,
+        PASSWORD_REQUIRED: 401,
+        INVALID_PASSWORD: 403,
+        SHARE_LOCKED: 423,
+        SHARE_PASSWORD_RATE_LIMITED: 429,
+        NOT_FOUND: 404,
+        INVALID_RESOURCE: 400,
       }
       const status = statusMap[err.code] ?? 400
       return c.json({ code: err.code, message: err.message }, status as never)

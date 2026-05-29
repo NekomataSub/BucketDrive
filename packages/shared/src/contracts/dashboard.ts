@@ -79,6 +79,7 @@ export const UpdateDashboardSettingsRequest = WorkspaceSettingsSchema.pick({
   allowedMimeTypes: true,
   brandingLogoUrl: true,
   brandingName: true,
+  r2PublicBaseUrl: true,
 })
 
 export type DashboardOverview = z.infer<typeof DashboardOverviewResponse>

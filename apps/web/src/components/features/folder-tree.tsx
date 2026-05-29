@@ -33,19 +33,30 @@ function TreeNode({
   const children = childrenData?.data ?? []
   const navigateTo = useExplorerStore((s) => s.navigateTo)
   const isActive = currentFolderId === folder.id
+  const handleNavigate = () => navigateTo(folder.id)
 
   return (
     <div>
       <ContextMenu.Root>
         <ContextMenu.Trigger asChild>
-          <button
-            onClick={() => navigateTo(folder.id)}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleNavigate}
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget) return
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                handleNavigate()
+              }
+            }}
             className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover ${
               isActive ? "bg-surface-active text-text-primary" : "text-text-secondary"
-            }`}
+            } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-muted`}
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
           >
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 setExpanded(!expanded)
@@ -63,33 +74,33 @@ function TreeNode({
               <Folder className="h-4 w-4 shrink-0 text-text-tertiary" />
             )}
             <span className="truncate">{folder.name}</span>
-          </button>
+          </div>
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
           <ContextMenu.Content className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg">
             <ContextMenu.Item
               className={contextMenuItemClass}
-            onClick={() => {
-              onCreateSubfolder(folder.id)
-            }}
+              onClick={() => {
+                onCreateSubfolder(folder.id)
+              }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-text-tertiary" />
               New Subfolder
             </ContextMenu.Item>
             <ContextMenu.Item
               className={contextMenuItemClass}
-            onClick={() => {
-              onRename(folder.id, folder.name)
-            }}
+              onClick={() => {
+                onRename(folder.id, folder.name)
+              }}
             >
               <Pencil className="h-3.5 w-3.5 text-text-tertiary" />
               Rename
             </ContextMenu.Item>
             <ContextMenu.Item
               className={contextMenuItemClass}
-            onClick={() => {
-              onDelete(folder.id, folder.name)
-            }}
+              onClick={() => {
+                onDelete(folder.id, folder.name)
+              }}
             >
               <Trash2 className="h-3.5 w-3.5 text-text-tertiary" />
               Delete
@@ -171,6 +182,7 @@ export function FolderTree() {
           Folders
         </span>
         <button
+          type="button"
           onClick={handleCreateRootFolder}
           className="rounded p-0.5 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
           aria-label="New root folder"
@@ -179,6 +191,7 @@ export function FolderTree() {
         </button>
       </div>
       <button
+        type="button"
         onClick={() => navigateToRoot()}
         className={`flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover ${
           currentFolderId === null

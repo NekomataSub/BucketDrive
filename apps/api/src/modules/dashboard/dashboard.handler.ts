@@ -259,6 +259,7 @@ dashboard.patch("/settings", requirePermission("workspace.settings.update"), asy
       allowedMimeTypes: JSON.stringify(body.allowedMimeTypes),
       brandingLogoUrl: body.brandingLogoUrl,
       brandingName: body.brandingName,
+      r2PublicBaseUrl: normalizeBaseUrl(body.r2PublicBaseUrl),
       updatedAt: now,
     })
     .where(eq(workspaceSettings.workspaceId, workspaceId))
@@ -327,6 +328,7 @@ async function getWorkspaceSettings(db: ReturnType<typeof getDB>, workspaceId: s
       allowedMimeTypes: workspaceSettings.allowedMimeTypes,
       brandingLogoUrl: workspaceSettings.brandingLogoUrl,
       brandingName: workspaceSettings.brandingName,
+      r2PublicBaseUrl: workspaceSettings.r2PublicBaseUrl,
     })
     .from(workspaceSettings)
     .innerJoin(workspace, eq(workspace.id, workspaceSettings.workspaceId))
@@ -342,7 +344,14 @@ async function getWorkspaceSettings(db: ReturnType<typeof getDB>, workspaceId: s
     allowedMimeTypes: parseAllowedMimeTypes(row.allowedMimeTypes),
     brandingLogoUrl: row.brandingLogoUrl ?? null,
     brandingName: row.brandingName ?? null,
+    r2PublicBaseUrl: row.r2PublicBaseUrl ?? null,
   }
+}
+
+function normalizeBaseUrl(value: string | null): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  return trimmed.replace(/\/+$/, "")
 }
 
 function safeParseMetadata(raw: string) {

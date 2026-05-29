@@ -54,6 +54,7 @@ CREATE TABLE workspace_settings (
   allowed_mime_types text,
   branding_logo_url text,
   branding_name text,
+  r2_public_base_url text,
   created_at text DEFAULT (current_timestamp) NOT NULL,
   updated_at text DEFAULT (current_timestamp) NOT NULL
 );

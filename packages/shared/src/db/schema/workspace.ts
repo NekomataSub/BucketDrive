@@ -32,6 +32,7 @@ export const workspaceSettings = sqliteTable("workspace_settings", {
   allowedMimeTypes: text("allowed_mime_types"),
   brandingLogoUrl: text("branding_logo_url"),
   brandingName: text("branding_name"),
+  r2PublicBaseUrl: text("r2_public_base_url"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

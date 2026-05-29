@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-import { useRef, useEffect, useCallback, useMemo } from "react"
+import { useCallback, useMemo } from "react"
 import { Folder, FolderOpen, GripVertical, MoreVertical, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
-import { useVirtualizer } from "@tanstack/react-virtual"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 import { FileContextMenu } from "./file-context-menu"
 import { FileThumbnail } from "./file-thumbnail"
@@ -74,9 +73,7 @@ const dropdownItemClass =
   "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-text-primary outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-surface-active data-[highlighted]:text-text-primary data-[disabled]:text-text-tertiary"
 
 const rowClass =
-  "flex items-center border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover focus:outline-none"
-
-const ROW_HEIGHT = 56
+  "flex min-h-14 items-center border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover focus:outline-none"
 
 interface FolderListRowProps {
   folder: FolderType
@@ -106,8 +103,16 @@ function FolderListRow({
   dndEnabled,
 }: FolderListRowProps) {
   const dragId = `folder-${folder.id}`
-  const droppable = useDroppable({ id: dragId, disabled: !dndEnabled })
-  const draggable = useDraggable({ id: dragId, disabled: !dndEnabled })
+  const droppable = useDroppable({
+    id: dragId,
+    disabled: !dndEnabled,
+    data: { type: "folder", id: folder.id },
+  })
+  const draggable = useDraggable({
+    id: dragId,
+    disabled: !dndEnabled,
+    data: { type: "folder", id: folder.id },
+  })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
 
   const setRefs = useCallback(
@@ -142,10 +147,13 @@ function FolderListRow({
         data-item-type="folder"
         data-item-index={index}
         onClick={(e) => {
-          if (!dndEnabled || !draggable.isDragging)
+          if (dndEnabled && draggable.isDragging) return
+          if (e.shiftKey || e.ctrlKey || e.metaKey) {
             onItemClick(folder.id, "folder", index, e)
+            return
+          }
+          onFolderClick(folder.id)
         }}
-        onDoubleClick={() => onFolderClick(folder.id)}
         className={`${rowClass} ${
           draggable.isDragging
             ? "opacity-50"
@@ -157,7 +165,6 @@ function FolderListRow({
                   ? "bg-surface-hover"
                   : ""
         }`}
-        style={{ height: ROW_HEIGHT }}
       >
         <div className="flex flex-1 items-center gap-3 px-4 py-2.5">
           {dndEnabled && (
@@ -264,6 +271,7 @@ function FileListRow({
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: dragId,
     disabled: !dndEnabled,
+    data: { type: "file", id: file.id },
   })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
 
@@ -296,9 +304,13 @@ function FileListRow({
         data-item-type="file"
         data-item-index={index}
         onClick={(e) => {
-          if (!dndEnabled || !isDragging) onItemClick(file.id, "file", index, e)
+          if (dndEnabled && isDragging) return
+          if (e.shiftKey || e.ctrlKey || e.metaKey) {
+            onItemClick(file.id, "file", index, e)
+            return
+          }
+          onContextPreview?.(file.id)
         }}
-        onDoubleClick={() => onContextPreview?.(file.id)}
         className={`${rowClass} ${
           isDragging
             ? "opacity-50"
@@ -308,7 +320,6 @@ function FileListRow({
                 ? "bg-surface-hover"
                 : ""
         }`}
-        style={{ height: ROW_HEIGHT }}
       >
         <div className="flex flex-1 items-center gap-3 px-4 py-2.5 min-w-0">
           {dndEnabled && (
@@ -328,6 +339,7 @@ function FileListRow({
               workspaceId={workspaceId}
               fileId={file.id}
               mimeType={file.mimeType}
+              thumbnailKey={file.thumbnailKey}
               fallback={getFileIcon(file.mimeType)}
               className="h-full w-full"
             />
@@ -466,8 +478,6 @@ export function FileList({
   const focusedItemId = useExplorerStore((s) => s.focusedItemId)
   const dndEnabled = !!onItemDrop
 
-  const parentRef = useRef<HTMLDivElement>(null)
-
   const allItems = useMemo(
     () => [
       ...folders.map((f) => ({ type: "folder" as const, data: f })),
@@ -475,24 +485,6 @@ export function FileList({
     ],
     [folders, files],
   )
-
-  const virtualizer = useVirtualizer({
-    count: allItems.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 5,
-  })
-
-  const focusedIndex = useMemo(
-    () => allItems.findIndex((item) => item.data.id === focusedItemId),
-    [allItems, focusedItemId],
-  )
-
-  useEffect(() => {
-    if (focusedIndex >= 0) {
-      virtualizer.scrollToIndex(focusedIndex, { align: "center" })
-    }
-  }, [focusedIndex, virtualizer])
 
   if (isLoading) {
     return (
@@ -518,8 +510,6 @@ export function FileList({
     )
   }
 
-  const virtualItems = virtualizer.getVirtualItems()
-
   return (
     <div className="overflow-hidden rounded-xl border border-border-default">
       {/* Header */}
@@ -537,77 +527,51 @@ export function FileList({
         <div className="w-10 px-4 py-2.5" />
       </div>
 
-      {/* Virtualized body */}
-      <div ref={parentRef} className="overflow-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
-        <div style={{ height: `${String(virtualizer.getTotalSize())}px`, position: "relative", width: "100%" }}>
-          {virtualItems.map((virtualItem) => {
-            const item = allItems[virtualItem.index]
-            if (!item) return null
-
-            if (item.type === "folder") {
-              const folder = item.data
-              return (
-                <div
-                  key={folder.id}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${String(virtualItem.start)}px)`,
-                  }}
-                >
-                  <FolderListRow
-                    folder={folder}
-                    index={virtualItem.index}
-                    isSelected={selectedFolderIds.includes(folder.id)}
-                    isFocused={focusedItemId === folder.id}
-                    onFolderClick={onFolderClick}
-                    onItemClick={onItemClick}
-                    onContextRename={onContextRename}
-                    onContextDelete={onContextDelete}
-                    onContextMove={onContextMove}
-                    onContextShare={onContextShare}
-                    dndEnabled={dndEnabled}
-                  />
-                </div>
-              )
-            }
-
-            const file = item.data
+      <div className="max-h-[calc(100vh-320px)] overflow-auto">
+        {allItems.map((item, index) => {
+          if (item.type === "folder") {
+            const folder = item.data
             return (
-              <div
-                key={file.id}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${String(virtualItem.start)}px)`,
-                }}
-              >
-                <FileListRow
-                  file={file}
-                  index={virtualItem.index}
-                  workspaceId={workspaceId}
-                  isSelected={selectedFileIds.includes(file.id)}
-                  isFocused={focusedItemId === file.id}
-                  onItemClick={onItemClick}
-                  onContextOpen={onContextOpen}
-                  onContextPreview={onContextPreview}
-                  onContextDownload={onContextDownload}
-                  onContextRename={onContextRename}
-                  onContextDelete={onContextDelete}
-                  onContextFavorite={onContextFavorite}
-                  onContextTags={onContextTags}
-                  onContextMove={onContextMove}
-                  onContextShare={onContextShare}
-                  dndEnabled={dndEnabled}
-                />
-              </div>
+              <FolderListRow
+                key={folder.id}
+                folder={folder}
+                index={index}
+                isSelected={selectedFolderIds.includes(folder.id)}
+                isFocused={focusedItemId === folder.id}
+                onFolderClick={onFolderClick}
+                onItemClick={onItemClick}
+                onContextRename={onContextRename}
+                onContextDelete={onContextDelete}
+                onContextMove={onContextMove}
+                onContextShare={onContextShare}
+                dndEnabled={dndEnabled}
+              />
             )
-          })}
-        </div>
+          }
+
+          const file = item.data
+          return (
+            <FileListRow
+              key={file.id}
+              file={file}
+              index={index}
+              workspaceId={workspaceId}
+              isSelected={selectedFileIds.includes(file.id)}
+              isFocused={focusedItemId === file.id}
+              onItemClick={onItemClick}
+              onContextOpen={onContextOpen}
+              onContextPreview={onContextPreview}
+              onContextDownload={onContextDownload}
+              onContextRename={onContextRename}
+              onContextDelete={onContextDelete}
+              onContextFavorite={onContextFavorite}
+              onContextTags={onContextTags}
+              onContextMove={onContextMove}
+              onContextShare={onContextShare}
+              dndEnabled={dndEnabled}
+            />
+          )
+        })}
       </div>
     </div>
   )

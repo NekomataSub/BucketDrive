@@ -41,6 +41,7 @@ export const ShareAccessResponse = z.object({
   resourceType: z.enum(["file", "folder"]),
   resourceName: z.string(),
   signedUrl: z.string().url().optional(),
+  publicUrl: z.string().url().optional(),
   files: z
     .array(
       z.object({

@@ -373,6 +373,7 @@ function ShareExternalDirect({
       </div>
       <a
         href={signedUrl}
+        download={resourceName}
         target="_blank"
         rel="noreferrer"
         className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90"

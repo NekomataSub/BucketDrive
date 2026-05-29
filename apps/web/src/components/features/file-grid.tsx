@@ -112,8 +112,16 @@ function FolderGridCard({
   dndEnabled,
 }: FolderGridCardProps) {
   const dragId = `folder-${folder.id}`
-  const droppable = useDroppable({ id: dragId, disabled: !dndEnabled })
-  const draggable = useDraggable({ id: dragId, disabled: !dndEnabled })
+  const droppable = useDroppable({
+    id: dragId,
+    disabled: !dndEnabled,
+    data: { type: "folder", id: folder.id },
+  })
+  const draggable = useDraggable({
+    id: dragId,
+    disabled: !dndEnabled,
+    data: { type: "folder", id: folder.id },
+  })
 
   const setRefs = useCallback(
     (node: HTMLDivElement | null) => {
@@ -151,9 +159,13 @@ function FolderGridCard({
         data-item-type="folder"
         data-item-index={index}
         onClick={(e) => {
-          if (!dndEnabled || !isDragging) onItemClick(folder.id, "folder", index, e)
+          if (dndEnabled && isDragging) return
+          if (e.shiftKey || e.ctrlKey || e.metaKey) {
+            onItemClick(folder.id, "folder", index, e)
+            return
+          }
+          onFolderClick(folder.id)
         }}
-        onDoubleClick={() => onFolderClick(folder.id)}
         className={`relative ${gridClass} ${
           isDragging
             ? "opacity-50"
@@ -231,6 +243,7 @@ function FileGridCard({
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: dragId,
     disabled: !dndEnabled,
+    data: { type: "file", id: file.id },
   })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
 
@@ -263,9 +276,13 @@ function FileGridCard({
         data-item-type="file"
         data-item-index={index}
         onClick={(e) => {
-          if (!dndEnabled || !isDragging) onItemClick(file.id, "file", index, e)
+          if (dndEnabled && isDragging) return
+          if (e.shiftKey || e.ctrlKey || e.metaKey) {
+            onItemClick(file.id, "file", index, e)
+            return
+          }
+          onContextPreview?.(file.id)
         }}
-        onDoubleClick={() => onContextPreview?.(file.id)}
         className={`relative ${gridClass} ${
           isDragging
             ? "opacity-50"
@@ -293,6 +310,7 @@ function FileGridCard({
             workspaceId={workspaceId}
             fileId={file.id}
             mimeType={file.mimeType}
+            thumbnailKey={file.thumbnailKey}
             fallback={getFileIcon(file.mimeType)}
             className="h-full w-full"
           />

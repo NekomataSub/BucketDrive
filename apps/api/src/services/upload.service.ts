@@ -22,6 +22,25 @@ const BLOCKED_MIME_PREFIXES = [
   "application/x-executable",
 ]
 
+export function getSafeUploadFileName(fileName: string): string {
+  const normalized = fileName.replace(/\\/g, "/")
+  const safeName = normalized.split("/").pop()?.trim()
+
+  if (!safeName || normalized.includes("\0") || normalized.includes("..")) {
+    throw new UploadError("INVALID_NAME", "File name contains invalid characters")
+  }
+
+  return safeName
+}
+
+export function buildUploadStorageKey(
+  workspaceId: string,
+  uploadId: string,
+  fileName: string,
+): string {
+  return `workspace/${workspaceId}/files/${uploadId}/${getSafeUploadFileName(fileName)}`
+}
+
 export class UploadError extends Error {
   constructor(
     public code: string,
@@ -153,7 +172,7 @@ export class UploadService {
     }
 
     const uploadId = crypto.randomUUID()
-    const storeKey = `workspace/${params.workspaceId}/files/${crypto.randomUUID()}`
+    const storeKey = buildUploadStorageKey(params.workspaceId, uploadId, params.fileName)
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
     const isMultipart = params.sizeBytes > MULTIPART_THRESHOLD
@@ -517,8 +536,9 @@ export class UploadService {
   }
 
   private validateFileType(fileName: string, mimeType: string): void {
-    const extPart = fileName.split(".").pop()?.toLowerCase()
-    const ext = fileName.includes(".") && extPart ? `.${extPart}` : ""
+    const safeFileName = getSafeUploadFileName(fileName)
+    const extPart = safeFileName.split(".").pop()?.toLowerCase()
+    const ext = safeFileName.includes(".") && extPart ? `.${extPart}` : ""
 
     if (ext && BLOCKED_EXTENSIONS.includes(ext)) {
       throw new UploadError("BLOCKED_EXTENSION", `File type ${ext} is not allowed`)
@@ -529,7 +549,7 @@ export class UploadService {
       throw new UploadError("BLOCKED_MIME", `MIME type ${mimeType} is not allowed`)
     }
 
-    if (fileName.includes("\0") || fileName.includes("..")) {
+    if (safeFileName.includes("\0") || safeFileName.includes("..")) {
       throw new UploadError("INVALID_NAME", "File name contains invalid characters")
     }
   }

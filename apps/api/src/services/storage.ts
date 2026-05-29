@@ -17,7 +17,11 @@ export interface StorageProvider {
     truncated: boolean
   }>
   generateSignedUploadUrl(key: string, expiresIn?: number): Promise<string>
-  generateSignedDownloadUrl(key: string, expiresIn?: number): Promise<string>
+  generateSignedDownloadUrl(
+    key: string,
+    expiresIn?: number,
+    options?: { filename?: string },
+  ): Promise<string>
   delete(key: string): Promise<void>
   copy(fromKey: string, toKey: string): Promise<void>
   createMultipartUpload(key: string): Promise<{ uploadId: string }>
@@ -110,9 +114,16 @@ export class R2StorageProvider implements StorageProvider {
     return signed.url
   }
 
-  async generateSignedDownloadUrl(key: string, expiresIn = 900): Promise<string> {
+  async generateSignedDownloadUrl(
+    key: string,
+    expiresIn = 900,
+    options?: { filename?: string },
+  ): Promise<string> {
     const url = new URL(`${this.endpoint}/${this.bucketName}/${key}`)
     url.searchParams.set("X-Amz-Expires", String(expiresIn))
+    if (options?.filename) {
+      url.searchParams.set("response-content-disposition", buildAttachmentDisposition(options.filename))
+    }
     const signed = await this.s3.sign(url.toString(), {
       method: "GET",
       aws: { signQuery: true },
@@ -268,7 +279,11 @@ class R2BindingProvider implements StorageProvider {
     )
   }
 
-  generateSignedDownloadUrl(_key: string, _expiresIn?: number): Promise<string> {
+  generateSignedDownloadUrl(
+    _key: string,
+    _expiresIn?: number,
+    _options?: { filename?: string },
+  ): Promise<string> {
     return Promise.reject(
       new Error(
         "Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ENDPOINT in .dev.vars.",
@@ -316,4 +331,21 @@ class R2BindingProvider implements StorageProvider {
     const multipart = this.binding.resumeMultipartUpload(key, uploadId)
     await multipart.abort()
   }
+}
+
+export function buildPublicObjectUrl(baseUrl: string | null | undefined, key: string): string | null {
+  const normalizedBase = baseUrl?.trim().replace(/\/+$/, "")
+  if (!normalizedBase) return null
+
+  const encodedKey = key
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/")
+
+  return `${normalizedBase}/${encodedKey}`
+}
+
+function buildAttachmentDisposition(filename: string): string {
+  const asciiName = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_")
+  return `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`
 }

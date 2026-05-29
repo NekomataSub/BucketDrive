@@ -10,7 +10,7 @@ import {
   user,
   workspaceSettings,
 } from "@bucketdrive/shared/db/schema"
-import type { StorageProvider } from "../../services/storage"
+import { buildPublicObjectUrl, type StorageProvider } from "../../services/storage"
 import { NotificationsService } from "../notifications/notifications.service"
 import { can, ShareLinkSchema } from "@bucketdrive/shared"
 import type {
@@ -522,7 +522,7 @@ export class SharesService {
   async accessShare(
     shareId: string,
     storage: StorageProvider,
-    options?: { password?: string; ipAddress?: string; userAgent?: string },
+    options?: { password?: string; ipAddress?: string; userAgent?: string; downloadOnly?: boolean },
   ) {
     const db = getDB()
     const now = new Date().toISOString()
@@ -539,6 +539,10 @@ export class SharesService {
 
     if (share.expiresAt && share.expiresAt < now) {
       throw new ShareError("SHARE_EXPIRED", "This share link has expired")
+    }
+
+    if (options?.downloadOnly && share.shareType !== "external_direct") {
+      throw new ShareError("INVALID_RESOURCE", "Direct download is only available for external file shares")
     }
 
     if (share.passwordHash) {
@@ -621,6 +625,7 @@ export class SharesService {
     const resourceType = share.resourceType as "file" | "folder"
     let resourceName: string
     let signedUrl: string | null = null
+    let publicUrl: string | null = null
     let files: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }> = []
     let folders: Array<{ id: string; name: string }> = []
 
@@ -638,9 +643,21 @@ export class SharesService {
       }
 
       resourceName = file.originalName
-      signedUrl = await storage.generateSignedDownloadUrl(file.storageKey)
+      signedUrl = await storage.generateSignedDownloadUrl(file.storageKey, 900, {
+        filename: file.originalName,
+      })
+      const settings = await db
+        .select({ r2PublicBaseUrl: workspaceSettings.r2PublicBaseUrl })
+        .from(workspaceSettings)
+        .where(eq(workspaceSettings.workspaceId, share.workspaceId))
+        .get()
+      publicUrl = buildPublicObjectUrl(settings?.r2PublicBaseUrl, file.storageKey)
       downloadIncrement = 1
     } else {
+      if (options?.downloadOnly) {
+        throw new ShareError("INVALID_RESOURCE", "Direct download is only available for file shares")
+      }
+
       const f = await db
         .select()
         .from(folder)
@@ -728,7 +745,15 @@ export class SharesService {
 
     const branding = await this.getWorkspaceBranding(share.workspaceId)
 
-    return { resourceType, resourceName, signedUrl, files, folders, ...branding }
+    return {
+      resourceType,
+      resourceName,
+      signedUrl,
+      publicUrl: publicUrl ?? undefined,
+      files,
+      folders,
+      ...branding,
+    }
   }
 
   private async findResource(

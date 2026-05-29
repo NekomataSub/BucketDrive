@@ -50,6 +50,7 @@ export const DownloadUrlResponse = z.object({
   signedUrl: z.string().url(),
   expiresAt: z.string().datetime(),
   fileName: z.string(),
+  publicUrl: z.string().url().optional(),
 })
 
 export const UpdateFileRequest = z.object({

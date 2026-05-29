@@ -49,7 +49,7 @@ User selects file
 POST /api/workspaces/:id/files/upload
   → Backend validates (RBAC, quota, mime)
   → Backend generates signed upload URL (PUT, expires in 15 min)
-  → Backend creates storage key: workspace/{wid}/files/{uuid}
+  → Backend creates storage key: workspace/{wid}/files/{uploadId}/{fileName}
   ← Returns { uploadId, signedUrl, storageKey }
     ↓
 Frontend PUTs file content directly to signedUrl
@@ -283,17 +283,17 @@ async function cancelUpload(sessionId: string) {
 # Storage Key Format
 
 ```txt
-workspace/{workspaceId}/files/{uuid}
+workspace/{workspaceId}/files/{uploadId}/{fileName}
 ```
 
 Example:
 ```txt
-workspace/ws_abc123/files/550e8400-e29b-41d4-a716-446655440000
+workspace/ws_abc123/files/550e8400-e29b-41d4-a716-446655440000/AGENTS.md
 ```
 
-- UUID key prevents enumeration
+- UUID upload folder prevents collisions while preserving the original file name and extension
 - Workspace prefix enables bucket lifecycle policies (future)
-- Original file name stored in `FileObject.originalName` (metadata, not path)
+- Original file name stored in `FileObject.originalName` and preserved in the object key suffix
 
 ---
 

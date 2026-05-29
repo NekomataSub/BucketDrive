@@ -1851,6 +1851,14 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 
 ---
 
+## Implementation Notes - Upload UX Follow-up
+
+> - Updated upload storage keys to preserve the original filename and extension under a UUID upload folder: `workspace/{workspaceId}/files/{uploadId}/{fileName}`.
+> - Completed uploads now update the active files query cache immediately and invalidate workspace file/search queries, so normal app uploads no longer require R2 import to appear in Explorer.
+> - Removed fixed-height virtualization from list view to prevent rows with tags or variable content from overlapping during load/render.
+
+---
+
 # Quick Reference
 
 See [Status Overview](#status-overview) at the top of this file for the latest status of each day.

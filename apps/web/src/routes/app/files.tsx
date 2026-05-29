@@ -141,6 +141,7 @@ export function FilesPage() {
     resourceId: string
     resourceType: "file" | "folder"
     resourceName: string
+    resourceStorageKey?: string
   }>({ open: false, resourceId: "", resourceType: "file", resourceName: "" })
 
   const parseDragId = (dragId: string): { type: "file" | "folder"; id: string } | null => {
@@ -165,10 +166,11 @@ export function FilesPage() {
 
       const source = parseDragId(active.id as string)
       const target = parseDragId(over.id as string)
+      const overData = over.data.current as { type?: "file" | "folder"; id?: string } | undefined
 
       if (!source || !target) return
       if (source.id === target.id) return
-      if (target.type !== "folder") return
+      if (target.type !== "folder" || overData?.type !== "folder") return
 
       if (source.type === "file") {
         void undoable.moveFile(source.id, target.id, currentFolderId)
@@ -213,9 +215,15 @@ export function FilesPage() {
           `/api/workspaces/${workspaceId}/files/${fileId}/download`,
           { credentials: "include" },
         )
-        const data = (await res.json()) as { signedUrl?: string }
+        const data = (await res.json()) as { signedUrl?: string; fileName?: string }
         if (data.signedUrl) {
-          window.open(data.signedUrl, "_blank")
+          const link = document.createElement("a")
+          link.href = data.signedUrl
+          link.download = data.fileName ?? ""
+          link.rel = "noopener"
+          document.body.append(link)
+          link.click()
+          link.remove()
         }
       }
       fetchUrl().catch(console.error)
@@ -411,7 +419,13 @@ export function FilesPage() {
       const item =
         type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
       const name = item ? ("originalName" in item ? item.originalName : item.name) : ""
-      setShareModal({ open: true, resourceId: id, resourceType: type, resourceName: name })
+      setShareModal({
+        open: true,
+        resourceId: id,
+        resourceType: type,
+        resourceName: name,
+        resourceStorageKey: item && "storageKey" in item ? item.storageKey : undefined,
+      })
     },
     [files, folders],
   )
@@ -936,6 +950,7 @@ export function FilesPage() {
           resourceId={shareModal.resourceId}
           resourceType={shareModal.resourceType}
           resourceName={shareModal.resourceName}
+          resourceStorageKey={shareModal.resourceStorageKey}
         />
       </div>
 

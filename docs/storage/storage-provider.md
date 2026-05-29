@@ -139,7 +139,7 @@ Avoid:
 Recommended format:
 
 ```txt
-workspace/{workspaceId}/files/{uuid}
+workspace/{workspaceId}/files/{uploadId}/{fileName}
 ```
 
 ---

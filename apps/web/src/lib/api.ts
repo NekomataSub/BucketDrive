@@ -2,6 +2,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query"
@@ -168,6 +169,7 @@ interface DownloadUrlResponse {
   signedUrl: string
   expiresAt: string
   fileName: string
+  publicUrl?: string
 }
 
 interface PreviewUrlResponse {
@@ -250,6 +252,74 @@ export interface UseTrashOptions {
   order?: "asc" | "desc"
   page?: number
   limit?: number
+}
+
+function getCachedFolderId(options: unknown): string | null {
+  if (typeof options !== "object" || options === null) return null
+  const folderId = (options as UseFilesOptions).folderId
+  return folderId ?? null
+}
+
+function compareFilesForOptions(a: FileObject, b: FileObject, options: UseFilesOptions): number {
+  const direction = options.order === "desc" ? -1 : 1
+  const sort = options.sort ?? "name"
+
+  if (sort === "size") {
+    return (a.sizeBytes - b.sizeBytes) * direction
+  }
+
+  if (sort === "created_at") {
+    return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * direction
+  }
+
+  if (sort === "type") {
+    const typeCompare = a.mimeType.localeCompare(b.mimeType)
+    if (typeCompare !== 0) return typeCompare * direction
+  }
+
+  return a.originalName.localeCompare(b.originalName, undefined, { sensitivity: "base" }) * direction
+}
+
+export function upsertCompletedFileInFilesCache(
+  queryClient: QueryClient,
+  completedFile: FileObject,
+): void {
+  const completedFolderId = completedFile.folderId ?? null
+  const queries = queryClient.getQueryCache().findAll({
+    queryKey: ["files", completedFile.workspaceId],
+  })
+
+  for (const query of queries) {
+    const options = query.queryKey[2] as UseFilesOptions | undefined
+    if (getCachedFolderId(options) !== completedFolderId) continue
+
+    queryClient.setQueryData<ListFilesResponse>(query.queryKey, (current) => {
+      if (!current) return current
+
+      const existingIndex = current.data.findIndex((file) => file.id === completedFile.id)
+      if (existingIndex >= 0) {
+        const data = current.data.map((file) => (file.id === completedFile.id ? completedFile : file))
+        return { ...current, data }
+      }
+
+      if (options?.page !== undefined && options.page > 1) {
+        return {
+          ...current,
+          meta: { ...current.meta, total: current.meta.total + 1 },
+        }
+      }
+
+      const sorted = [completedFile, ...current.data]
+        .sort((a, b) => compareFilesForOptions(a, b, options ?? {}))
+        .slice(0, options?.limit ?? current.data.length + 1)
+
+      return {
+        ...current,
+        data: sorted,
+        meta: { ...current.meta, total: current.meta.total + 1 },
+      }
+    })
+  }
 }
 
 export function useFiles(
@@ -408,6 +478,7 @@ export function useCompleteUpload(): UseMutationResult<
         body,
       ),
     onSuccess: (data) => {
+      upsertCompletedFileInFilesCache(queryClient, data)
       void queryClient.invalidateQueries({ queryKey: ["files", data.workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", data.workspaceId] })
     },
@@ -540,8 +611,8 @@ export function useBatchUpload(workspaceId: string | null): UseMutationResult<
         buildWorkspacePath(workspaceId, "/files/batch-upload"),
         body,
       ),
-    onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["files", variables.parentFolderId ?? workspaceId] })
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
     },
@@ -1235,6 +1306,7 @@ interface ShareAccessResult {
   resourceType: "file" | "folder"
   resourceName: string
   signedUrl?: string
+  publicUrl?: string
   files?: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }>
   folders?: Array<{ id: string; name: string }>
   brandingLogoUrl: string | null

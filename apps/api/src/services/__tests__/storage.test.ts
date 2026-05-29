@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
+  buildPublicObjectUrl,
   createStorageProvider,
   R2StorageProvider,
   type StorageProvider,
@@ -142,6 +143,15 @@ describe("R2StorageProvider", () => {
       expect(url).toContain("X-Amz-Algorithm=AWS4-HMAC-SHA256")
       expect(url).toContain("X-Amz-Signature=mock-signature")
     })
+
+    it("adds attachment disposition when a filename is provided", async () => {
+      const url = await provider.generateSignedDownloadUrl("workspace/ws1/files/test-file", 900, {
+        filename: "AGENTS.md",
+      })
+
+      expect(url).toContain("response-content-disposition=")
+      expect(decodeURIComponent(url)).toContain('filename="AGENTS.md"')
+    })
   })
 
   describe("list", () => {
@@ -271,6 +281,24 @@ describe("R2StorageProvider", () => {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockBucket.resumeMultipartUpload).toHaveBeenCalledWith("test-key", "upload-123")
     })
+  })
+})
+
+describe("buildPublicObjectUrl", () => {
+  it("builds a public URL and trims trailing base slashes", () => {
+    expect(buildPublicObjectUrl("https://files.example.com/", "workspace/ws/files/file")).toBe(
+      "https://files.example.com/workspace/ws/files/file",
+    )
+  })
+
+  it("encodes each storage key segment without encoding slashes", () => {
+    expect(buildPublicObjectUrl("https://files.example.com", "workspace/ws/files/a b#c.md")).toBe(
+      "https://files.example.com/workspace/ws/files/a%20b%23c.md",
+    )
+  })
+
+  it("returns null when no public base URL is configured", () => {
+    expect(buildPublicObjectUrl(null, "workspace/ws/files/file")).toBeNull()
   })
 })
 

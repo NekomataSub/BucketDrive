@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import * as Dialog from "@radix-ui/react-dialog"
-import { X, Copy, Check, Share2, Globe, Users, Lock } from "lucide-react"
+import { X, Copy, Check, Share2, Globe, Users, Lock, Download } from "lucide-react"
 import { useState, useCallback } from "react"
-import { useCreateShare } from "@/lib/api"
+import { useCreateShare, useDashboardSettings } from "@/lib/api"
 
 type ShareType = "internal" | "external_direct" | "external_explorer"
 
@@ -13,6 +13,7 @@ interface ShareModalProps {
   resourceId: string
   resourceType: "file" | "folder"
   resourceName: string
+  resourceStorageKey?: string
 }
 
 const shareTypeLabels: Record<ShareType, { label: string; description: string }> = {
@@ -37,13 +38,15 @@ export function ShareModal({
   resourceId,
   resourceType,
   resourceName,
+  resourceStorageKey,
 }: ShareModalProps) {
   const createShare = useCreateShare(workspaceId)
+  const settingsQuery = useDashboardSettings(workspaceId || null)
   const [shareType, setShareType] = useState<ShareType>("internal")
   const [permissions, setPermissions] = useState<("read" | "download")[]>(["read", "download"])
   const [password, setPassword] = useState("")
   const [expiresIn, setExpiresIn] = useState<string>("")
-  const [copied, setCopied] = useState(false)
+  const [copiedLinkType, setCopiedLinkType] = useState<"share" | "download" | "public" | null>(null)
   const [createdShareId, setCreatedShareId] = useState<string | null>(null)
   const [createdShareType, setCreatedShareType] = useState<ShareType | null>(null)
 
@@ -75,14 +78,31 @@ export function ShareModal({
     )
   }, [resourceId, resourceType, shareType, permissions, password, expiresIn, createShare])
 
-  const handleCopyLink = useCallback(() => {
-    const link =
-      createdShareType === "internal"
-        ? `${window.location.origin}/shared/${createdShareId ?? ""}`
-        : `${window.location.origin}/share/${createdShareId ?? ""}`
+  const buildPublicR2Url = useCallback(() => {
+    const baseUrl = String(settingsQuery.data?.r2PublicBaseUrl ?? "").replace(/\/+$/, "")
+    if (!baseUrl || !resourceStorageKey) return null
+    const encodedKey = resourceStorageKey
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/")
+    return `${baseUrl}/${encodedKey}`
+  }, [resourceStorageKey, settingsQuery.data?.r2PublicBaseUrl])
+
+  const copyLink = useCallback((link: string, type: "share" | "download" | "public") => {
     void navigator.clipboard.writeText(link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setCopiedLinkType(type)
+    setTimeout(() => setCopiedLinkType(null), 2000)
+  }, [])
+
+  const getShareLink = useCallback(() => {
+    return createdShareType === "internal"
+      ? `${window.location.origin}/shared/${createdShareId ?? ""}`
+      : `${window.location.origin}/share/${createdShareId ?? ""}`
+  }, [createdShareId, createdShareType])
+
+  const getManagedDownloadLink = useCallback(() => {
+    if (!createdShareId || createdShareType !== "external_direct") return null
+    return `${window.location.origin}/api/shares/${createdShareId}/download`
   }, [createdShareId, createdShareType])
 
   const togglePermission = (perm: "read" | "download") => {
@@ -96,7 +116,7 @@ export function ShareModal({
     setPermissions(["read", "download"])
     setPassword("")
     setExpiresIn("")
-    setCopied(false)
+    setCopiedLinkType(null)
     setCreatedShareId(null)
     setCreatedShareType(null)
     createShare.reset()
@@ -289,10 +309,10 @@ export function ShareModal({
               </div>
 
               <button
-                onClick={handleCopyLink}
+                onClick={() => copyLink(getShareLink(), "share")}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-default px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
               >
-                {copied ? (
+                {copiedLinkType === "share" ? (
                   <>
                     <Check className="h-4 w-4 text-success" />
                     Copied
@@ -304,6 +324,54 @@ export function ShareModal({
                   </>
                 )}
               </button>
+
+              {resourceType === "file" && createdShareType === "external_direct" && (
+                <div className="grid gap-2">
+                  {getManagedDownloadLink() && password.length === 0 && (
+                    <button
+                      onClick={() => {
+                        const link = getManagedDownloadLink()
+                        if (link) copyLink(link, "download")
+                      }}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-default px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                    >
+                      {copiedLinkType === "download" ? (
+                        <>
+                          <Check className="h-4 w-4 text-success" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 text-text-tertiary" />
+                          Copy direct download link
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {buildPublicR2Url() && (
+                    <button
+                      onClick={() => {
+                        const link = buildPublicR2Url()
+                        if (link) copyLink(link, "public")
+                      }}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-default px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                    >
+                      {copiedLinkType === "public" ? (
+                        <>
+                          <Check className="h-4 w-4 text-success" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Globe className="h-4 w-4 text-text-tertiary" />
+                          Copy public R2 URL
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="flex justify-end">
                 <Dialog.Close className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90">

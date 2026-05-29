@@ -5,15 +5,28 @@ interface FileThumbnailProps {
   workspaceId: string
   fileId: string
   mimeType: string
+  thumbnailKey: string | null
   fallback: React.ReactNode
   className?: string
 }
 
-export function FileThumbnail({ workspaceId, fileId, mimeType, fallback, className }: FileThumbnailProps) {
-  const { data, isLoading } = useThumbnailUrl(workspaceId, fileId)
-
+export function FileThumbnail({
+  workspaceId,
+  fileId,
+  mimeType,
+  thumbnailKey,
+  fallback,
+  className,
+}: FileThumbnailProps) {
   const isVisual = mimeType.startsWith("image/") || mimeType.startsWith("video/")
+  const shouldFetchThumbnail = isVisual && Boolean(thumbnailKey)
+  const { data, isLoading } = useThumbnailUrl(
+    shouldFetchThumbnail ? workspaceId : null,
+    shouldFetchThumbnail ? fileId : null,
+  )
+
   if (!isVisual) return fallback
+  if (!thumbnailKey) return fallback
 
   if (isLoading) {
     return (
