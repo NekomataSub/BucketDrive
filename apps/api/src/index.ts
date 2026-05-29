@@ -15,6 +15,7 @@ import { notificationsHandler } from "./modules/notifications/notifications.hand
 import { trashHandler } from "./modules/trash/trash.handler"
 import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 import { platformHandler } from "./modules/platform/platform.handler"
+import { authMiddleware } from "./middleware/auth"
 
 interface Env {
   BETTER_AUTH_SECRET?: string
@@ -30,6 +31,7 @@ interface Env {
   R2_ACCESS_KEY_ID?: string
   R2_SECRET_ACCESS_KEY?: string
   R2_ENDPOINT?: string
+  R2_BUCKET_NAME?: string
 }
 
 const app = new Hono<{ Bindings: Env }>()
@@ -71,6 +73,24 @@ app.all("/api/auth/*", (c) => {
 })
 
 app.get("/api/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }))
+
+app.get("/api/storage/status", authMiddleware, (c) => {
+  const hasAccessKey = Boolean(c.env.R2_ACCESS_KEY_ID)
+  const hasSecretKey = Boolean(c.env.R2_SECRET_ACCESS_KEY)
+  const endpointConfigured = Boolean(c.env.R2_ENDPOINT)
+  const presignedUrls = hasAccessKey && hasSecretKey && endpointConfigured
+  const bucketName = c.env.R2_BUCKET_NAME ?? "bucketdrive-files"
+
+  return c.json({
+    provider: presignedUrls ? "r2-s3" : "r2-binding",
+    bucketName,
+    bucketBinding: Boolean(c.env.STORAGE),
+    s3Credentials: hasAccessKey && hasSecretKey,
+    presignedUrls,
+    endpointConfigured,
+    expectedCorsOrigin: c.env.APP_URL ?? "http://localhost:5173",
+  })
+})
 
 app.route("/api/workspaces/:workspaceId/files", filesHandler)
 app.route("/api/workspaces/:workspaceId/folders", foldersHandler)

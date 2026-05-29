@@ -18,6 +18,9 @@ verifiable result.
 > - Replaced contract/E2E placeholders with executable coverage for changed API shapes and critical frontend/backend wiring.
 > - Added explicit RBAC permissions for permanent trash deletion and workspace-wide share management.
 > - Split heavy frontend route chunks so the production build no longer emits the 500 kB chunk warning.
+> - Fixed first-login onboarding routing after DB reset, exact sidebar active states, file preview vs drag handling, and local R2 CORS setup/status visibility.
+> - Added real first-run setup path, `PLATFORM_OWNER_EMAIL` admin promotion, `db:reset:empty`, `R2_BUCKET_NAME` support, and protected R2 object import that preserves key paths as folders.
+> - Corrected dev DB scripts to reset/migrate Wrangler D1 local state, relaxed Better Auth user-id contracts, and added `r2:verify`/structured R2 import errors.
 
 | Day | Topic | Core Deliverable | Status |
 |---|---|---|---|

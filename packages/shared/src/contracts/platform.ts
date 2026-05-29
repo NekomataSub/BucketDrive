@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { WorkspaceRole } from "../schemas/common"
+import { AuthUserId, WorkspaceRole } from "../schemas/common"
 
 export const PlatformSettingsResponse = z.object({
   platformName: z.string(),
@@ -29,7 +29,7 @@ export const CreateWorkspaceResponse = z.object({
   id: z.string().uuid(),
   name: z.string(),
   slug: z.string(),
-  ownerId: z.string().uuid(),
+  ownerId: AuthUserId,
   storageQuotaBytes: z.number(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

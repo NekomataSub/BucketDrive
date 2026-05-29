@@ -15,6 +15,13 @@ const MAX_RETRIES = 3
 const RETRY_BASE_DELAY = 1000
 const MAX_CONCURRENT_CHUNKS = 4
 
+function formatUploadNetworkError(message: string): string {
+  if (message === "Upload failed" || message.includes("status 0")) {
+    return "Upload failed before R2 accepted the request. Check the bucket CORS rules with pnpm r2:cors:dev and verify the signed URL credentials with pnpm r2:verify."
+  }
+  return message
+}
+
 export function useUploadProcessor(workspaceId: string) {
   const { items, updateItem, setOpen } = useUploadStore()
   const initiateMutation = useInitiateUpload()
@@ -390,7 +397,7 @@ export function useUploadProcessor(workspaceId: string) {
 
         throw new Error("Invalid upload initiation response")
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Upload failed"
+        const message = formatUploadNetworkError(err instanceof Error ? err.message : "Upload failed")
         updateItem(item.id, { status: "failed", error: message })
         return false
       }

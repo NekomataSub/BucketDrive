@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { useRef, useEffect, useCallback, useMemo } from "react"
-import { Folder, FolderOpen, MoreVertical, Star } from "lucide-react"
+import { Folder, FolderOpen, GripVertical, MoreVertical, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
@@ -146,8 +146,6 @@ function FolderListRow({
             onItemClick(folder.id, "folder", index, e)
         }}
         onDoubleClick={() => onFolderClick(folder.id)}
-        {...draggable.attributes}
-        {...draggable.listeners}
         className={`${rowClass} ${
           draggable.isDragging
             ? "opacity-50"
@@ -162,6 +160,18 @@ function FolderListRow({
         style={{ height: ROW_HEIGHT }}
       >
         <div className="flex flex-1 items-center gap-3 px-4 py-2.5">
+          {dndEnabled && (
+            <button
+              type="button"
+              aria-label="Drag folder"
+              className="rounded p-1 text-text-tertiary transition-colors hover:bg-surface-default hover:text-text-primary"
+              onClick={(e) => e.stopPropagation()}
+              {...draggable.attributes}
+              {...draggable.listeners}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          )}
           <FolderOpen className="h-5 w-5 text-text-tertiary" />
           <span className="truncate text-sm font-medium text-text-primary">{folder.name}</span>
         </div>
@@ -289,8 +299,6 @@ function FileListRow({
           if (!dndEnabled || !isDragging) onItemClick(file.id, "file", index, e)
         }}
         onDoubleClick={() => onContextPreview?.(file.id)}
-        {...attributes}
-        {...listeners}
         className={`${rowClass} ${
           isDragging
             ? "opacity-50"
@@ -303,6 +311,18 @@ function FileListRow({
         style={{ height: ROW_HEIGHT }}
       >
         <div className="flex flex-1 items-center gap-3 px-4 py-2.5 min-w-0">
+          {dndEnabled && (
+            <button
+              type="button"
+              aria-label="Drag file"
+              className="rounded p-1 text-text-tertiary transition-colors hover:bg-surface-default hover:text-text-primary"
+              onClick={(e) => e.stopPropagation()}
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          )}
           <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-hover text-lg">
             <FileThumbnail
               workspaceId={workspaceId}

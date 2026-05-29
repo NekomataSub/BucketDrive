@@ -1,9 +1,9 @@
 import { z } from "zod"
-import { PaginatedResponseSchema, WorkspaceRole } from "../schemas/common"
+import { AuthUserId, PaginatedResponseSchema, WorkspaceRole } from "../schemas/common"
 
 export const WorkspaceMemberListItemSchema = z.object({
   id: z.string().uuid(),
-  userId: z.string().uuid(),
+  userId: AuthUserId,
   workspaceId: z.string().uuid(),
   role: WorkspaceRole,
   email: z.string().email(),

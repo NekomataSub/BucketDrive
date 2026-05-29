@@ -70,12 +70,13 @@ cd bucketdrive
 pnpm install
 
 # Set up environment
-cp .env.example apps/api/.env
-# Edit apps/api/.env with your Cloudflare credentials
+cp .env.example .dev.vars
+pnpm env:link
+# Edit .dev.vars with your Cloudflare credentials
 
 # Start development
-pnpm dev          # Starts frontend (Vite) + backend (Wrangler)
-pnpm db:reset     # Initialize local database with seed data
+pnpm db:reset:empty # Initialize empty Wrangler D1 local for onboarding
+pnpm dev            # Starts frontend (Vite) + backend (Wrangler)
 ```
 
 See [Development Setup](docs/architecture/development-setup.md) for detailed instructions.
@@ -91,9 +92,11 @@ pnpm test:unit      # Run unit tests
 pnpm test:contracts # Run API contract tests
 pnpm test:e2e       # Run end-to-end tests
 pnpm db:generate    # Generate Drizzle migrations
-pnpm db:migrate:dev # Apply migrations to local SQLite
-pnpm db:seed        # Seed local database
+pnpm db:migrate:dev # Apply migrations to Wrangler D1 local
+pnpm db:seed        # Seed Wrangler D1 local
+pnpm db:reset:empty # Reset empty Wrangler D1 local for onboarding
 pnpm db:studio      # Open Drizzle Studio
+pnpm r2:verify      # Verify configured R2 S3 credentials
 pnpm format         # Format code with Prettier
 ```
 

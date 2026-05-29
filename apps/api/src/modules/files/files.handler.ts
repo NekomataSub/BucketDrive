@@ -1,8 +1,9 @@
 import { Hono } from "hono"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
-import { createStorageProvider } from "../../services/storage"
+import { createStorageProvider, StorageProviderError } from "../../services/storage"
 import { UploadService, UploadError } from "../../services/upload.service"
+import { R2ImportService } from "../../services/r2-import.service"
 import { ThumbnailService } from "../../services/thumbnail.service"
 import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import { getDB } from "../../lib/db"
@@ -19,21 +20,26 @@ import {
   GetUploadPartSignedUrlRequest,
   BatchUploadRequest,
   BatchUploadResponse,
+  ImportR2Request,
+  ImportR2Response,
   ThumbnailUrlResponse,
   can,
 } from "@bucketdrive/shared"
+import type { WorkspaceRole } from "@bucketdrive/shared"
 
 interface FilesEnv {
   STORAGE: R2Bucket
   R2_ACCESS_KEY_ID?: string
   R2_SECRET_ACCESS_KEY?: string
   R2_ENDPOINT?: string
+  R2_BUCKET_NAME?: string
   DB: D1Database
 }
 
 interface FilesVariables {
-  user: { id: string; email: string; name: string }
+  user: { id: string; email: string; name: string; isPlatformAdmin?: boolean }
   session: { id: string; userId: string; expiresAt: Date }
+  workspaceRole?: WorkspaceRole
 }
 
 const files = new Hono<{ Bindings: FilesEnv; Variables: FilesVariables }>()
@@ -403,6 +409,44 @@ files.post("/batch-upload", requirePermission("files.upload"), async (c) => {
     }),
     201,
   )
+})
+
+files.post("/import-r2", requirePermission("workspace.settings.update"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+
+  const role = c.get("workspaceRole")
+  const user = c.get("user")
+  if (!user.isPlatformAdmin && role !== "owner" && role !== "admin") {
+    return c.json({ code: "FORBIDDEN", message: "Only workspace admins can import R2 objects" }, 403)
+  }
+
+  const body = ImportR2Request.parse(await c.req.json().catch(() => ({})))
+  const storage = createStorageProvider(c.env)
+  const service = new R2ImportService(storage)
+
+  try {
+    const result = await service.importWorkspace({
+      workspaceId,
+      userId: user.id,
+      prefix: body.prefix,
+    })
+
+    return c.json(ImportR2Response.parse(result))
+  } catch (err) {
+    if (err instanceof StorageProviderError) {
+      return c.json({
+        code: err.code,
+        message: err.message,
+      }, 400)
+    }
+    return c.json({
+      code: "R2_IMPORT_FAILED",
+      message: err instanceof Error ? err.message : "Failed to import R2 objects",
+    }, 400)
+  }
 })
 
 files.get("/uploads/:sessionId", requirePermission("files.upload"), async (c) => {

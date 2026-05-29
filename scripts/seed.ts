@@ -3,21 +3,42 @@ import { drizzle } from "drizzle-orm/better-sqlite3"
 import { eq } from "drizzle-orm"
 import * as schema from "@bucketdrive/shared/db/schema"
 import { v4 as uuid } from "uuid"
-import { existsSync } from "fs"
-import { resolve } from "path"
+import { existsSync, readdirSync, statSync } from "fs"
+import { resolve, join } from "path"
 import { createHash, randomBytes } from "crypto"
 
-const DB_PATH = resolve(__dirname, "../apps/api/.db/local.sqlite")
+const FALLBACK_DB_PATH = resolve(__dirname, "../apps/api/.db/local.sqlite")
+const WRANGLER_D1_DIR = resolve(
+  __dirname,
+  "../.wrangler/state/v3/d1/miniflare-D1DatabaseObject",
+)
+
+function resolveDbPath() {
+  if (existsSync(WRANGLER_D1_DIR)) {
+    const candidates = readdirSync(WRANGLER_D1_DIR)
+      .filter((file) => file.endsWith(".sqlite") && file !== "metadata.sqlite")
+      .map((file) => join(WRANGLER_D1_DIR, file))
+      .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)
+
+    if (candidates.length > 0) {
+      return candidates[0]!
+    }
+  }
+
+  return FALLBACK_DB_PATH
+}
 
 function main() {
   console.log("Seeding database...")
 
-  if (!existsSync(DB_PATH)) {
+  const dbPath = resolveDbPath()
+  if (!existsSync(dbPath)) {
     console.error("Database file not found. Run pnpm db:migrate:dev first.")
     process.exit(1)
   }
 
-  const sqlite = new Database(DB_PATH)
+  console.log(`Using database: ${dbPath}`)
+  const sqlite = new Database(dbPath)
   sqlite.pragma("foreign_keys = ON")
 
   const db = drizzle(sqlite, { schema })

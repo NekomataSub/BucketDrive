@@ -7,7 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "bucketdrive-db"
-database_id = ""
+# Local-only placeholder so Wrangler can apply migrations to D1 local state.
+database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "packages/shared/src/db/migrations"
 
 [[env.staging.d1_databases]]
@@ -18,7 +19,7 @@ database_id = ""
 # R2 Buckets
 [[r2_buckets]]
 binding = "STORAGE"
-bucket_name = "bucketdrive-files"
+bucket_name = "nekomatadrive"
 
 # Environment Variables
 [vars]

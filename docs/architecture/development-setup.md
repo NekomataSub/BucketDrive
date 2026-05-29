@@ -34,10 +34,13 @@ pnpm install
 ## 3. Set up environment variables
 
 ```bash
-cp .env.example apps/api/.env
+cp .env.example .dev.vars
+pnpm env:link
 ```
 
-Edit `apps/api/.env` with your credentials:
+Edit `.dev.vars` with your credentials. It is the canonical local env file; `pnpm env:link`
+points `apps/api/.env` and `apps/api/.dev.vars` at the same file so Wrangler, local scripts, and
+legacy tooling read one set of values.
 
 ```env
 # Better Auth
@@ -63,23 +66,55 @@ R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
 # App
 APP_URL=http://localhost:5173
 API_URL=http://localhost:8787
+PLATFORM_OWNER_EMAIL=you@example.com
 ```
+
+For direct browser uploads and previews in local development, apply the R2 bucket CORS rules once:
+
+```bash
+pnpm r2:cors:dev
+```
+
+The command reads `R2_BUCKET_NAME` from your local env files and applies
+`docs/storage/r2-cors.dev.json` to that bucket. Run it again whenever you change buckets.
+
+Without this, R2 will reject browser preflight requests from the local Vite origin even when the
+signed URL and credentials are valid. API CORS and R2 bucket CORS are separate settings; the browser
+upload uses the R2 bucket's CORS rules because it sends `PUT` directly to `*.r2.cloudflarestorage.com`.
+
+Useful env commands:
+
+```bash
+pnpm env:check         # verify required local runtime keys in .dev.vars
+pnpm env:link          # recreate apps/api env links to .dev.vars
+pnpm env:push:staging  # push runtime vars from .env.staging or .dev.vars to Wrangler staging secrets
+pnpm env:push:prod     # push runtime vars from .env.production or .dev.vars to Wrangler production secrets
+```
+
+For deploys, prefer `.env.staging` and `.env.production` for environment-specific values. The push
+commands skip local CLI credentials such as `CLOUDFLARE_API_TOKEN` and only send app runtime vars.
 
 ## 4. Initialize the database
 
 ```bash
-# Create local SQLite database and apply migrations
-pnpm db:migrate:dev
+# Real setup: create an empty local database and use onboarding
+pnpm db:reset:empty
 
-# Seed with development data
-pnpm db:seed
+# Demo setup: create local data with fake users/files
+pnpm db:reset
 ```
 
-This creates:
-- `apps/api/.db/local.sqlite` — development database
-- Default workspace with test user
-- System roles (Owner, Admin, Editor, Viewer)
-- Sample folders and files
+`pnpm db:reset` seeds a default workspace and sample metadata, so authenticated users who are
+already members will not see onboarding. Use `pnpm db:reset:empty` when testing the real first-run
+flow. The first OAuth user whose email matches `PLATFORM_OWNER_EMAIL` becomes the platform admin and
+can create the first workspace.
+
+Existing R2 objects are not visible until BucketDrive has database metadata for them. After creating
+the first workspace, use **Import R2** in the Files page to index existing bucket objects while
+preserving their key paths as folders.
+
+The dev server must be restarted after `db:reset` or `db:reset:empty` so Wrangler reopens the new
+local D1 database. The local D1 files live under `.wrangler/state/v3/d1`.
 
 ## 5. Start development servers
 
@@ -103,14 +138,14 @@ This runs:
 3. Set:
    - Homepage URL: `http://localhost:8787`
    - Authorization callback URL: `http://localhost:8787/api/auth/callback/github`
-4. Copy Client ID and Client Secret to `apps/api/.env`
+4. Copy Client ID and Client Secret to `.dev.vars`
 
 ## Google OAuth Client
 
 1. Go to Google Cloud Console → APIs & Services → Credentials
 2. Create OAuth 2.0 Client ID
 3. Add authorized redirect URI: `http://localhost:8787/api/auth/callback/google`
-4. Copy Client ID and Client Secret to `apps/api/.env`
+4. Copy Client ID and Client Secret to `.dev.vars`
 
 ---
 
@@ -118,10 +153,12 @@ This runs:
 
 ```bash
 pnpm db:generate     # Generate migration from schema changes
-pnpm db:migrate:dev  # Apply migrations to local SQLite
-pnpm db:seed         # Seed local database
+pnpm db:migrate:dev  # Apply migrations to Wrangler D1 local
+pnpm db:seed         # Seed Wrangler D1 local
 pnpm db:studio       # Open Drizzle Studio (http://localhost:4983)
-pnpm db:reset        # Delete + recreate local database
+pnpm db:reset        # Delete + recreate seeded local D1
+pnpm db:reset:empty  # Delete + recreate empty local D1 for onboarding
+pnpm r2:verify       # Verify configured R2 S3 credentials can list the bucket
 ```
 
 ---
@@ -212,10 +249,11 @@ npx wrangler r2 bucket create bucketdrive-dev
 
 ```bash
 # Reset and re-apply migrations
-rm apps/api/.db/local.sqlite
-pnpm db:migrate:dev
-pnpm db:seed
+pnpm db:reset:empty
 ```
+
+Wrangler dev stores local D1 data under `.wrangler/state/v3/d1`. Removing only
+`apps/api/.db/local.sqlite` will not reset the database used by `pnpm dev`.
 
 ## OAuth callback URL mismatch
 

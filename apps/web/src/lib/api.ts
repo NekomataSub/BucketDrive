@@ -177,6 +177,23 @@ interface PreviewUrlResponse {
   mimeType: string
 }
 
+interface StorageStatusResponse {
+  provider: "r2-s3" | "r2-binding"
+  bucketName: string
+  bucketBinding: boolean
+  s3Credentials: boolean
+  presignedUrls: boolean
+  endpointConfigured: boolean
+  expectedCorsOrigin: string
+}
+
+interface ImportR2Response {
+  scanned: number
+  imported: number
+  skipped: number
+  failed: number
+}
+
 export interface ThumbnailUrlResponse {
   signedUrl: string
   expiresAt: string
@@ -605,6 +622,33 @@ export function useWorkspaces(): UseQueryResult<WorkspacesResponse, ApiRequestEr
   return useQuery<WorkspacesResponse, ApiRequestError>({
     queryKey: ["workspaces"],
     queryFn: () => api.get<WorkspacesResponse>("/api/workspaces"),
+  })
+}
+
+export function useStorageStatus(): UseQueryResult<StorageStatusResponse, ApiRequestError> {
+  return useQuery<StorageStatusResponse, ApiRequestError>({
+    queryKey: ["storage-status"],
+    queryFn: () => api.get<StorageStatusResponse>("/api/storage/status"),
+  })
+}
+
+export function useImportR2(
+  workspaceId: string | null,
+): UseMutationResult<ImportR2Response, ApiRequestError, { prefix?: string } | undefined> {
+  const queryClient = useQueryClient()
+
+  return useMutation<ImportR2Response, ApiRequestError, { prefix?: string } | undefined>({
+    mutationFn: (body) =>
+      api.post<ImportR2Response>(
+        buildWorkspacePath(workspaceId, "/files/import-r2"),
+        body ?? {},
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
   })
 }
 

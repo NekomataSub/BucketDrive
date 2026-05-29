@@ -1,11 +1,12 @@
 import { z } from "zod"
+import { AuthUserId } from "./common"
 
 export const FileObjectSchema = z.object({
   id: z.string().uuid(),
   workspaceId: z.string().uuid(),
   bucketId: z.string().uuid(),
   folderId: z.string().uuid().nullable(),
-  ownerId: z.string().uuid(),
+  ownerId: AuthUserId,
   storageKey: z.string(),
   originalName: z.string(),
   mimeType: z.string(),

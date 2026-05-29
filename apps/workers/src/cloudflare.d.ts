@@ -26,10 +26,33 @@ interface R2MultipartUpload {
   complete(uploadedParts: Array<{ partNumber: number; etag: string }>): Promise<unknown>
 }
 
+interface R2Object {
+  key: string
+  size: number
+  uploaded: Date
+  httpMetadata?: {
+    contentType?: string
+  }
+}
+
+type R2Objects =
+  | {
+      objects: R2Object[]
+      delimitedPrefixes: string[]
+      truncated: false
+    }
+  | {
+      objects: R2Object[]
+      delimitedPrefixes: string[]
+      truncated: true
+      cursor: string
+    }
+
 interface R2Bucket {
   delete(key: string): Promise<void>
   get(key: string): Promise<R2ObjectBody | null>
   put(key: string, value: ReadableStream<Uint8Array> | ArrayBuffer | ArrayBufferView | string | null): Promise<unknown>
+  list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<R2Objects>
   createMultipartUpload(key: string): Promise<R2MultipartUpload>
   resumeMultipartUpload(key: string, uploadId: string): R2MultipartUpload
 }

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { ShareType, WorkspaceRole } from "./common"
+import { AuthUserId, ShareType, WorkspaceRole } from "./common"
 
 export const ShareLinkSchema = z.object({
   id: z.string().uuid(),
@@ -7,7 +7,7 @@ export const ShareLinkSchema = z.object({
   resourceType: z.enum(["file", "folder"]),
   resourceId: z.string().uuid(),
   shareType: ShareType,
-  createdBy: z.string().uuid(),
+  createdBy: AuthUserId,
   passwordHash: z.string().nullable(),
   expiresAt: z.string().datetime().nullable(),
   accessCount: z.number().int().min(0),

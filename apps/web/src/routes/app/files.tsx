@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands, @typescript-eslint/restrict-template-expressions */
 import { useRef, useMemo, useCallback, useState, useEffect } from "react"
-import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X } from "lucide-react"
+import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X, Database, Loader2 } from "lucide-react"
 import {
   useFiles,
   useFolders,
@@ -11,9 +11,9 @@ import {
   useTags,
   useToggleFavorite,
   useBatchUpload,
+  useImportR2,
   type BreadcrumbItem,
  } from "@/lib/api"
-import { } from "@/hooks/use-current-workspace"
 import { useUndoableMutations } from "@/hooks/use-undoable-mutations"
 import { getTagColorClasses } from "@/lib/tag-colors"
 import { TagPickerDialog } from "@/components/features/tag-picker-dialog"
@@ -30,7 +30,7 @@ import { ShareModal } from "@/components/features/share-modal"
 import { FilePreview } from "@/components/features/file-preview"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
 import { FILE_COMMAND_EVENT, type FileCommandAction } from "@/components/shared/commands/file-operations"
-import { DndContext, DragOverlay } from "@dnd-kit/core"
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import { can } from "@bucketdrive/shared"
 
@@ -83,6 +83,7 @@ export function FilesPage() {
   const workspaceName = workspace?.name ?? "Workspace"
   const canFavorite = workspace ? can(workspace.role, "files.favorite") : false
   const canTag = workspace ? can(workspace.role, "files.tag") : false
+  const canImportR2 = workspace ? can(workspace.role, "workspace.settings.update") : false
 
   const { data: filesData, isLoading: filesLoading } = useFiles(workspaceId, {
     folderId: currentFolderId,
@@ -131,6 +132,7 @@ export function FilesPage() {
   const createFolderMutation = useCreateFolder(workspaceId)
   const toggleFavoriteMutation = useToggleFavorite(workspaceId)
   const batchUpload = useBatchUpload(workspaceId)
+  const importR2 = useImportR2(workspaceId)
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [tagDialogFileId, setTagDialogFileId] = useState<string | null>(null)
@@ -228,11 +230,11 @@ export function FilesPage() {
       } else {
         const file = files.find((candidate) => candidate.id === id)
         if (file) {
-          handleContextDownload(file.id)
+          setPreviewFileId(file.id)
         }
       }
     },
-    [files, handleContextDownload, navigateTo],
+    [files, navigateTo, setPreviewFileId],
   )
 
   const handlePreviewItem = useCallback(
@@ -386,6 +388,10 @@ export function FilesPage() {
     }
   }
 
+  const handleImportR2 = () => {
+    importR2.mutate(undefined)
+  }
+
   const handleContextMove = useCallback(
     (id: string, type: "file" | "folder") => {
       const destFolderId = window.prompt("Enter destination folder ID (or leave blank for root):")
@@ -528,6 +534,13 @@ export function FilesPage() {
   const totalFiles = isSearchActive ? searchData?.meta.total ?? 0 : filesData?.meta?.total ?? 0
   const selectedTagNames = allTags.filter((tag) => dashboardSearch.selectedTagIds.includes(tag.id))
   const fileForTagDialog = files.find((file) => file.id === tagDialogFileId) ?? null
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  )
 
   if (wsLoading) {
     return (
@@ -607,6 +620,20 @@ export function FilesPage() {
               <FolderPlus className="h-4 w-4" />
               New Folder
             </button>
+            {canImportR2 && (
+              <button
+                onClick={handleImportR2}
+                disabled={importR2.isPending}
+                className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {importR2.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Database className="h-4 w-4" />
+                )}
+                Import R2
+              </button>
+            )}
             <button
               onClick={handleFileSelect}
               className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
@@ -623,6 +650,20 @@ export function FilesPage() {
             />
           </div>
         </div>
+
+        {(importR2.data || importR2.isError) && (
+          <div className="mb-4 rounded-lg border border-border-default bg-surface-default px-4 py-3 text-sm">
+            {importR2.data ? (
+              <p className="text-text-secondary">
+                Imported {importR2.data.imported} of {importR2.data.scanned} R2 objects.
+                {importR2.data.skipped > 0 ? ` Skipped ${importR2.data.skipped}.` : ""}
+                {importR2.data.failed > 0 ? ` Failed ${importR2.data.failed}.` : ""}
+              </p>
+            ) : (
+              <p className="text-error">{importR2.error?.message ?? "R2 import failed"}</p>
+            )}
+          </div>
+        )}
 
         <div className="mb-4 space-y-3 rounded-2xl border border-border-default bg-surface-default p-4">
           <div className="flex flex-wrap gap-2">
@@ -774,7 +815,7 @@ export function FilesPage() {
 
         <div className="flex-1 space-y-4" ref={containerRef}>
           <UploadDropZone onFilesDrop={handleFilesDrop} className="bg-surface-default" />
-          <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {viewMode === "grid" ? (
               <FileGrid
                 workspaceId={workspaceId}

@@ -8,7 +8,13 @@ import {
 } from "@bucketdrive/shared"
 import { authMiddleware } from "../../middleware/auth"
 import { getDB } from "../../lib/db"
-import { listWorkspaceMembershipsForUser, normalizeWorkspaceRole, syncWorkspaceMemberships } from "../../lib/workspace-membership"
+import {
+  ensureOrganizationForWorkspace,
+  listWorkspaceMembershipsForUser,
+  normalizeWorkspaceRole,
+  syncMemberToLegacyWorkspaceMember,
+  syncWorkspaceMemberships,
+} from "../../lib/workspace-membership"
 import { bucket, platformSettings, user as userSchema, workspace, workspaceSettings, member, workspaceMember, auditLog } from "@bucketdrive/shared/db/schema"
 import { NotificationsService } from "../notifications/notifications.service"
 
@@ -23,6 +29,92 @@ interface WorkspacesVariables {
 const workspaces = new Hono<{ Bindings: WorkspacesEnv; Variables: WorkspacesVariables }>()
 
 workspaces.use("*", authMiddleware)
+
+type DB = ReturnType<typeof getDB>
+type WorkspaceRow = typeof workspace.$inferSelect
+
+export async function ensureWorkspaceCreationRecords(
+  db: DB,
+  currentWorkspace: WorkspaceRow,
+  now: string,
+) {
+  const existingSettings = await db
+    .select({ id: workspaceSettings.id })
+    .from(workspaceSettings)
+    .where(eq(workspaceSettings.workspaceId, currentWorkspace.id))
+    .get()
+
+  if (!existingSettings) {
+    await db
+      .insert(workspaceSettings)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId: currentWorkspace.id,
+        createdAt: currentWorkspace.createdAt,
+        updatedAt: now,
+      })
+      .run()
+  }
+
+  const existingBucket = await db
+    .select({ id: bucket.id })
+    .from(bucket)
+    .where(eq(bucket.workspaceId, currentWorkspace.id))
+    .get()
+
+  if (!existingBucket) {
+    await db
+      .insert(bucket)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId: currentWorkspace.id,
+        name: `${currentWorkspace.slug}-files`,
+        provider: "r2",
+        visibility: "private",
+        createdAt: currentWorkspace.createdAt,
+      })
+      .run()
+  }
+
+  const settings = await db.select().from(platformSettings).get()
+  if (!settings) {
+    await db
+      .insert(platformSettings)
+      .values({
+        id: crypto.randomUUID(),
+        defaultWorkspaceId: currentWorkspace.id,
+        allowUserWorkspaceCreation: false,
+        enablePublicSignup: false,
+        platformName: "BucketDrive",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run()
+  }
+
+  await ensureOrganizationForWorkspace(db, currentWorkspace.id)
+
+  const existingMember = await db
+    .select({ id: member.id })
+    .from(member)
+    .where(and(eq(member.organizationId, currentWorkspace.id), eq(member.userId, currentWorkspace.ownerId)))
+    .get()
+
+  if (!existingMember) {
+    await db
+      .insert(member)
+      .values({
+        id: crypto.randomUUID(),
+        organizationId: currentWorkspace.id,
+        userId: currentWorkspace.ownerId,
+        role: "owner",
+        createdAt: now,
+      })
+      .run()
+  }
+
+  await syncMemberToLegacyWorkspaceMember(db, currentWorkspace.id, currentWorkspace.ownerId, "owner")
+}
 
 workspaces.get("/", async (c) => {
   const user = c.get("user")
@@ -49,6 +141,7 @@ workspaces.post("/", async (c) => {
   const settings = await db.select().from(platformSettings).get()
   const currentUser = await db
     .select({
+      id: userSchema.id,
       isPlatformAdmin: userSchema.isPlatformAdmin,
       canCreateWorkspaces: userSchema.canCreateWorkspaces,
     })
@@ -56,10 +149,14 @@ workspaces.post("/", async (c) => {
     .where(eq(userSchema.id, actor.id))
     .get()
 
+  if (!currentUser) {
+    return c.json({ code: "UNAUTHORIZED", message: "Authenticated user was not found" }, 401)
+  }
+
   const allowed =
     settings?.allowUserWorkspaceCreation === true ||
-    currentUser?.isPlatformAdmin === true ||
-    currentUser?.canCreateWorkspaces === true
+    currentUser.isPlatformAdmin ||
+    currentUser.canCreateWorkspaces
 
   if (!allowed) {
     return c.json({ code: "FORBIDDEN", message: "Workspace creation is disabled" }, 403)
@@ -67,8 +164,18 @@ workspaces.post("/", async (c) => {
 
   const slugBase = body.slug ?? body.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
   const slug = slugBase || crypto.randomUUID()
-  const existing = await db.select({ id: workspace.id }).from(workspace).where(eq(workspace.slug, slug)).get()
+  const existing = await db.select().from(workspace).where(eq(workspace.slug, slug)).get()
   if (existing) {
+    if (existing.ownerId === actor.id && !existing.isDeleted) {
+      try {
+        await ensureWorkspaceCreationRecords(db, existing, new Date().toISOString())
+        return c.json(CreateWorkspaceResponse.parse(existing), 200)
+      } catch (error) {
+        console.error("Failed to recover workspace creation", error)
+        return c.json({ code: "INTERNAL_ERROR", message: "Failed to complete workspace setup" }, 500)
+      }
+    }
+
     return c.json({ code: "CONFLICT", message: "Workspace slug already exists" }, 409)
   }
 
@@ -87,60 +194,26 @@ workspaces.post("/", async (c) => {
     updatedAt: now,
   }
 
-  await db.insert(workspace).values(created).run()
-  await db
-    .insert(workspaceSettings)
-    .values({
-      id: crypto.randomUUID(),
-      workspaceId,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .run()
-  await db
-    .insert(bucket)
-    .values({
-      id: crypto.randomUUID(),
-      workspaceId,
-      name: `${slug}-files`,
-      provider: "r2",
-      visibility: "private",
-      createdAt: now,
-    })
-    .run()
-  await db
-    .insert(member)
-    .values({
-      id: crypto.randomUUID(),
-      organizationId: workspaceId,
-      userId: actor.id,
-      role: "owner",
-      createdAt: now,
-    })
-    .run()
-  await db
-    .insert(workspaceMember)
-    .values({
-      id: crypto.randomUUID(),
-      workspaceId,
-      userId: actor.id,
-      role: "owner",
-      createdAt: now,
-    })
-    .run()
-  await db
-    .insert(auditLog)
-    .values({
-      id: crypto.randomUUID(),
-      workspaceId,
-      actorId: actor.id,
-      action: "workspace.created",
-      resourceType: "workspace",
-      resourceId: workspaceId,
-      metadata: JSON.stringify({ name: body.name, slug }),
-      createdAt: now,
-    })
-    .run()
+  try {
+    await db.insert(workspace).values(created).run()
+    await ensureWorkspaceCreationRecords(db, created, now)
+    await db
+      .insert(auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId,
+        actorId: actor.id,
+        action: "workspace.created",
+        resourceType: "workspace",
+        resourceId: workspaceId,
+        metadata: JSON.stringify({ name: body.name, slug }),
+        createdAt: now,
+      })
+      .run()
+  } catch (error) {
+    console.error("Failed to create workspace", error)
+    return c.json({ code: "INTERNAL_ERROR", message: "Failed to create workspace" }, 500)
+  }
 
   return c.json(CreateWorkspaceResponse.parse(created), 201)
 })

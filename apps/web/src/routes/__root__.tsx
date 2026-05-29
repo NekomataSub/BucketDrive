@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
 import { LoginPage } from "./login"
 import { JoinPage } from "./join"
+import { OnboardingPage } from "./onboarding"
 
 const DashboardPage = lazy(() => import("./app/dashboard").then((module) => ({ default: module.DashboardPage })))
 const FilesPage = lazy(() => import("./app/files").then((module) => ({ default: module.FilesPage })))
@@ -45,6 +46,13 @@ async function checkAuth(): Promise<{ user: Record<string, unknown> } | null> {
   return data as { user: Record<string, unknown> } | null
 }
 
+async function hasWorkspace(): Promise<boolean> {
+  const res = await fetch("/api/workspaces", { credentials: "include" })
+  if (!res.ok) return false
+  const data = (await res.json()) as { data?: unknown[] }
+  return Array.isArray(data.data) && data.data.length > 0
+}
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
@@ -67,11 +75,16 @@ const joinRoute = createRoute({
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app",
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const session = await checkAuth()
     if (!session?.user) {
       // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw redirect({ to: "/login" })
+    }
+
+    if (location.pathname !== "/onboarding" && !(await hasWorkspace())) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw redirect({ to: "/onboarding" })
     }
   },
   component: () => (
@@ -85,6 +98,12 @@ const homeRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/",
   component: HomePage,
+})
+
+const onboardingRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/onboarding",
+  component: OnboardingPage,
 })
 
 const dashboardRoute = createRoute({
@@ -153,6 +172,7 @@ const routeTree = rootRoute.addChildren([
   shareAccessRoute,
   appRoute.addChildren([
     homeRoute,
+    onboardingRoute,
     dashboardRoute,
     filesRoute,
     membersRoute,

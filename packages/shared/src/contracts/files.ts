@@ -164,3 +164,14 @@ export const BatchUploadResponse = z.object({
   folders: z.array(BatchUploadFolderCreated),
   items: z.array(BatchUploadItemResponse),
 })
+
+export const ImportR2Request = z.object({
+  prefix: z.string().min(1).optional(),
+})
+
+export const ImportR2Response = z.object({
+  scanned: z.number().int().min(0),
+  imported: z.number().int().min(0),
+  skipped: z.number().int().min(0),
+  failed: z.number().int().min(0),
+})

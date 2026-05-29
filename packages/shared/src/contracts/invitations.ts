@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { PaginatedResponseSchema, WorkspaceRole } from "../schemas/common"
+import { AuthUserId, PaginatedResponseSchema, WorkspaceRole } from "../schemas/common"
 
 export const InvitationStatus = z.enum(["pending", "accepted", "revoked", "expired"])
 export type InvitationStatus = z.infer<typeof InvitationStatus>
@@ -14,7 +14,7 @@ export const InvitationListItemSchema = z.object({
   workspaceId: z.string().uuid(),
   email: z.string().email(),
   role: WorkspaceRole,
-  invitedBy: z.string().uuid(),
+  invitedBy: AuthUserId,
   invitedByName: z.string(),
   status: InvitationStatus,
   expiresAt: z.string().datetime(),
@@ -52,7 +52,7 @@ export const RevokeInvitationResponse = z.object({
 })
 
 export const InitiateOwnershipTransferRequest = z.object({
-  newOwnerId: z.string().uuid(),
+  newOwnerId: AuthUserId,
 })
 
 export const AcceptOwnershipTransferRequest = z.object({
@@ -62,8 +62,8 @@ export const AcceptOwnershipTransferRequest = z.object({
 export const OwnershipTransferResponse = z.object({
   success: z.literal(true),
   workspaceId: z.string().uuid(),
-  previousOwnerId: z.string().uuid(),
-  newOwnerId: z.string().uuid(),
+  previousOwnerId: AuthUserId,
+  newOwnerId: AuthUserId,
 })
 
 export type InvitationListItem = z.infer<typeof InvitationListItemSchema>

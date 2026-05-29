@@ -142,7 +142,9 @@ export function useExplorerShortcuts({
                   item.id === selectedFolderIds[0],
               )
             : focusedItem
-        if (itemToOpen) {
+        if (itemToOpen?.type === "file" && onPreviewItem) {
+          onPreviewItem(itemToOpen.id)
+        } else if (itemToOpen) {
           onOpenItem(itemToOpen.id, itemToOpen.type)
         }
         return

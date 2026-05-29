@@ -197,10 +197,11 @@ Vite prefixes all client-side env vars with `VITE_`.
 ### Backend (`apps/api`)
 
 ```
-# wrangler.toml [vars] or Cloudflare Dashboard Secrets
+# .env.staging / .env.production, then pnpm env:push:staging or pnpm env:push:prod
 
 # Better Auth
 BETTER_AUTH_SECRET=<random-64-char>
+BETTER_AUTH_URL=https://api.bucketdrive.app
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
 GOOGLE_CLIENT_ID=...
@@ -208,17 +209,21 @@ GOOGLE_CLIENT_SECRET=...
 
 # R2
 R2_BUCKET_NAME=bucketdrive-files
-R2_ACCOUNT_ID=...
 R2_ACCESS_KEY_ID=...
 R2_SECRET_ACCESS_KEY=...
+R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
 
 # D1
 D1_DATABASE_ID=... # bound via wrangler.toml [[d1_databases]]
 
 # App
 APP_URL=https://bucketdrive.app
-STAGING_URL=https://staging.bucketdrive.dev
+API_URL=https://api.bucketdrive.app
+PLATFORM_OWNER_EMAIL=admin@example.com
 ```
+
+`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are local/CI deploy credentials, not Worker
+runtime vars, so `pnpm env:push:*` does not upload them as secrets.
 
 ---
 

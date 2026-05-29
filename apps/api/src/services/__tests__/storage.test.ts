@@ -1,14 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { R2StorageProvider, type StorageProvider } from "../storage"
+import {
+  createStorageProvider,
+  R2StorageProvider,
+  type StorageProvider,
+  type StorageProviderError,
+} from "../storage"
 
-vi.mock("aws4fetch", () => {
-  const mockSign = vi.fn().mockImplementation((url: string) => {
+const mockSign = vi.hoisted(() =>
+  vi.fn().mockImplementation((url: string) => {
     const signedUrl = new URL(url)
     signedUrl.searchParams.set("X-Amz-Algorithm", "AWS4-HMAC-SHA256")
     signedUrl.searchParams.set("X-Amz-Signature", "mock-signature")
     return Promise.resolve({ url: signedUrl.toString() })
-  })
+  }),
+)
 
+vi.mock("aws4fetch", () => {
   return {
     AwsClient: vi.fn(function (this: Record<string, unknown>) {
       this.sign = mockSign
@@ -74,7 +81,18 @@ function createMockR2Bucket() {
         abort: vi.fn().mockResolvedValue(undefined),
       }
     }),
-    list: vi.fn(),
+    list: vi.fn().mockResolvedValue({
+      objects: [
+        {
+          key: "docs/report.pdf",
+          size: 42,
+          uploaded: new Date("2026-01-01T00:00:00.000Z"),
+          httpMetadata: { contentType: "application/pdf" },
+        },
+      ],
+      truncated: false,
+      cursor: undefined,
+    }),
   } as unknown as R2Bucket
 }
 
@@ -83,6 +101,7 @@ describe("R2StorageProvider", () => {
   let mockBucket: ReturnType<typeof createMockR2Bucket>
 
   beforeEach(() => {
+    mockSign.mockClear()
     mockBucket = createMockR2Bucket()
     provider = new R2StorageProvider({
       binding: mockBucket,
@@ -104,6 +123,10 @@ describe("R2StorageProvider", () => {
     it("adds expiration to the URL", async () => {
       const url = await provider.generateSignedUploadUrl("key", 600)
       expect(url).toContain("X-Amz-Expires=600")
+      expect(mockSign).toHaveBeenCalledWith(
+        expect.stringContaining("X-Amz-Expires=600"),
+        expect.objectContaining({ method: "PUT" }),
+      )
     })
 
     it("defaults to 15 min expiration", async () => {
@@ -118,6 +141,64 @@ describe("R2StorageProvider", () => {
       expect(url).toContain("https://test.r2.cloudflarestorage.com/test-bucket/workspace/ws1/files/test-file")
       expect(url).toContain("X-Amz-Algorithm=AWS4-HMAC-SHA256")
       expect(url).toContain("X-Amz-Signature=mock-signature")
+    })
+  })
+
+  describe("list", () => {
+    it("lists objects through the configured S3 endpoint", async () => {
+      const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(
+          [
+            "<ListBucketResult>",
+            "<IsTruncated>false</IsTruncated>",
+            "<Contents>",
+            "<Key>docs/report.pdf</Key>",
+            "<LastModified>2026-01-01T00:00:00.000Z</LastModified>",
+            "<Size>42</Size>",
+            "</Contents>",
+            "</ListBucketResult>",
+          ].join(""),
+          { status: 200 },
+        ),
+      )
+
+      const result = await provider.list({ prefix: "docs/" })
+
+      expect(mockSign).toHaveBeenCalledWith(
+        expect.stringContaining("https://test.r2.cloudflarestorage.com/test-bucket"),
+        expect.objectContaining({ method: "GET" }),
+      )
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(result.objects).toEqual([
+        {
+          key: "docs/report.pdf",
+          size: 42,
+          uploaded: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      ])
+
+      fetchMock.mockRestore()
+    })
+
+    it("throws a storage auth error when R2 rejects S3 credentials", async () => {
+      const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(
+          [
+            "<Error>",
+            "<Code>SignatureDoesNotMatch</Code>",
+            "<Message>The request signature we calculated does not match.</Message>",
+            "</Error>",
+          ].join(""),
+          { status: 403 },
+        ),
+      )
+
+      await expect(provider.list()).rejects.toMatchObject({
+        code: "R2_AUTH_FAILED",
+        message: "The request signature we calculated does not match.",
+      } satisfies Partial<StorageProviderError>)
+
+      fetchMock.mockRestore()
     })
   })
 
@@ -190,5 +271,21 @@ describe("R2StorageProvider", () => {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockBucket.resumeMultipartUpload).toHaveBeenCalledWith("test-key", "upload-123")
     })
+  })
+})
+
+describe("createStorageProvider", () => {
+  it("uses R2_BUCKET_NAME for signed URL providers", async () => {
+    const provider = createStorageProvider({
+      STORAGE: createMockR2Bucket(),
+      R2_ACCESS_KEY_ID: "test-key",
+      R2_SECRET_ACCESS_KEY: "test-secret",
+      R2_ENDPOINT: "https://test.r2.cloudflarestorage.com",
+      R2_BUCKET_NAME: "custom-bucket",
+    })
+
+    const url = await provider.generateSignedUploadUrl("key")
+
+    expect(url).toContain("https://test.r2.cloudflarestorage.com/custom-bucket/key")
   })
 })

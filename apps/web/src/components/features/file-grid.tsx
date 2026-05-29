@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { useRef, useEffect, useState, useMemo, useCallback } from "react"
-import { Folder, FolderOpen, Star } from "lucide-react"
+import { Folder, FolderOpen, GripVertical, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
@@ -154,9 +154,7 @@ function FolderGridCard({
           if (!dndEnabled || !isDragging) onItemClick(folder.id, "folder", index, e)
         }}
         onDoubleClick={() => onFolderClick(folder.id)}
-        {...draggable.attributes}
-        {...draggable.listeners}
-        className={`${gridClass} ${
+        className={`relative ${gridClass} ${
           isDragging
             ? "opacity-50"
             : isOver
@@ -168,6 +166,18 @@ function FolderGridCard({
                   : "border-border-muted"
         }`}
       >
+        {dndEnabled && (
+          <button
+            type="button"
+            aria-label="Drag folder"
+            className="absolute right-2 top-2 rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-surface-default hover:text-text-primary group-hover:opacity-100"
+            onClick={(e) => e.stopPropagation()}
+            {...draggable.attributes}
+            {...draggable.listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-surface-hover text-text-tertiary group-hover:text-accent">
           <FolderOpen className="h-7 w-7" />
         </div>
@@ -256,9 +266,7 @@ function FileGridCard({
           if (!dndEnabled || !isDragging) onItemClick(file.id, "file", index, e)
         }}
         onDoubleClick={() => onContextPreview?.(file.id)}
-        {...attributes}
-        {...listeners}
-        className={`${gridClass} ${
+        className={`relative ${gridClass} ${
           isDragging
             ? "opacity-50"
             : isSelected
@@ -268,6 +276,18 @@ function FileGridCard({
                 : "border-border-muted"
         }`}
       >
+        {dndEnabled && (
+          <button
+            type="button"
+            aria-label="Drag file"
+            className="absolute right-2 top-2 rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-surface-default hover:text-text-primary group-hover:opacity-100"
+            onClick={(e) => e.stopPropagation()}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
         <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-surface-hover text-2xl">
           <FileThumbnail
             workspaceId={workspaceId}

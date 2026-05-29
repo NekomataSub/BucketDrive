@@ -1,13 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { useEffect } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { useWorkspaces, usePlatformSettings, useJoinPlatform, useCreateWorkspace } from "@/lib/api"
+import {
+  useWorkspaces,
+  usePlatformSettings,
+  useJoinPlatform,
+  useCreateWorkspace,
+  useStorageStatus,
+  usePlatformMe,
+} from "@/lib/api"
 import { HardDrive, Plus } from "lucide-react"
 
 export function OnboardingPage() {
   const navigate = useNavigate()
   const { data: workspacesData, isLoading: workspacesLoading } = useWorkspaces()
   const { data: platformSettings } = usePlatformSettings()
+  const { data: storageStatus } = useStorageStatus()
+  const { data: platformMe } = usePlatformMe()
   const joinPlatform = useJoinPlatform()
   const createWorkspace = useCreateWorkspace()
 
@@ -19,16 +28,6 @@ export function OnboardingPage() {
     }
   }, [workspaces, navigate])
 
-  useEffect(() => {
-    if (!workspacesLoading && workspaces.length === 0 && platformSettings?.defaultWorkspaceId) {
-      joinPlatform.mutate(undefined, {
-        onSuccess: () => {
-          void navigate({ to: "/dashboard" })
-        },
-      })
-    }
-  }, [workspacesLoading, workspaces.length, platformSettings, joinPlatform, navigate])
-
   if (workspacesLoading || joinPlatform.isPending) {
     return (
       <div className="flex h-screen items-center justify-center bg-bg-primary">
@@ -37,7 +36,11 @@ export function OnboardingPage() {
     )
   }
 
-  const canCreate = platformSettings?.allowUserWorkspaceCreation
+  const canCreate =
+    platformSettings?.allowUserWorkspaceCreation ||
+    platformMe?.canCreateWorkspaces ||
+    platformMe?.isPlatformAdmin
+  const canJoinDefault = Boolean(platformSettings?.enablePublicSignup && platformSettings.defaultWorkspaceId)
 
   return (
     <div className="flex h-screen items-center justify-center bg-bg-primary p-6">
@@ -49,12 +52,59 @@ export function OnboardingPage() {
           Welcome to {platformSettings?.platformName ?? "BucketDrive"}
         </h1>
         <p className="mt-2 text-center text-sm text-text-secondary">
-          {canCreate
-            ? "Get started by creating your first workspace."
-            : "You do not have access to any workspace yet. Please wait for an invitation from your administrator."}
+          {canJoinDefault
+            ? "Join the default workspace to finish your first setup."
+            : canCreate
+              ? "Get started by creating your first workspace."
+              : "You do not have access to any workspace yet. Please wait for an invitation from your administrator."}
         </p>
 
-        {canCreate && (
+        <div className="mt-5 rounded-xl border border-border-default bg-bg-tertiary p-4 text-xs text-text-secondary">
+          <div className="flex items-center justify-between gap-3">
+            <span>Storage provider</span>
+            <span className="font-medium text-text-primary">
+              {storageStatus
+                ? [String(storageStatus.provider), String(storageStatus.bucketName)].join(" · ")
+                : "Checking..."}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span>R2 binding</span>
+            <span className={storageStatus?.bucketBinding ? "text-success" : "text-warning"}>
+              {storageStatus?.bucketBinding ? "Connected" : "Missing"}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span>Signed R2 URLs</span>
+            <span className={storageStatus?.presignedUrls ? "text-success" : "text-warning"}>
+              {storageStatus?.presignedUrls ? "Enabled" : "Needs credentials"}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span>Local CORS origin</span>
+            <span className="truncate text-text-primary">{storageStatus?.expectedCorsOrigin ?? "http://localhost:5173"}</span>
+          </div>
+        </div>
+
+        {canJoinDefault && (
+          <button
+            type="button"
+            disabled={joinPlatform.isPending}
+            onClick={() => {
+              joinPlatform.mutate(undefined, {
+                onSuccess: () => {
+                  void navigate({ to: "/dashboard/files" })
+                },
+              })
+            }}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <HardDrive className="h-4 w-4" />
+            {joinPlatform.isPending ? "Joining..." : "Join default workspace"}
+          </button>
+        )}
+
+        {canCreate && !canJoinDefault && (
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -63,7 +113,7 @@ export function OnboardingPage() {
               if (name.trim()) {
                 createWorkspace.mutate({ name: name.trim() }, {
                   onSuccess: () => {
-                    void navigate({ to: "/dashboard" })
+                    void navigate({ to: "/dashboard/files" })
                   },
                 })
               }
@@ -98,7 +148,13 @@ export function OnboardingPage() {
           </form>
         )}
 
-        {!canCreate && !platformSettings?.enablePublicSignup && (
+        {joinPlatform.isError && (
+          <p className="mt-3 text-center text-sm text-error">
+            {joinPlatform.error?.message ?? "Failed to join workspace"}
+          </p>
+        )}
+
+        {!canCreate && !canJoinDefault && !platformSettings?.enablePublicSignup && (
           <div className="mt-6 rounded-xl border border-border-default bg-bg-tertiary p-4 text-center">
             <p className="text-sm text-text-secondary">
               This platform requires an invitation to join.

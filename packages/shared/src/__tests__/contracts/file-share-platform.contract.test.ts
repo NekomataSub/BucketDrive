@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   BatchUploadResponse,
   ListPlatformInvitationsResponse,
+  ListMembersResponse,
   ShareBrowseRequest,
 } from "../../index"
 
@@ -50,5 +51,30 @@ describe("shared API contracts", () => {
     })
 
     expect(parsed.data[0]?.inviteLink).toContain("/join?token=")
+  })
+
+  it("accepts Better Auth user ids in member responses", () => {
+    const parsed = ListMembersResponse.parse({
+      data: [
+        {
+          id: "00000000-0000-4000-8000-000000000005",
+          userId: "k0RS7HQcHXhnJrjctHeUHSf8eXbxQ5p2",
+          workspaceId: "00000000-0000-4000-8000-000000000006",
+          role: "owner",
+          email: "owner@example.com",
+          name: "Owner",
+          image: null,
+          createdAt: "2026-05-20T00:00:00.000Z",
+        },
+      ],
+      meta: {
+        page: 1,
+        limit: 1,
+        total: 1,
+        totalPages: 1,
+      },
+    })
+
+    expect(parsed.data[0]?.userId).toBe("k0RS7HQcHXhnJrjctHeUHSf8eXbxQ5p2")
   })
 })

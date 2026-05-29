@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { AuthUserId } from "./common"
 
 export const FolderSchema = z.object({
   id: z.string().uuid(),
@@ -6,7 +7,7 @@ export const FolderSchema = z.object({
   parentFolderId: z.string().uuid().nullable(),
   name: z.string(),
   path: z.string(),
-  createdBy: z.string().uuid(),
+  createdBy: AuthUserId,
   isDeleted: z.boolean(),
   deletedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),

@@ -10,7 +10,7 @@ interface AuthVariables {
 }
 
 export const authMiddleware = createMiddleware<{
-  Bindings: { BETTER_AUTH_SECRET?: string; DB: D1Database; GITHUB_CLIENT_ID?: string; GITHUB_CLIENT_SECRET?: string; GOOGLE_CLIENT_ID?: string; GOOGLE_CLIENT_SECRET?: string }
+  Bindings: { BETTER_AUTH_SECRET?: string; DB: D1Database; GITHUB_CLIENT_ID?: string; GITHUB_CLIENT_SECRET?: string; GOOGLE_CLIENT_ID?: string; GOOGLE_CLIENT_SECRET?: string; PLATFORM_OWNER_EMAIL?: string }
   Variables: AuthVariables
 }>(async (c, next) => {
   const origin = c.req.header("origin") ?? undefined
@@ -23,7 +23,8 @@ export const authMiddleware = createMiddleware<{
     return c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401)
   }
 
-  const dbUser = await getDB()
+  const db = getDB()
+  let dbUser = await db
     .select({
       isPlatformAdmin: userSchema.isPlatformAdmin,
       canCreateWorkspaces: userSchema.canCreateWorkspaces,
@@ -31,6 +32,30 @@ export const authMiddleware = createMiddleware<{
     .from(userSchema)
     .where(eq(userSchema.id, session.user.id))
     .get()
+
+  const ownerEmail = c.env.PLATFORM_OWNER_EMAIL?.trim().toLowerCase()
+  const isConfiguredOwner =
+    Boolean(ownerEmail) && session.user.email.toLowerCase() === ownerEmail
+
+  if (
+    isConfiguredOwner &&
+    (!dbUser?.isPlatformAdmin || !dbUser.canCreateWorkspaces)
+  ) {
+    await db
+      .update(userSchema)
+      .set({
+        isPlatformAdmin: true,
+        canCreateWorkspaces: true,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(userSchema.id, session.user.id))
+      .run()
+
+    dbUser = {
+      isPlatformAdmin: true,
+      canCreateWorkspaces: true,
+    }
+  }
 
   c.set("user", {
     ...session.user,

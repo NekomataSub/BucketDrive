@@ -1,11 +1,11 @@
 import { z } from "zod"
-import { WorkspaceRole } from "./common"
+import { AuthUserId, WorkspaceRole } from "./common"
 
 export const WorkspaceSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   slug: z.string(),
-  ownerId: z.string().uuid(),
+  ownerId: AuthUserId,
   role: WorkspaceRole,
   storageQuotaBytes: z.number().int().positive(),
   createdAt: z.string().datetime(),
@@ -17,10 +17,10 @@ export type Workspace = z.infer<typeof WorkspaceSchema>
 export const WorkspaceMemberSchema = z.object({
   id: z.string().uuid(),
   workspaceId: z.string().uuid(),
-  userId: z.string().uuid(),
+  userId: AuthUserId,
   role: WorkspaceRole,
   user: z.object({
-    id: z.string().uuid(),
+    id: AuthUserId,
     email: z.string().email(),
     name: z.string(),
     avatarUrl: z.string().nullable(),

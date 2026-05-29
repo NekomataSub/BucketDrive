@@ -54,3 +54,5 @@ npm-debug.log*
 *.pem
 *.key
 credentials.json
+apps/api/.env.bak.1780060855407
+apps/api/.dev.vars.bak.1780060855406

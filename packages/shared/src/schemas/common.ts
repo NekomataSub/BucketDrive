@@ -38,6 +38,10 @@ export const ErrorCode = z.enum([
   "INTERNAL_ERROR",
   "SERVICE_UNAVAILABLE",
   "STORAGE_ERROR",
+  "R2_AUTH_FAILED",
+  "R2_BUCKET_NOT_FOUND",
+  "R2_LIST_FAILED",
+  "R2_IMPORT_FAILED",
 ])
 
 export type ErrorCode = z.infer<typeof ErrorCode>
@@ -80,3 +84,6 @@ export type ResourceType = z.infer<typeof ResourceType>
 
 export const WorkspaceRole = z.enum(["owner", "admin", "manager", "editor", "viewer", "guest"])
 export type WorkspaceRole = z.infer<typeof WorkspaceRole>
+
+export const AuthUserId = z.string().min(1)
+export type AuthUserId = z.infer<typeof AuthUserId>

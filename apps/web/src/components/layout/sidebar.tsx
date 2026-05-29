@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Link } from "@tanstack/react-router"
-import { Files, Share2, Trash2, Settings, HardDrive, Link2, Shield, ScrollText, Users, Globe } from "lucide-react"
+import { Files, Share2, Trash2, Settings, Link2, Shield, ScrollText, Users, Globe } from "lucide-react"
 import { FolderTree } from "@/components/features/folder-tree"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { usePlatformMe } from "@/lib/api"
@@ -40,12 +40,6 @@ export function Sidebar() {
       visible: can(role ?? "viewer", "workspace.settings.read"),
     },
     {
-      to: "/dashboard",
-      icon: HardDrive,
-      label: "Storage",
-      visible: can(role ?? "viewer", "analytics.read"),
-    },
-    {
       to: "/dashboard/platform",
       icon: Globe,
       label: "Platform",
@@ -80,6 +74,7 @@ export function Sidebar() {
           <Link
             key={item.label}
             to={item.to}
+            activeOptions={{ exact: true }}
             className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary [&.active]:bg-surface-active [&.active]:text-text-primary"
           >
             <item.icon className="h-5 w-5" />

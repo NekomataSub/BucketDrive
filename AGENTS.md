@@ -4,8 +4,9 @@
 
 ```bash
 pnpm install
-cp .env.example apps/api/.env   # must fill in BETTER_AUTH_SECRET + at least one OAuth
-pnpm db:reset                    # rm SQLite → migrate → seed
+cp .env.example .dev.vars       # must fill in BETTER_AUTH_SECRET + at least one OAuth
+pnpm env:link                   # links apps/api/.env and apps/api/.dev.vars to .dev.vars
+pnpm db:reset                    # rm local Wrangler D1 → migrate → seed
 pnpm dev                         # Vite :5173 + Wrangler :8787
 ```
 
@@ -40,15 +41,16 @@ pnpm format:check
 
 ## Database
 
-- **Dev:** SQLite at `apps/api/.db/local.sqlite` via better-sqlite3
+- **Dev:** Wrangler D1 local at `.wrangler/state/v3/d1`
 - **Prod:** Cloudflare D1
 - **Migrations:** Drizzle Kit, config in `packages/shared/drizzle.config.ts`
 
 ```bash
 pnpm db:generate          # Drizzle Kit: schema → migration files
-pnpm db:migrate:dev       # tsx scripts/migrate.ts → apply to local SQLite
-pnpm db:seed              # tsx scripts/seed.ts
-pnpm db:reset             # rm -f apps/api/.db/local.sqlite + migrate + seed
+pnpm db:migrate:dev       # wrangler d1 migrations apply bucketdrive-db --local
+pnpm db:seed              # tsx scripts/seed.ts → seed local Wrangler D1
+pnpm db:reset             # rm -rf .wrangler/state/v3/d1 + migrate + seed
+pnpm db:reset:empty       # rm -rf .wrangler/state/v3/d1 + migrate
 pnpm db:studio            # Drizzle Studio (persistent, no cache)
 ```
 
