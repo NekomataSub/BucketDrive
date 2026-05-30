@@ -1856,6 +1856,8 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - Updated upload storage keys to preserve the original filename and extension under a UUID upload folder: `workspace/{workspaceId}/files/{uploadId}/{fileName}`.
 > - Completed uploads now update the active files query cache immediately and invalidate workspace file/search queries, so normal app uploads no longer require R2 import to appear in Explorer.
 > - Removed fixed-height virtualization from list view to prevent rows with tags or variable content from overlapping during load/render.
+> - Added automatic R2 sync for Explorer file listing: new bucket objects are cataloged, changed R2 metadata updates existing rows, and active rows missing from R2 are moved to trash.
+> - Added `workspace_settings` R2 sync state fields so automatic sync is throttled and R2 failures are recorded without breaking cached Explorer listings.
 
 ---
 

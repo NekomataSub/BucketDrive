@@ -43,6 +43,9 @@ export const WorkspaceSettingsSchema = z.object({
   brandingLogoUrl: z.string().url().nullable().default(null),
   brandingName: z.string().nullable().default(null),
   r2PublicBaseUrl: z.string().url().nullable().default(null),
+  r2LastSyncAt: z.string().datetime().nullable().default(null),
+  r2SyncStatus: z.enum(["idle", "syncing", "failed"]).default("idle"),
+  r2SyncError: z.string().nullable().default(null),
 })
 
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>

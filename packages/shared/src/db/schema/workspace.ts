@@ -33,6 +33,9 @@ export const workspaceSettings = sqliteTable("workspace_settings", {
   brandingLogoUrl: text("branding_logo_url"),
   brandingName: text("branding_name"),
   r2PublicBaseUrl: text("r2_public_base_url"),
+  r2LastSyncAt: text("r2_last_sync_at"),
+  r2SyncStatus: text("r2_sync_status").notNull().default("idle"),
+  r2SyncError: text("r2_sync_error"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

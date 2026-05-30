@@ -645,7 +645,7 @@ export function FilesPage() {
                 ) : (
                   <Database className="h-4 w-4" />
                 )}
-                Import R2
+                Sync R2
               </button>
             )}
             <button
@@ -669,12 +669,15 @@ export function FilesPage() {
           <div className="mb-4 rounded-lg border border-border-default bg-surface-default px-4 py-3 text-sm">
             {importR2.data ? (
               <p className="text-text-secondary">
-                Imported {importR2.data.imported} of {importR2.data.scanned} R2 objects.
+                Synced {importR2.data.scanned} R2 objects.
+                {importR2.data.imported > 0 ? ` Imported ${importR2.data.imported}.` : ""}
+                {importR2.data.updated > 0 ? ` Updated ${importR2.data.updated}.` : ""}
+                {importR2.data.deleted > 0 ? ` Moved to trash ${importR2.data.deleted}.` : ""}
                 {importR2.data.skipped > 0 ? ` Skipped ${importR2.data.skipped}.` : ""}
                 {importR2.data.failed > 0 ? ` Failed ${importR2.data.failed}.` : ""}
               </p>
             ) : (
-              <p className="text-error">{importR2.error?.message ?? "R2 import failed"}</p>
+              <p className="text-error">{importR2.error?.message ?? "R2 sync failed"}</p>
             )}
           </div>
         )}

@@ -71,6 +71,13 @@
       "when": 1778627000000,
       "tag": "0009_public_r2_base_url",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1778629000000,
+      "tag": "0010_r2_sync_state",
+      "breakpoints": true
     }
   ]
 }

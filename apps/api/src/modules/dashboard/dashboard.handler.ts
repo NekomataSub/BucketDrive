@@ -329,6 +329,9 @@ async function getWorkspaceSettings(db: ReturnType<typeof getDB>, workspaceId: s
       brandingLogoUrl: workspaceSettings.brandingLogoUrl,
       brandingName: workspaceSettings.brandingName,
       r2PublicBaseUrl: workspaceSettings.r2PublicBaseUrl,
+      r2LastSyncAt: workspaceSettings.r2LastSyncAt,
+      r2SyncStatus: workspaceSettings.r2SyncStatus,
+      r2SyncError: workspaceSettings.r2SyncError,
     })
     .from(workspaceSettings)
     .innerJoin(workspace, eq(workspace.id, workspaceSettings.workspaceId))
@@ -345,6 +348,9 @@ async function getWorkspaceSettings(db: ReturnType<typeof getDB>, workspaceId: s
     brandingLogoUrl: row.brandingLogoUrl ?? null,
     brandingName: row.brandingName ?? null,
     r2PublicBaseUrl: row.r2PublicBaseUrl ?? null,
+    r2LastSyncAt: row.r2LastSyncAt ?? null,
+    r2SyncStatus: row.r2SyncStatus,
+    r2SyncError: row.r2SyncError ?? null,
   }
 }
 

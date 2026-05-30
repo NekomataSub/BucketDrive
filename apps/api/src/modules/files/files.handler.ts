@@ -28,6 +28,8 @@ import {
 } from "@bucketdrive/shared"
 import type { WorkspaceRole } from "@bucketdrive/shared"
 
+const AUTO_R2_SYNC_INTERVAL_MS = 30_000
+
 interface FilesEnv {
   STORAGE: R2Bucket
   R2_ACCESS_KEY_ID?: string
@@ -56,6 +58,12 @@ files.get("/", requirePermission("files.read"), async (c) => {
   const query = ListFilesRequest.parse(c.req.query())
   const db = getDB()
   const user = c.get("user")
+
+  await syncR2IfStale({
+    env: c.env,
+    workspaceId,
+    userId: user.id,
+  })
 
   const rows = await db
     .select()
@@ -1025,5 +1033,50 @@ files.delete("/:fileId", requirePermission("files.delete"), async (c) => {
     throw err
   }
 })
+
+async function syncR2IfStale(params: {
+  env: FilesEnv
+  workspaceId: string
+  userId: string
+}): Promise<void> {
+  const db = getDB()
+  const settings = await db
+    .select({
+      r2LastSyncAt: workspaceSettings.r2LastSyncAt,
+      r2SyncStatus: workspaceSettings.r2SyncStatus,
+      updatedAt: workspaceSettings.updatedAt,
+    })
+    .from(workspaceSettings)
+    .where(eq(workspaceSettings.workspaceId, params.workspaceId))
+    .get()
+
+  const now = Date.now()
+  const lastAttemptAt = settings?.updatedAt ? Date.parse(settings.updatedAt) : NaN
+  if (
+    (settings?.r2SyncStatus === "syncing" || settings?.r2SyncStatus === "failed") &&
+    Number.isFinite(lastAttemptAt) &&
+    now - lastAttemptAt < AUTO_R2_SYNC_INTERVAL_MS
+  ) {
+    return
+  }
+
+  if (settings?.r2LastSyncAt) {
+    const lastSyncAt = Date.parse(settings.r2LastSyncAt)
+    if (Number.isFinite(lastSyncAt) && now - lastSyncAt < AUTO_R2_SYNC_INTERVAL_MS) {
+      return
+    }
+  }
+
+  try {
+    const storage = createStorageProvider(params.env)
+    const service = new R2ImportService(storage)
+    await service.syncWorkspace({
+      workspaceId: params.workspaceId,
+      userId: params.userId,
+    })
+  } catch (err) {
+    console.warn("Automatic R2 sync failed:", err)
+  }
+}
 
 export const filesHandler = files

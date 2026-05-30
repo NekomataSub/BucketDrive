@@ -142,6 +142,8 @@ Recommended format:
 workspace/{workspaceId}/files/{uploadId}/{fileName}
 ```
 
+Explorer listings run an automatic R2 sync before serving stale catalog data. The sync imports new objects, updates R2-owned metadata such as size/content type, and moves active database rows to trash when their object is no longer present in R2.
+
 ---
 
 # Upload Architecture

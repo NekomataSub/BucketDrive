@@ -173,6 +173,8 @@ export const ImportR2Request = z.object({
 export const ImportR2Response = z.object({
   scanned: z.number().int().min(0),
   imported: z.number().int().min(0),
+  updated: z.number().int().min(0),
+  deleted: z.number().int().min(0),
   skipped: z.number().int().min(0),
   failed: z.number().int().min(0),
 })

@@ -192,6 +192,8 @@ interface StorageStatusResponse {
 interface ImportR2Response {
   scanned: number
   imported: number
+  updated: number
+  deleted: number
   skipped: number
   failed: number
 }
@@ -343,6 +345,8 @@ export function useFiles(
       )
     },
     enabled: workspaceId !== null && options?.enabled !== false,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
