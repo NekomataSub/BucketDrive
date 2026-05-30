@@ -141,13 +141,20 @@ export function NotificationBell() {
               </div>
             ) : (
               notifications.map((n) => (
-                <button
+                <div
                   key={n.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleNotificationClick(n)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      handleNotificationClick(n)
+                    }
+                  }}
                   className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
                     !n.isRead ? "bg-accent/5" : ""
-                  }`}
+                  } cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent`}
                 >
                   <div className="mt-0.5 flex h-2 w-2 shrink-0 rounded-full bg-accent opacity-0" style={{ opacity: n.isRead ? 0 : 1 }} />
                   <div className="flex-1">
@@ -168,7 +175,7 @@ export function NotificationBell() {
                       <Check className="h-3.5 w-3.5" />
                     </button>
                   )}
-                </button>
+                </div>
               ))
             )}
           </div>

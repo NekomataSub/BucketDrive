@@ -54,16 +54,18 @@ export function FileContextMenu({
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Content className="z-50 min-w-[180px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg"> 
-          <ContextMenu.Item
-            className={menuItemClass}
-            onClick={() => {
-              onOpen?.()
-            }}
-          >
-            <FolderOpen className="h-4 w-4 text-text-tertiary" />
-            Open
-            <span className="ml-auto text-xs text-text-tertiary">Enter</span>
-          </ContextMenu.Item>
+          {onOpen && (
+            <ContextMenu.Item
+              className={menuItemClass}
+              onClick={() => {
+                onOpen()
+              }}
+            >
+              <FolderOpen className="h-4 w-4 text-text-tertiary" />
+              Open
+              <span className="ml-auto text-xs text-text-tertiary">Enter</span>
+            </ContextMenu.Item>
+          )}
 
           {itemType === "file" && onPreview && (
             <ContextMenu.Item
@@ -90,7 +92,9 @@ export function FileContextMenu({
             </ContextMenu.Item>
           )}
 
-          <ContextMenu.Separator className={separatorClass} />
+          {(itemType === "file" && (onPreview || onDownload)) && (
+            <ContextMenu.Separator className={separatorClass} />
+          )}
 
           {itemType === "file" && onFavorite && (
             <>
@@ -118,27 +122,31 @@ export function FileContextMenu({
             </>
           )}
 
-          <ContextMenu.Item
-            className={menuItemClass}
-            onClick={() => {
-              onRename?.()
-            }}
-          >
-            <Pencil className="h-4 w-4 text-text-tertiary" />
-            Rename
-            <span className="ml-auto text-xs text-text-tertiary">F2</span>
-          </ContextMenu.Item>
+          {onRename && (
+            <ContextMenu.Item
+              className={menuItemClass}
+              onClick={() => {
+                onRename()
+              }}
+            >
+              <Pencil className="h-4 w-4 text-text-tertiary" />
+              Rename
+              <span className="ml-auto text-xs text-text-tertiary">F2</span>
+            </ContextMenu.Item>
+          )}
 
-          <ContextMenu.Item
-            className={menuItemClass}
-            onClick={() => {
-              onCopy?.()
-            }}
-          >
-            <Copy className="h-4 w-4 text-text-tertiary" />
-            Copy
-            <span className="ml-auto text-xs text-text-tertiary">Ctrl+C</span>
-          </ContextMenu.Item>
+          {onCopy && (
+            <ContextMenu.Item
+              className={menuItemClass}
+              onClick={() => {
+                onCopy()
+              }}
+            >
+              <Copy className="h-4 w-4 text-text-tertiary" />
+              Copy
+              <span className="ml-auto text-xs text-text-tertiary">Ctrl+C</span>
+            </ContextMenu.Item>
+          )}
 
           {onMove && (
             <ContextMenu.Item
@@ -152,7 +160,7 @@ export function FileContextMenu({
             </ContextMenu.Item>
           )}
 
-          <ContextMenu.Separator className={separatorClass} />
+          {(onRename || onCopy || onMove) && <ContextMenu.Separator className={separatorClass} />}
 
           {onShare && (
             <ContextMenu.Item
@@ -166,18 +174,20 @@ export function FileContextMenu({
             </ContextMenu.Item>
           )}
 
-          <ContextMenu.Separator className={separatorClass} />
+          {onShare && <ContextMenu.Separator className={separatorClass} />}
 
-          <ContextMenu.Item
-            className={menuItemClass}
-            onClick={() => {
-              onDelete?.()
-            }}
-          >
-            <Trash2 className="h-4 w-4 text-text-tertiary" />
-            Delete
-            <span className="ml-auto text-xs text-text-tertiary">Del</span>
-          </ContextMenu.Item>
+          {onDelete && (
+            <ContextMenu.Item
+              className={menuItemClass}
+              onClick={() => {
+                onDelete()
+              }}
+            >
+              <Trash2 className="h-4 w-4 text-text-tertiary" />
+              Delete
+              <span className="ml-auto text-xs text-text-tertiary">Del</span>
+            </ContextMenu.Item>
+          )}
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>

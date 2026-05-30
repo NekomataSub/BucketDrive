@@ -279,6 +279,22 @@ function ShareRow({
           </div>
         </div>
       </td>
+      <td className="hidden px-4 py-3 lg:table-cell">
+        <div className="flex flex-wrap gap-1.5">
+          {share.permissions.length === 0 ? (
+            <span className="text-sm text-text-tertiary">Link access</span>
+          ) : (
+            share.permissions.map((permission) => (
+              <span
+                key={permission}
+                className="rounded-full bg-surface-hover px-2 py-0.5 text-xs capitalize text-text-secondary"
+              >
+                {permission}
+              </span>
+            ))
+          )}
+        </div>
+      </td>
       <td className="hidden px-4 py-3 xl:table-cell">
         <div className="text-sm text-text-secondary">
           <p>{new Date(share.createdAt).toLocaleDateString()}</p>

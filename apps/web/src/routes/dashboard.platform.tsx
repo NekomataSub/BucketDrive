@@ -59,8 +59,11 @@ export function PlatformAdminPage() {
                 <p className="text-xs text-text-tertiary">Let users create their own workspaces</p>
               </div>
               <button
+                type="button"
+                aria-pressed={Boolean(settings?.allowUserWorkspaceCreation)}
+                disabled={updateSettings.isPending}
                 onClick={() => { void updateSettings.mutate({ allowUserWorkspaceCreation: !settings?.allowUserWorkspaceCreation }) }}
-                className={`relative h-6 w-11 rounded-full transition-colors ${settings?.allowUserWorkspaceCreation ? "bg-accent" : "bg-border-default"}`}
+                className={`relative h-6 w-11 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${settings?.allowUserWorkspaceCreation ? "bg-accent" : "bg-border-default"}`}
               >
                 <span className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${settings?.allowUserWorkspaceCreation ? "translate-x-5" : ""}`} />
               </button>
@@ -71,8 +74,11 @@ export function PlatformAdminPage() {
                 <p className="text-xs text-text-tertiary">Allow users to join without invitation</p>
               </div>
               <button
+                type="button"
+                aria-pressed={Boolean(settings?.enablePublicSignup)}
+                disabled={updateSettings.isPending}
                 onClick={() => { void updateSettings.mutate({ enablePublicSignup: !settings?.enablePublicSignup }) }}
-                className={`relative h-6 w-11 rounded-full transition-colors ${settings?.enablePublicSignup ? "bg-accent" : "bg-border-default"}`}
+                className={`relative h-6 w-11 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${settings?.enablePublicSignup ? "bg-accent" : "bg-border-default"}`}
               >
                 <span className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${settings?.enablePublicSignup ? "translate-x-5" : ""}`} />
               </button>
@@ -158,6 +164,7 @@ export function PlatformAdminPage() {
                   <p className="text-xs text-text-tertiary">Role: {inv.role} {inv.canCreateWorkspaces ? "(can create workspaces)" : ""}</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     const link = inv.inviteLink ?? `${window.location.origin}/join`
                     void navigator.clipboard.writeText(link)

@@ -22,6 +22,7 @@ export function MembersPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const currentUserRole = workspace?.role ?? "viewer"
   const isOwner = can(currentUserRole, "workspace.transfer")
+  const canInviteMembers = can(currentUserRole, "users.invite")
   const canManageMembers = can(currentUserRole, "users.update_roles")
 
   const membersQuery = useMembers(workspaceId)
@@ -36,6 +37,7 @@ export function MembersPage() {
   const [role, setRole] = useState<Exclude<WorkspaceRole, "owner">>("editor")
   const [activeTab, setActiveTab] = useState<Tab>("members")
   const [createdInvite, setCreatedInvite] = useState<{ inviteLink: string; email: string } | null>(null)
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null)
 
   if (workspacesLoading || membersQuery.isLoading) {
@@ -66,11 +68,13 @@ export function MembersPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border-default bg-surface-default p-5">
-        <h2 className="text-base font-semibold text-text-primary">Invite Member</h2>
-        <p className="mt-1 text-xs text-text-tertiary">
-          Send an invitation link by email. The recipient can join by signing in with the invited email.
-        </p>
+      {canInviteMembers && (
+        <div className="rounded-2xl border border-border-default bg-surface-default p-5">
+          <h2 className="text-base font-semibold text-text-primary">Invite Member</h2>
+          <p className="mt-1 text-xs text-text-tertiary">
+            Send an invitation link by email. The recipient can join by signing in with the invited
+            email.
+          </p>
 
         <form
           className="mt-4 flex flex-col gap-3 md:flex-row"
@@ -131,11 +135,12 @@ export function MembersPage() {
                 type="button"
                 onClick={() => {
                   void navigator.clipboard.writeText(createdInvite.inviteLink)
-                  setCreatedInvite(null)
+                  setCopiedInviteId("created")
+                  window.setTimeout(() => setCopiedInviteId(null), 2000)
                 }}
                 className="rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
               >
-                Copy link
+                {copiedInviteId === "created" ? "Copied" : "Copy link"}
               </button>
             </div>
           </div>
@@ -144,7 +149,8 @@ export function MembersPage() {
         {addMember.isError && (
           <p className="mt-3 text-sm text-error">{addMember.error.message}</p>
         )}
-      </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-4 border-b border-border-default">
         <button
@@ -215,7 +221,7 @@ export function MembersPage() {
                         })
                       }
                       disabled={!canManageMembers}
-                      className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-sm capitalize text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50"
+                      className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-sm capitalize text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {editableRoles.map((availableRole) => (
                         <option key={availableRole} value={availableRole}>
@@ -293,10 +299,15 @@ export function MembersPage() {
                           const baseUrl = window.location.origin
                           const link = `${baseUrl}/join?token=${entry.id}`
                           void navigator.clipboard.writeText(link)
+                          setCopiedInviteId(entry.id)
+                          window.setTimeout(
+                            () => setCopiedInviteId((current) => (current === entry.id ? null : current)),
+                            2000,
+                          )
                         }}
                         className="rounded-lg border border-border-default px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover"
                       >
-                        Copy link
+                        {copiedInviteId === entry.id ? "Copied" : "Copy link"}
                       </button>
                       <button
                         onClick={() => {

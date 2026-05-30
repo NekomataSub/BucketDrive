@@ -41,19 +41,17 @@ export function TrashPage() {
     () => Math.max(...items.map((item) => item.daysRemaining), 30),
     [items],
   )
-  const isBusy =
-    restoreFile.isPending ||
-    restoreFolder.isPending ||
-    deleteFileForever.isPending ||
-    deleteFolderForever.isPending
+  const [busyItemKey, setBusyItemKey] = useState<string | null>(null)
 
   const handleRestore = (item: TrashItem) => {
+    const key = `${item.resourceType}-${item.id}`
+    setBusyItemKey(key)
     if (item.resourceType === "file") {
-      restoreFile.mutate({ fileId: item.id })
+      restoreFile.mutate({ fileId: item.id }, { onSettled: () => setBusyItemKey(null) })
       return
     }
 
-    restoreFolder.mutate({ folderId: item.id })
+    restoreFolder.mutate({ folderId: item.id }, { onSettled: () => setBusyItemKey(null) })
   }
 
   const handlePermanentDelete = (item: TrashItem) => {
@@ -62,13 +60,24 @@ export function TrashPage() {
     )
     if (!confirmed) return
 
+    const key = `${item.resourceType}-${item.id}`
+    setBusyItemKey(key)
     if (item.resourceType === "file") {
-      deleteFileForever.mutate({ fileId: item.id })
+      deleteFileForever.mutate({ fileId: item.id }, { onSettled: () => setBusyItemKey(null) })
       return
     }
 
-    deleteFolderForever.mutate({ folderId: item.id })
+    deleteFolderForever.mutate({ folderId: item.id }, { onSettled: () => setBusyItemKey(null) })
   }
+
+  const orderLabel =
+    sort === "deleted_at"
+      ? order === "desc"
+        ? "Newest first"
+        : "Oldest first"
+      : order === "desc"
+        ? "Descending"
+        : "Ascending"
 
   if (workspacesLoading || trashQuery.isLoading) {
     return (
@@ -112,7 +121,7 @@ export function TrashPage() {
             onClick={() => setOrder((current) => (current === "desc" ? "asc" : "desc"))}
             className="rounded-lg border border-border-default bg-surface-default px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
-            {order === "desc" ? "Newest first" : "Oldest first"}
+            {orderLabel}
           </button>
         </div>
       </div>
@@ -177,19 +186,19 @@ export function TrashPage() {
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => handleRestore(item)}
-                        disabled={isBusy}
+                        disabled={busyItemKey === `${item.resourceType}-${item.id}`}
                         className="inline-flex items-center gap-1.5 rounded-md border border-border-muted px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-default hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
-                        Restore
+                        {busyItemKey === `${item.resourceType}-${item.id}` ? "Restoring..." : "Restore"}
                       </button>
                       <button
                         onClick={() => handlePermanentDelete(item)}
-                        disabled={isBusy}
+                        disabled={busyItemKey === `${item.resourceType}-${item.id}`}
                         className="inline-flex items-center gap-1.5 rounded-md border border-error/40 px-2.5 py-1.5 text-xs font-medium text-error transition-colors hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        Delete permanently
+                        {busyItemKey === `${item.resourceType}-${item.id}` ? "Deleting..." : "Delete permanently"}
                       </button>
                     </div>
                   </td>

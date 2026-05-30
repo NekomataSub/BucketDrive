@@ -207,20 +207,28 @@ function FolderListRow({
                 <DropdownMenu.Item className={dropdownItemClass} onClick={() => onFolderClick(folder.id)}>
                   Open
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename?.(folder.id, "folder")}>
-                  Rename
-                </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove?.(folder.id, "folder")}>
-                  Move
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare?.(folder.id, "folder")}>
-                  Share
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete?.(folder.id, "folder")}>
-                  Delete
-                </DropdownMenu.Item>
+                {onContextRename && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename(folder.id, "folder")}>
+                    Rename
+                  </DropdownMenu.Item>
+                )}
+                {onContextMove && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove(folder.id, "folder")}>
+                    Move
+                  </DropdownMenu.Item>
+                )}
+                {onContextShare && <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />}
+                {onContextShare && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare(folder.id, "folder")}>
+                    Share
+                  </DropdownMenu.Item>
+                )}
+                {onContextDelete && <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />}
+                {onContextDelete && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete(folder.id, "folder")}>
+                    Delete
+                  </DropdownMenu.Item>
+                )}
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
@@ -410,23 +418,38 @@ function FileListRow({
                 <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDownload?.(file.id)}>
                   Download
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename?.(file.id, "file")}>
-                  Rename
-                </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextFavorite?.(file.id)}>
-                  Favorite
-                </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove?.(file.id, "file")}>
-                  Move
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare?.(file.id, "file")}>
-                  Share
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete?.(file.id, "file")}>
-                  Delete
-                </DropdownMenu.Item>
+                {onContextRename && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename(file.id, "file")}>
+                    Rename
+                  </DropdownMenu.Item>
+                )}
+                {onContextFavorite && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextFavorite(file.id)}>
+                    {file.isFavorited ? "Remove favorite" : "Add favorite"}
+                  </DropdownMenu.Item>
+                )}
+                {onContextTags && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextTags(file.id)}>
+                    Tags
+                  </DropdownMenu.Item>
+                )}
+                {onContextMove && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove(file.id, "file")}>
+                    Move
+                  </DropdownMenu.Item>
+                )}
+                {onContextShare && <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />}
+                {onContextShare && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare(file.id, "file")}>
+                    Share
+                  </DropdownMenu.Item>
+                )}
+                {onContextDelete && <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />}
+                {onContextDelete && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete(file.id, "file")}>
+                    Delete
+                  </DropdownMenu.Item>
+                )}
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>

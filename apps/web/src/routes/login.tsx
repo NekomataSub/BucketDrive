@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router"
+import { Link, useSearch } from "@tanstack/react-router"
 import { FolderOpen } from "lucide-react"
 
 const GitHubIcon = () => (
@@ -7,12 +7,12 @@ const GitHubIcon = () => (
   </svg>
 )
 
-async function signIn(provider: string) {
+async function signIn(provider: string, redirectPath: string) {
   const res = await fetch("/api/auth/sign-in/social", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ provider, callbackURL: `${window.location.origin}/dashboard` }),
+    body: JSON.stringify({ provider, callbackURL: `${window.location.origin}${redirectPath}` }),
   })
   if (res.redirected) {
     window.location.href = res.url
@@ -23,6 +23,9 @@ async function signIn(provider: string) {
 }
 
 export function LoginPage() {
+  const search: { redirect?: string } = useSearch({ strict: false })
+  const redirectPath = search.redirect?.startsWith("/") ? search.redirect : "/dashboard"
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-bg-primary">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-hover">
@@ -33,14 +36,20 @@ export function LoginPage() {
         <p className="mt-2 text-text-secondary">Sign in to access your files</p>
       </div>
       <button
-        onClick={() => signIn("github")}
+        type="button"
+        onClick={() => {
+          void signIn("github", redirectPath)
+        }}
         className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90"
       >
         <GitHubIcon />
         Sign in with GitHub
       </button>
       <button
-        onClick={() => signIn("google")}
+        type="button"
+        onClick={() => {
+          void signIn("google", redirectPath)
+        }}
         className="inline-flex items-center gap-2 rounded-xl border border-border-default bg-surface-default px-6 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">

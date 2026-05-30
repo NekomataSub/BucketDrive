@@ -81,6 +81,16 @@ export function FilesPage() {
   const workspace = workspacesData?.data?.[0] ?? null
   const workspaceId = workspace?.id ?? null
   const workspaceName = workspace?.name ?? "Workspace"
+  const canUpload = workspace ? can(workspace.role, "files.upload") : false
+  const canCreateFolder = workspace ? can(workspace.role, "folders.create") : false
+  const canRenameFile = workspace ? can(workspace.role, "files.rename") : false
+  const canRenameFolder = workspace ? can(workspace.role, "folders.rename") : false
+  const canMoveFile = workspace ? can(workspace.role, "files.move") : false
+  const canMoveFolder = workspace ? can(workspace.role, "folders.move") : false
+  const canDeleteFile = workspace ? can(workspace.role, "files.delete") : false
+  const canDeleteFolder = workspace ? can(workspace.role, "folders.delete") : false
+  const canShareFile = workspace ? can(workspace.role, "files.share") : false
+  const canShareFolder = workspace ? can(workspace.role, "folders.share") : false
   const canFavorite = workspace ? can(workspace.role, "files.favorite") : false
   const canTag = workspace ? can(workspace.role, "files.tag") : false
   const canImportR2 = workspace ? can(workspace.role, "workspace.settings.update") : false
@@ -136,6 +146,7 @@ export function FilesPage() {
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [tagDialogFileId, setTagDialogFileId] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [shareModal, setShareModal] = useState<{
     open: boolean
     resourceId: string
@@ -210,11 +221,17 @@ export function FilesPage() {
 
   const handleContextDownload = useCallback(
     (fileId: string) => {
+      if (!workspaceId) return
       const fetchUrl = async () => {
+        setDownloadError(null)
         const res = await fetch(
           `/api/workspaces/${workspaceId}/files/${fileId}/download`,
           { credentials: "include" },
         )
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { message?: string } | null
+          throw new Error(data?.message ?? "Download failed")
+        }
         const data = (await res.json()) as { signedUrl?: string; fileName?: string }
         if (data.signedUrl) {
           const link = document.createElement("a")
@@ -224,9 +241,13 @@ export function FilesPage() {
           document.body.append(link)
           link.click()
           link.remove()
+        } else {
+          throw new Error("Download URL was not returned")
         }
       }
-      fetchUrl().catch(console.error)
+      fetchUrl().catch((error: unknown) => {
+        setDownloadError(error instanceof Error ? error.message : "Download failed")
+      })
     },
     [workspaceId],
   )
@@ -284,6 +305,7 @@ export function FilesPage() {
     const folderCount = selectedFolderIds.length
     const totalCount = fileCount + folderCount
     if (totalCount === 0) return
+    if ((fileCount > 0 && !canDeleteFile) || (folderCount > 0 && !canDeleteFolder)) return
 
     const confirmed = window.confirm(
       totalCount === 1
@@ -299,7 +321,7 @@ export function FilesPage() {
       }
       clearSelection()
     }
-  }, [selectedFileIds, selectedFolderIds, undoable, clearSelection])
+  }, [selectedFileIds, selectedFolderIds, undoable, clearSelection, canDeleteFile, canDeleteFolder])
 
   const handleNavigateParent = useCallback(() => {
     if (currentFolderId && breadcrumbsData && breadcrumbsData.length > 1) {
@@ -314,6 +336,7 @@ export function FilesPage() {
 
   const handleRenameItem = useCallback(
     (id: string, type: "file" | "folder") => {
+      if ((type === "file" && !canRenameFile) || (type === "folder" && !canRenameFolder)) return
       const item =
         type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
       const currentName = item ? ("originalName" in item ? item.originalName : item.name) : ""
@@ -326,7 +349,7 @@ export function FilesPage() {
         }
       }
     },
-    [files, folders, undoable],
+    [files, folders, undoable, canRenameFile, canRenameFolder],
   )
 
   useEffect(() => {
@@ -346,6 +369,12 @@ export function FilesPage() {
       }
 
       if (action === "move" && selectedCount > 0) {
+        if (
+          (selectedFileIds.length > 0 && !canMoveFile) ||
+          (selectedFolderIds.length > 0 && !canMoveFolder)
+        ) {
+          return
+        }
         useExplorerStore.getState().setClipboard({
           action: "cut",
           fileIds: selectedFileIds,
@@ -369,6 +398,8 @@ export function FilesPage() {
     selectedFileIds,
     selectedFolderIds,
     toggleFavoriteMutation,
+    canMoveFile,
+    canMoveFolder,
   ])
 
   const { handleItemClick } = useExplorerShortcuts({
@@ -383,10 +414,12 @@ export function FilesPage() {
   })
 
   const handleFileSelect = () => {
+    if (!canUpload) return
     fileInputRef.current?.click()
   }
 
   const handleCreateFolder = () => {
+    if (!canCreateFolder) return
     const name = window.prompt("Folder name:")
     if (name && name.trim()) {
       createFolderMutation.mutate({
@@ -402,6 +435,7 @@ export function FilesPage() {
 
   const handleContextMove = useCallback(
     (id: string, type: "file" | "folder") => {
+      if ((type === "file" && !canMoveFile) || (type === "folder" && !canMoveFolder)) return
       const destFolderId = window.prompt("Enter destination folder ID (or leave blank for root):")
       if (destFolderId === null) return
       const targetId = destFolderId.trim() || null
@@ -411,11 +445,12 @@ export function FilesPage() {
         void undoable.moveFolder(id, targetId, currentFolderId)
       }
     },
-    [undoable, currentFolderId],
+    [undoable, currentFolderId, canMoveFile, canMoveFolder],
   )
 
   const handleContextShare = useCallback(
     (id: string, type: "file" | "folder") => {
+      if ((type === "file" && !canShareFile) || (type === "folder" && !canShareFolder)) return
       const item =
         type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
       const name = item ? ("originalName" in item ? item.originalName : item.name) : ""
@@ -427,7 +462,7 @@ export function FilesPage() {
         resourceStorageKey: item && "storageKey" in item ? item.storageKey : undefined,
       })
     },
-    [files, folders],
+    [files, folders, canShareFile, canShareFolder],
   )
 
   const handleFilesChosen = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -545,6 +580,10 @@ export function FilesPage() {
   const rootBreadcrumb: BreadcrumbItem[] = [{ id: null, name: workspaceName }]
   const displayBreadcrumbs = currentFolderId && breadcrumbsData ? breadcrumbsData : rootBreadcrumb
   const totalSelected = selectedFileIds.length + selectedFolderIds.length
+  const canDeleteSelected =
+    totalSelected > 0 &&
+    (selectedFileIds.length === 0 || canDeleteFile) &&
+    (selectedFolderIds.length === 0 || canDeleteFolder)
   const totalFiles = isSearchActive ? searchData?.meta.total ?? 0 : filesData?.meta?.total ?? 0
   const selectedTagNames = allTags.filter((tag) => dashboardSearch.selectedTagIds.includes(tag.id))
   const fileForTagDialog = files.find((file) => file.id === tagDialogFileId) ?? null
@@ -605,6 +644,7 @@ export function FilesPage() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-lg border border-border-muted bg-surface-default p-0.5">
               <button
+                type="button"
                 onClick={() => setViewMode("grid")}
                 className={`rounded-md p-1.5 transition-colors ${
                   viewMode === "grid"
@@ -616,6 +656,7 @@ export function FilesPage() {
                 <LayoutGrid className="h-4 w-4" />
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode("list")}
                 className={`rounded-md p-1.5 transition-colors ${
                   viewMode === "list"
@@ -627,15 +668,19 @@ export function FilesPage() {
                 <List className="h-4 w-4" />
               </button>
             </div>
-            <button
-              onClick={handleCreateFolder}
-              className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
-            >
-              <FolderPlus className="h-4 w-4" />
-              New Folder
-            </button>
+            {canCreateFolder && (
+              <button
+                type="button"
+                onClick={handleCreateFolder}
+                className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+              >
+                <FolderPlus className="h-4 w-4" />
+                New Folder
+              </button>
+            )}
             {canImportR2 && (
               <button
+                type="button"
                 onClick={handleImportR2}
                 disabled={importR2.isPending}
                 className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
@@ -648,13 +693,16 @@ export function FilesPage() {
                 Sync R2
               </button>
             )}
-            <button
-              onClick={handleFileSelect}
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
-            >
-              <Upload className="h-4 w-4" />
-              Upload
-            </button>
+            {canUpload && (
+              <button
+                type="button"
+                onClick={handleFileSelect}
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+              >
+                <Upload className="h-4 w-4" />
+                Upload
+              </button>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -682,10 +730,17 @@ export function FilesPage() {
           </div>
         )}
 
+        {downloadError && (
+          <div className="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+            {downloadError}
+          </div>
+        )}
+
         <div className="mb-4 space-y-3 rounded-2xl border border-border-default bg-surface-default p-4">
           <div className="flex flex-wrap gap-2">
             {typeFilterOptions.map((option) => (
               <button
+                type="button"
                 key={option.value}
                 onClick={() => setDashboardType(option.value)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -699,6 +754,7 @@ export function FilesPage() {
             ))}
 
             <button
+              type="button"
               onClick={() => setDashboardFavoriteOnly(!dashboardSearch.favoriteOnly)}
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                 dashboardSearch.favoriteOnly
@@ -726,6 +782,7 @@ export function FilesPage() {
                   <option value="type">Type</option>
                 </select>
                 <button
+                  type="button"
                   onClick={() =>
                     setDashboardOrder(dashboardSearch.order === "asc" ? "desc" : "asc")
                   }
@@ -734,6 +791,7 @@ export function FilesPage() {
                   {dashboardSearch.order === "asc" ? "Ascending" : "Descending"}
                 </button>
                 <button
+                  type="button"
                   onClick={clearDashboardSearch}
                   className="inline-flex items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 >
@@ -755,6 +813,7 @@ export function FilesPage() {
 
                 return (
                   <button
+                    type="button"
                     key={tag.id}
                     onClick={() => {
                       setDashboardSelectedTagIds(
@@ -814,14 +873,18 @@ export function FilesPage() {
               {totalSelected} items selected
             </span>
             <div className="flex-1" />
+            {canDeleteSelected && (
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-error transition-colors hover:bg-error/10"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete selected
+              </button>
+            )}
             <button
-              onClick={handleDeleteSelected}
-              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-error transition-colors hover:bg-error/10"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete selected
-            </button>
-            <button
+              type="button"
               onClick={() => clearSelection()}
               className="rounded-md px-3 py-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
             >
@@ -844,15 +907,24 @@ export function FilesPage() {
                 onContextOpen={handleOpenItem}
                 onContextPreview={handlePreviewItem}
                 onContextDownload={handleContextDownload}
-                onContextRename={handleRenameItem}
-                onContextDelete={(id, type) => {
-                  if (type === "folder") {
-                    void undoable.deleteFolder(id)
-                  } else {
-                    void undoable.deleteFile(id)
-                  }
-                  clearSelection()
-                }}
+                onContextRename={
+                  canRenameFile || canRenameFolder
+                    ? (id, type) => handleRenameItem(id, type)
+                    : undefined
+                }
+                onContextDelete={
+                  canDeleteFile || canDeleteFolder
+                    ? (id, type) => {
+                        if ((type === "folder" && !canDeleteFolder) || (type === "file" && !canDeleteFile)) return
+                        if (type === "folder") {
+                          void undoable.deleteFolder(id)
+                        } else {
+                          void undoable.deleteFile(id)
+                        }
+                        clearSelection()
+                      }
+                    : undefined
+                }
                 onContextFavorite={
                   canFavorite
                     ? (id) => {
@@ -867,8 +939,12 @@ export function FilesPage() {
                       }
                     : undefined
                 }
-                onContextMove={handleContextMove}
-                onContextShare={handleContextShare}
+                onContextMove={
+                  canMoveFile || canMoveFolder ? handleContextMove : undefined
+                }
+                onContextShare={
+                  canShareFile || canShareFolder ? handleContextShare : undefined
+                }
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
               />
             ) : (
@@ -882,15 +958,24 @@ export function FilesPage() {
                 onContextOpen={handleOpenItem}
                 onContextPreview={handlePreviewItem}
                 onContextDownload={handleContextDownload}
-                onContextRename={handleRenameItem}
-                onContextDelete={(id, type) => {
-                  if (type === "folder") {
-                    void undoable.deleteFolder(id)
-                  } else {
-                    void undoable.deleteFile(id)
-                  }
-                  clearSelection()
-                }}
+                onContextRename={
+                  canRenameFile || canRenameFolder
+                    ? (id, type) => handleRenameItem(id, type)
+                    : undefined
+                }
+                onContextDelete={
+                  canDeleteFile || canDeleteFolder
+                    ? (id, type) => {
+                        if ((type === "folder" && !canDeleteFolder) || (type === "file" && !canDeleteFile)) return
+                        if (type === "folder") {
+                          void undoable.deleteFolder(id)
+                        } else {
+                          void undoable.deleteFile(id)
+                        }
+                        clearSelection()
+                      }
+                    : undefined
+                }
                 onContextFavorite={
                   canFavorite
                     ? (id) => {
@@ -905,8 +990,12 @@ export function FilesPage() {
                       }
                     : undefined
                 }
-                onContextMove={handleContextMove}
-                onContextShare={handleContextShare}
+                onContextMove={
+                  canMoveFile || canMoveFolder ? handleContextMove : undefined
+                }
+                onContextShare={
+                  canShareFile || canShareFolder ? handleContextShare : undefined
+                }
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
               />
             )}

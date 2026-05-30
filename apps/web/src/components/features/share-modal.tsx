@@ -95,9 +95,10 @@ export function ShareModal({
   }, [])
 
   const getShareLink = useCallback(() => {
-    return createdShareType === "internal"
-      ? `${window.location.origin}/shared/${createdShareId ?? ""}`
-      : `${window.location.origin}/share/${createdShareId ?? ""}`
+    if (createdShareType === "internal") {
+      return `${window.location.origin}/shared`
+    }
+    return `${window.location.origin}/share/${createdShareId ?? ""}`
   }, [createdShareId, createdShareType])
 
   const getManagedDownloadLink = useCallback(() => {
@@ -308,22 +309,29 @@ export function ShareModal({
                 </p>
               </div>
 
-              <button
-                onClick={() => copyLink(getShareLink(), "share")}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-default px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
-              >
-                {copiedLinkType === "share" ? (
-                  <>
-                    <Check className="h-4 w-4 text-success" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 text-text-tertiary" />
-                    Copy share link
-                  </>
-                )}
-              </button>
+              {createdShareType === "internal" ? (
+                <div className="rounded-lg border border-border-muted bg-surface-secondary p-3 text-sm text-text-secondary">
+                  This internal share is available to workspace members from the Shared with me page.
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => copyLink(getShareLink(), "share")}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-default px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                >
+                  {copiedLinkType === "share" ? (
+                    <>
+                      <Check className="h-4 w-4 text-success" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 text-text-tertiary" />
+                      Copy share link
+                    </>
+                  )}
+                </button>
+              )}
 
               {resourceType === "file" && createdShareType === "external_direct" && (
                 <div className="grid gap-2">
