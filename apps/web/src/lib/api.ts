@@ -680,6 +680,12 @@ export function useThumbnailUrl(
     retry: (failureCount, error) =>
       error.code === "THUMBNAIL_NOT_FOUND" && failureCount < 5,
     retryDelay: 2_000,
+    refetchInterval: (query) => {
+      const error = query.state.error
+      return error instanceof ApiRequestError && error.code === "THUMBNAIL_NOT_FOUND"
+        ? 2_000
+        : false
+    },
   })
 }
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { usePreviewUrl, useThumbnailUrl, useUploadVideoThumbnail } from "@/lib/api"
 import { extractVideoFrameFromUrl } from "@/lib/video-thumbnail"
 
@@ -33,10 +33,15 @@ export function FileThumbnail({
   )
   const uploadVideoThumbnail = useUploadVideoThumbnail(workspaceId)
   const generationStarted = useRef(false)
+  const [imageFailed, setImageFailed] = useState(false)
 
   useEffect(() => {
     generationStarted.current = false
   }, [fileId])
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [fileId, data?.signedUrl])
 
   useEffect(() => {
     if (!isVideo || thumbnailKey || generationStarted.current || !previewData?.signedUrl) {
@@ -72,7 +77,7 @@ export function FileThumbnail({
     )
   }
 
-  if (!data?.signedUrl) return fallback
+  if (!data?.signedUrl || imageFailed) return fallback
 
   return (
     <img
@@ -80,9 +85,7 @@ export function FileThumbnail({
       alt=""
       className={`object-cover ${className ?? ""}`}
       loading="lazy"
-      onError={(e) => {
-        (e.target as HTMLImageElement).style.display = "none"
-      }}
+      onError={() => setImageFailed(true)}
     />
   )
 }

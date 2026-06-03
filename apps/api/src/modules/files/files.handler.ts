@@ -960,6 +960,18 @@ files.get("/:fileId/thumbnail", requirePermission("files.read"), async (c) => {
   }
 
   if (!file.thumbnailKey) {
+    if (file.mimeType.startsWith("image/") && file.storageKey) {
+      const thumbnailService = new ThumbnailService({ storage: c.env.STORAGE })
+      c.executionCtx.waitUntil(
+        thumbnailService.generate({
+          fileId,
+          workspaceId,
+          storageKey: file.storageKey,
+          mimeType: file.mimeType,
+        }),
+      )
+    }
+
     return c.json({ code: "THUMBNAIL_NOT_FOUND", message: "Thumbnail not yet generated" }, 404)
   }
 
