@@ -175,6 +175,9 @@ importers:
       '@bucketdrive/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cf-wasm/photon':
+        specifier: ^0.3.5
+        version: 0.3.5
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250100.0

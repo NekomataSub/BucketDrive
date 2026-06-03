@@ -31,6 +31,17 @@ export function getMimePrefixesForCategory(type: SearchCategory): string[] {
   return type === "all" ? [] : MIME_CATEGORY_PREFIXES[type]
 }
 
+export function filterFilesByFolder<T extends { folderId: string | null }>(
+  rows: T[],
+  folderId?: string | null,
+): T[] {
+  if (folderId) {
+    return rows.filter((file) => file.folderId === folderId)
+  }
+
+  return rows.filter((file) => file.folderId === null)
+}
+
 export function buildFtsQuery(raw: string): string {
   const tokens = raw
     .trim()

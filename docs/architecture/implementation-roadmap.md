@@ -53,7 +53,7 @@ verifiable result.
 | 27 | Share polish | Analytics counters, branded public pages | ✅ `4639d9a` |
 | 28 | Notifications | In-app notification system + toast integration | ✅ |
 | 29 | Thumbnails & processing | Async preview generation via workers | ✅ `14f6fb6` |
-| 29 | Thumbnails & processing | Async preview generation via workers | ⬜ |
+| 29 | Thumbnails & processing | Backfill pending thumbnails via scheduled worker | ✅ |
 | 30 | Contract tests | API contract validation against test D1 | ⬜ |
 | 31 | E2E & a11y | Playwright journeys, axe-core compliance | ⬜ |
 | 32 | Staging & final polish | Deploy pipeline, Lighthouse CI, docs sync | ⬜ |
@@ -1642,9 +1642,12 @@ git commit -m "feat(notifications): in-app notification system for workspace eve
 > - Async trigger: `files.handler.ts` calls `c.executionCtx.waitUntil(thumbnailService.generate(...))` after `completeUpload` for `image/*` MIME types — non-blocking for the upload response
 > - Video thumbnails: frontend extracts a frame at 0.5s via `<video>` + `<canvas>` during upload, then `POST`s the WebP blob to `/api/workspaces/:id/files/:fileId/thumbnail` after upload completes
 > - New API endpoints: `GET /files/:fileId/thumbnail` (signed URL, 5 min expiry) and `POST /files/:fileId/thumbnail` (accepts video frame blob)
-> - Frontend: `useThumbnailUrl` hook with `retry: false`, `FileThumbnail` component with loading pulse and icon fallback, integrated into `FileGridCard` and `FileListRow`
+> - Frontend: `useThumbnailUrl` hook, `FileThumbnail` component with loading pulse and icon fallback, integrated into `FileGridCard` and `FileListRow`
 > - Added `arrayBuffer()`, `text()`, `json()`, `blob()` to custom `R2ObjectBody` interface in `cloudflare.d.ts` to satisfy type resolution
 > - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
+> - Added scheduled thumbnail backfill for visual files with missing `thumbnailKey`, including R2-imported images, with bounded batches and per-file failure accounting.
+> - Frontend thumbnail loading now polls briefly for `THUMBNAIL_NOT_FOUND` so newly generated thumbnails appear without a manual refresh.
+> - Added service and wiring tests for thumbnail generation, backfill, and pending-thumbnail polling.
 
 **Goal:** Uploaded images and videos get thumbnails generated asynchronously.
 

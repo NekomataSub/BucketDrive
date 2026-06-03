@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@bucketdrive/shared": "workspace:*"
+    "@bucketdrive/shared": "workspace:*",
+    "@cf-wasm/photon": "^0.3.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250100.0",

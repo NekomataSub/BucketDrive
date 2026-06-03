@@ -7,7 +7,7 @@ import { R2ImportService, syncR2WorkspaceIfStale } from "../../services/r2-impor
 import { ThumbnailService } from "../../services/thumbnail.service"
 import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import { getDB } from "../../lib/db"
-import { hydrateFiles } from "./file-query"
+import { filterFilesByFolder, hydrateFiles } from "./file-query"
 import { auditLog, favorite, fileObject, fileObjectTag, fileTag, folder, workspaceSettings } from "@bucketdrive/shared/db/schema"
 import { and, eq, inArray, isNull } from "drizzle-orm"
 import {
@@ -74,9 +74,7 @@ files.get("/", requirePermission("files.read"), async (c) => {
     )
     .all()
 
-  const filtered = query.folderId
-    ? rows.filter((f) => f.folderId === query.folderId)
-    : rows
+  const filtered = filterFilesByFolder(rows, query.folderId)
 
   const sorted = [...filtered].sort((a, b) => {
     const dir = query.order === "desc" ? -1 : 1

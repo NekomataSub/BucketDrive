@@ -107,9 +107,15 @@ class ApiClient {
   }
 
   async postBlob<T>(url: string, blob: Blob): Promise<T> {
+    const headers = new Headers()
+    if (blob.type) {
+      headers.set("Content-Type", blob.type)
+    }
+
     return this.request<T>(url, {
       method: "POST",
       body: blob,
+      headers,
     })
   }
 }
@@ -671,7 +677,9 @@ export function useThumbnailUrl(
       ),
     enabled: workspaceId !== null && fileId !== null,
     staleTime: 60_000,
-    retry: false,
+    retry: (failureCount, error) =>
+      error.code === "THUMBNAIL_NOT_FOUND" && failureCount < 5,
+    retryDelay: 2_000,
   })
 }
 
@@ -991,12 +999,19 @@ export function useRestoreFile(
 export function useUploadVideoThumbnail(
   workspaceId: string | null,
 ): UseMutationResult<{ success: boolean }, ApiRequestError, { fileId: string; blob: Blob }> {
+  const queryClient = useQueryClient()
+
   return useMutation<{ success: boolean }, ApiRequestError, { fileId: string; blob: Blob }>({
     mutationFn: ({ fileId, blob }) =>
       api.postBlob<{ success: boolean }>(
         buildWorkspacePath(workspaceId, `/files/${fileId}/thumbnail`),
         blob,
       ),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["thumbnail", workspaceId, variables.fileId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+    },
   })
 }
 

@@ -112,3 +112,20 @@ test("markdown preview does not inject generated HTML", async () => {
   assert.doesNotMatch(preview, /dangerouslySetInnerHTML/)
   assert.match(preview, /content\.split\("\\n"\)\.map/)
 })
+
+test("visual thumbnails poll for pending generated thumbnails", async () => {
+  const [thumbnail, api, videoThumbnail] = await Promise.all([
+    read("src/components/features/file-thumbnail.tsx"),
+    read("src/lib/api.ts"),
+    read("src/lib/video-thumbnail.ts"),
+  ])
+
+  assert.match(thumbnail, /const shouldFetchThumbnail = isVisual/)
+  assert.match(thumbnail, /usePreviewUrl/)
+  assert.match(thumbnail, /extractVideoFrameFromUrl/)
+  assert.doesNotMatch(thumbnail, /Boolean\(thumbnailKey\)/)
+  assert.match(api, /THUMBNAIL_NOT_FOUND/)
+  assert.match(api, /failureCount < 5/)
+  assert.match(api, /postBlob/)
+  assert.match(videoThumbnail, /crossOrigin = "anonymous"/)
+})

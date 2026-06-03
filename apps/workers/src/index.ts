@@ -1,5 +1,6 @@
 import { createD1DB, getDB } from "../../api/src/lib/db"
 import { createStorageProvider } from "../../api/src/services/storage"
+import { ThumbnailService } from "../../api/src/services/thumbnail.service"
 import { TrashService } from "../../api/src/services/trash.service"
 import { SYSTEM_R2_SYNC_ACTOR_ID, syncAllR2Workspaces } from "../../api/src/services/r2-import.service"
 
@@ -37,6 +38,26 @@ async function runScheduledJobs(env: Env) {
       console.warn("Scheduled job failed:", result.reason)
     }
   }
+
+  try {
+    await runThumbnailBackfill(env)
+  } catch (err) {
+    console.warn("Scheduled job failed:", err)
+  }
+}
+
+async function runThumbnailBackfill(env: Env) {
+  const thumbnailService = new ThumbnailService({ storage: env.STORAGE })
+  const result = await thumbnailService.processPending({ limit: 25 })
+
+  console.warn(
+    [
+      `Thumbnail backfill completed: scanned=${String(result.scanned)}`,
+      `generated=${String(result.generated)}`,
+      `skipped=${String(result.skipped)}`,
+      `failed=${String(result.failed)}`,
+    ].join(" "),
+  )
 }
 
 async function runTrashCleanup(env: Env) {

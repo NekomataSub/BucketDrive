@@ -1,14 +1,30 @@
 export async function extractVideoFrame(file: File): Promise<Blob | null> {
   if (!file.type.startsWith("video/")) return null
 
+  return extractVideoFrameFromSource(URL.createObjectURL(file), true)
+}
+
+export async function extractVideoFrameFromUrl(url: string): Promise<Blob | null> {
+  return extractVideoFrameFromSource(url, false)
+}
+
+async function extractVideoFrameFromSource(src: string, revokeSource: boolean): Promise<Blob | null> {
   const video = document.createElement("video")
-  video.src = URL.createObjectURL(file)
+  video.crossOrigin = "anonymous"
   video.muted = true
   video.playsInline = true
+  video.preload = "metadata"
 
   return new Promise<Blob | null>((resolve) => {
+    const cleanup = () => {
+      if (revokeSource) {
+        URL.revokeObjectURL(video.src)
+      }
+    }
+
     video.addEventListener("loadeddata", () => {
-      const seekTime = Math.min(0.5, video.duration / 2)
+      const duration = Number.isFinite(video.duration) ? video.duration : 1
+      const seekTime = Math.min(0.5, duration / 2)
       video.currentTime = seekTime
     })
 
@@ -21,7 +37,7 @@ export async function extractVideoFrame(file: File): Promise<Blob | null> {
 
       const ctx = canvas.getContext("2d")
       if (!ctx) {
-        URL.revokeObjectURL(video.src)
+        cleanup()
         resolve(null)
         return
       }
@@ -29,7 +45,7 @@ export async function extractVideoFrame(file: File): Promise<Blob | null> {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       canvas.toBlob(
         (blob) => {
-          URL.revokeObjectURL(video.src)
+          cleanup()
           resolve(blob)
         },
         "image/webp",
@@ -38,8 +54,11 @@ export async function extractVideoFrame(file: File): Promise<Blob | null> {
     })
 
     video.addEventListener("error", () => {
-      URL.revokeObjectURL(video.src)
+      cleanup()
       resolve(null)
     })
+
+    video.src = src
+    video.load()
   })
 }

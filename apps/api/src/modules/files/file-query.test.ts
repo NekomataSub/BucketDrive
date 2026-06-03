@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { buildFtsQuery, getMimePrefixesForCategory } from "./file-query"
+import { buildFtsQuery, filterFilesByFolder, getMimePrefixesForCategory } from "./file-query"
 
 describe("buildFtsQuery", () => {
   it("builds a prefix query for sanitized tokens", () => {
@@ -18,5 +18,25 @@ describe("getMimePrefixesForCategory", () => {
 
   it("returns an empty list for all files", () => {
     expect(getMimePrefixesForCategory("all")).toEqual([])
+  })
+})
+
+describe("filterFilesByFolder", () => {
+  const files = [
+    { id: "root-file", folderId: null },
+    { id: "nested-file", folderId: "00000000-0000-4000-8000-000000000001" },
+    { id: "other-nested-file", folderId: "00000000-0000-4000-8000-000000000002" },
+  ]
+
+  it("returns only root files when no folder id is provided", () => {
+    expect(filterFilesByFolder(files).map((file) => file.id)).toEqual(["root-file"])
+  })
+
+  it("returns only files in the requested folder", () => {
+    expect(
+      filterFilesByFolder(files, "00000000-0000-4000-8000-000000000001").map(
+        (file) => file.id,
+      ),
+    ).toEqual(["nested-file"])
   })
 })

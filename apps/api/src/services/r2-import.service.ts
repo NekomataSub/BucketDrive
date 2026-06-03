@@ -204,8 +204,8 @@ export class R2ImportService {
           seenKeys.add(object.key)
 
           try {
-            const normalized = normalizeObjectKey(object.key, params.workspaceId)
-            const mimeType = object.httpMetadata?.contentType ?? inferMimeType(normalized.fileName)
+            const normalized = normalizeObjectKey(object.key)
+            const mimeType = getObjectMimeType(object.httpMetadata?.contentType, normalized.fileName)
             const existing = existingByKey.get(object.key)
 
             if (existing) {
@@ -436,22 +436,11 @@ export class R2ImportService {
   }
 }
 
-function normalizeObjectKey(key: string, workspaceId: string): { folderParts: string[]; fileName: string } {
+function normalizeObjectKey(key: string): { folderParts: string[]; fileName: string } {
   const parts = key
     .split("/")
     .map((part) => part.trim())
     .filter(Boolean)
-
-  if (
-    parts[0] === "workspace" &&
-    parts[1] === workspaceId &&
-    parts[2] === APP_FILES_PREFIX_PART
-  ) {
-    return {
-      folderParts: [],
-      fileName: parts[parts.length - 1] ?? "",
-    }
-  }
 
   const fileName = parts.pop() ?? ""
 
@@ -471,6 +460,14 @@ function getExtension(fileName: string): string | null {
   return fileName.slice(dotIndex).toLowerCase()
 }
 
+function getObjectMimeType(contentType: string | undefined, fileName: string): string {
+  if (!contentType || contentType === DEFAULT_MIME_TYPE) {
+    return inferMimeType(fileName)
+  }
+
+  return contentType
+}
+
 function inferMimeType(fileName: string): string {
   const extension = getExtension(fileName)
   if (!extension) return DEFAULT_MIME_TYPE
@@ -488,6 +485,11 @@ function inferMimeType(fileName: string): string {
     ".md": "text/markdown",
     ".mp3": "audio/mpeg",
     ".mp4": "video/mp4",
+    ".m4v": "video/mp4",
+    ".mov": "video/quicktime",
+    ".webm": "video/webm",
+    ".mkv": "video/x-matroska",
+    ".avi": "video/x-msvideo",
     ".pdf": "application/pdf",
     ".png": "image/png",
     ".svg": "image/svg+xml",

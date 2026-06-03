@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3"
 import { eq } from "drizzle-orm"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import * as schema from "@bucketdrive/shared/db/schema"
-import { bucket, fileObject, workspace, workspaceSettings } from "@bucketdrive/shared/db/schema"
+import { bucket, fileObject, folder, workspace, workspaceSettings } from "@bucketdrive/shared/db/schema"
 import { R2ImportService, syncAllR2Workspaces } from "../r2-import.service"
 import type { StorageProvider } from "../storage"
 
@@ -174,6 +174,37 @@ describe("R2ImportService sync", () => {
     expect(files).toHaveLength(1)
     expect(files[0]?.originalName).toBe("AGENTS.md")
     expect(files[0]?.isDeleted).toBe(false)
+  })
+
+  it("preserves R2 folder paths instead of flattening nested objects into root", async () => {
+    const service = new R2ImportService(createStorage([
+      { key: "bucketdrive/videos/demo.mp4", size: 128 },
+    ]))
+
+    const result = await service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" })
+    const folders = db.select().from(folder).all()
+    const files = db.select().from(fileObject).all()
+
+    expect(result.imported).toBe(1)
+    expect(folders.map((row) => row.path).sort()).toEqual(["/bucketdrive", "/bucketdrive/videos"])
+    expect(files[0]?.originalName).toBe("demo.mp4")
+    expect(files[0]?.folderId).toBe(folders.find((row) => row.path === "/bucketdrive/videos")?.id)
+  })
+
+  it("infers video mime types when R2 reports generic octet-stream", async () => {
+    const service = new R2ImportService(createStorage([
+      {
+        key: "videos/trailer.mov",
+        size: 128,
+        httpMetadata: { contentType: "application/octet-stream" },
+      },
+    ]))
+
+    const result = await service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" })
+    const [file] = db.select().from(fileObject).all()
+
+    expect(result.imported).toBe(1)
+    expect(file?.mimeType).toBe("video/quicktime")
   })
 
   it("updates existing metadata without duplicating files", async () => {
