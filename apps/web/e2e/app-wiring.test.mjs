@@ -120,12 +120,13 @@ test("visual thumbnails poll for pending generated thumbnails", async () => {
     read("src/lib/video-thumbnail.ts"),
   ])
 
-  assert.match(thumbnail, /const shouldFetchThumbnail = isVisual/)
+  assert.match(thumbnail, /BROWSER_THUMBNAIL_VIDEO_TYPES/)
+  assert.match(thumbnail, /const shouldFetchThumbnail = isImage \|\| \(isVideo && Boolean\(thumbnailKey\)\)/)
+  assert.match(thumbnail, /canGenerateBrowserVideoThumbnail/)
   assert.match(thumbnail, /usePreviewUrl/)
   assert.match(thumbnail, /extractVideoFrameFromUrl/)
   assert.match(thumbnail, /imageFailed/)
   assert.match(thumbnail, /setImageFailed\(true\)/)
-  assert.doesNotMatch(thumbnail, /Boolean\(thumbnailKey\)/)
   assert.doesNotMatch(thumbnail, /style\.display = "none"/)
   assert.match(api, /THUMBNAIL_NOT_FOUND/)
   assert.match(api, /failureCount < 5/)

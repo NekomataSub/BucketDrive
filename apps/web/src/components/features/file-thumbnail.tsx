@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react"
 import { usePreviewUrl, useThumbnailUrl, useUploadVideoThumbnail } from "@/lib/api"
 import { extractVideoFrameFromUrl } from "@/lib/video-thumbnail"
 
+const BROWSER_THUMBNAIL_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/ogg"])
+
 interface FileThumbnailProps {
   workspaceId: string
   fileId: string
@@ -20,16 +22,18 @@ export function FileThumbnail({
   fallback,
   className,
 }: FileThumbnailProps) {
-  const isVisual = mimeType.startsWith("image/") || mimeType.startsWith("video/")
+  const isImage = mimeType.startsWith("image/")
   const isVideo = mimeType.startsWith("video/")
-  const shouldFetchThumbnail = isVisual
+  const isVisual = isImage || isVideo
+  const canGenerateBrowserVideoThumbnail = BROWSER_THUMBNAIL_VIDEO_TYPES.has(mimeType)
+  const shouldFetchThumbnail = isImage || (isVideo && Boolean(thumbnailKey))
   const { data, isLoading } = useThumbnailUrl(
     shouldFetchThumbnail ? workspaceId : null,
     shouldFetchThumbnail ? fileId : null,
   )
   const { data: previewData } = usePreviewUrl(
-    isVideo && !thumbnailKey ? workspaceId : null,
-    isVideo && !thumbnailKey ? fileId : null,
+    isVideo && canGenerateBrowserVideoThumbnail && !thumbnailKey ? workspaceId : null,
+    isVideo && canGenerateBrowserVideoThumbnail && !thumbnailKey ? fileId : null,
   )
   const uploadVideoThumbnail = useUploadVideoThumbnail(workspaceId)
   const generationStarted = useRef(false)
@@ -44,7 +48,13 @@ export function FileThumbnail({
   }, [fileId, data?.signedUrl])
 
   useEffect(() => {
-    if (!isVideo || thumbnailKey || generationStarted.current || !previewData?.signedUrl) {
+    if (
+      !isVideo ||
+      !canGenerateBrowserVideoThumbnail ||
+      thumbnailKey ||
+      generationStarted.current ||
+      !previewData?.signedUrl
+    ) {
       return
     }
 
@@ -65,7 +75,14 @@ export function FileThumbnail({
     return () => {
       cancelled = true
     }
-  }, [fileId, isVideo, previewData?.signedUrl, thumbnailKey, uploadVideoThumbnail])
+  }, [
+    canGenerateBrowserVideoThumbnail,
+    fileId,
+    isVideo,
+    previewData?.signedUrl,
+    thumbnailKey,
+    uploadVideoThumbnail,
+  ])
 
   if (!isVisual) return fallback
 
