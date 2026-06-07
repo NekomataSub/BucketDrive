@@ -898,7 +898,11 @@ export function FilesPage() {
         )}
 
         <div className="flex-1 space-y-4" ref={containerRef}>
-          <UploadDropZone onFilesDrop={handleFilesDrop} className="bg-surface-default" />
+          <UploadDropZone
+            onFilesDrop={handleFilesDrop}
+            onClickUpload={handleFileSelect}
+            className="bg-surface-default"
+          />
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {viewMode === "grid" ? (
               <FileGrid

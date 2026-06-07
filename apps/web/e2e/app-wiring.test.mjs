@@ -75,6 +75,21 @@ test("file explorer separates drag handles from open and preview actions", async
   assert.match(shortcuts, /itemToOpen\?\.type === "file" && onPreviewItem/)
 })
 
+test("upload drop zone opens the file picker on click while keeping drag upload", async () => {
+  const [dropZone, filesRoute] = await Promise.all([
+    read("src/components/features/upload-drop-zone.tsx"),
+    read("src/routes/app/files.tsx"),
+  ])
+
+  assert.match(dropZone, /onClickUpload\?: \(\) => void/)
+  assert.match(dropZone, /<button/)
+  assert.match(dropZone, /onClick=\{onClickUpload\}/)
+  assert.match(dropZone, /onDrop=\{handleDrop\}/)
+  assert.match(dropZone, /Click or drag files or folders here to upload/)
+  assert.match(filesRoute, /fileInputRef\.current\?\.click\(\)/)
+  assert.match(filesRoute, /onClickUpload=\{handleFileSelect\}/)
+})
+
 test("R2 local CORS configuration is versioned and wired to a package script", async () => {
   const [rootPackage, corsScript, cors] = await Promise.all([
     read("../../package.json"),
@@ -121,7 +136,10 @@ test("visual thumbnails poll for pending generated thumbnails", async () => {
   ])
 
   assert.match(thumbnail, /BROWSER_THUMBNAIL_VIDEO_TYPES/)
-  assert.match(thumbnail, /const shouldFetchThumbnail = isImage \|\| \(isVideo && Boolean\(thumbnailKey\)\)/)
+  assert.match(
+    thumbnail,
+    /const shouldFetchThumbnail = isImage \|\| \(isVideo && Boolean\(thumbnailKey\)\)/,
+  )
   assert.match(thumbnail, /canGenerateBrowserVideoThumbnail/)
   assert.match(thumbnail, /usePreviewUrl/)
   assert.match(thumbnail, /extractVideoFrameFromUrl/)
