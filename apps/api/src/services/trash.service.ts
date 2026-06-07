@@ -21,6 +21,12 @@ type DB = ReturnType<typeof getDB>
 type FileRow = InferSelectModel<typeof fileObject>
 type FolderRow = InferSelectModel<typeof folder>
 type zInfer<T extends { _type: unknown }> = T["_type"]
+type TrashBatchResourceType = "file" | "folder"
+type TrashBatchResult = {
+  success: boolean
+  processed: Array<{ resourceType: TrashBatchResourceType; id: string }>
+  failed: Array<{ resourceType: TrashBatchResourceType; id: string; code: string; message: string }>
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -417,6 +423,78 @@ export class TrashService {
     return { success: true as const, folderId: params.folderId }
   }
 
+  async restoreAllTrash(actorId: string): Promise<TrashBatchResult> {
+    const result = this.createBatchResult()
+    const deletedFolders = await this.db
+      .select()
+      .from(folder)
+      .where(eq(folder.isDeleted, true))
+      .all()
+
+    for (const row of deletedFolders.sort((a, b) => a.path.length - b.path.length)) {
+      const current = await this.db
+        .select({ isDeleted: folder.isDeleted })
+        .from(folder)
+        .where(eq(folder.id, row.id))
+        .get()
+      if (!current?.isDeleted) continue
+
+      await this.captureBatch(result, "folder", row.id, () =>
+        this.restoreFolder({ folderId: row.id, actorId }),
+      )
+    }
+
+    const deletedFiles = await this.db
+      .select({ id: fileObject.id })
+      .from(fileObject)
+      .where(eq(fileObject.isDeleted, true))
+      .all()
+
+    for (const row of deletedFiles) {
+      await this.captureBatch(result, "file", row.id, () =>
+        this.restoreFile({ fileId: row.id, actorId }),
+      )
+    }
+
+    return this.finalizeBatchResult(result)
+  }
+
+  async emptyTrash(actorId: string): Promise<TrashBatchResult> {
+    const result = this.createBatchResult()
+    const deletedFolders = await this.db
+      .select()
+      .from(folder)
+      .where(eq(folder.isDeleted, true))
+      .all()
+
+    for (const row of deletedFolders.sort((a, b) => a.path.length - b.path.length)) {
+      const current = await this.db
+        .select({ isDeleted: folder.isDeleted })
+        .from(folder)
+        .where(eq(folder.id, row.id))
+        .get()
+      if (!current?.isDeleted) continue
+
+      await this.captureBatch(result, "folder", row.id, () =>
+        this.permanentlyDeleteFolder({ folderId: row.id, actorId }),
+      )
+    }
+
+    const deletedFiles = await this.db
+      .select({ id: fileObject.id })
+      .from(fileObject)
+      .where(eq(fileObject.isDeleted, true))
+      .all()
+
+    for (const row of deletedFiles) {
+      await this.captureBatch(result, "file", row.id, () =>
+        this.permanentlyDeleteFile({ fileId: row.id, actorId }),
+      )
+    }
+
+    return this.finalizeBatchResult(result)
+  }
+
   async purgeExpiredTrash(actorId = "system") {
     const retentionDays = await this.getRetentionDays()
     const [deletedFiles, deletedFolders] = await Promise.all([
@@ -624,6 +702,40 @@ export class TrashService {
       queue.push(...(childrenByParentId.get(current.id) ?? []))
     }
     return result
+  }
+
+  private createBatchResult() {
+    return {
+      processed: [] as TrashBatchResult["processed"],
+      failed: [] as TrashBatchResult["failed"],
+    }
+  }
+
+  private finalizeBatchResult(result: ReturnType<TrashService["createBatchResult"]>) {
+    return {
+      success: result.failed.length === 0,
+      processed: result.processed,
+      failed: result.failed,
+    }
+  }
+
+  private async captureBatch(
+    result: ReturnType<TrashService["createBatchResult"]>,
+    resourceType: TrashBatchResourceType,
+    id: string,
+    operation: () => Promise<unknown>,
+  ) {
+    try {
+      await operation()
+      result.processed.push({ resourceType, id })
+    } catch (err) {
+      result.failed.push({
+        resourceType,
+        id,
+        code: err instanceof TrashServiceError ? err.code : "INTERNAL_ERROR",
+        message: err instanceof Error ? err.message : "Operation failed",
+      })
+    }
   }
 
   private async purgeFiles(files: FileRow[], actorId: string, action: string) {

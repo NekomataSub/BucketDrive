@@ -4,7 +4,7 @@ import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
 import { createStorageProvider } from "../../services/storage"
 import { TrashService, TrashServiceError } from "../../services/trash.service"
-import { ListTrashRequest } from "@bucketdrive/shared"
+import { BatchOperationResponse, ListTrashRequest, type WorkspaceRole } from "@bucketdrive/shared"
 
 interface TrashEnv {
   STORAGE: R2Bucket
@@ -15,7 +15,7 @@ interface TrashEnv {
 }
 
 interface TrashVariables {
-  user: { id: string; email: string; name: string }
+  user: { id: string; email: string; name: string; role: WorkspaceRole }
   session: { id: string; userId: string; expiresAt: Date }
 }
 
@@ -30,6 +30,41 @@ trash.get("/", requirePermission("files.read"), async (c) => {
   try {
     const result = await service.listTrash(query)
     return c.json(result)
+  } catch (err) {
+    if (err instanceof TrashServiceError) {
+      return c.json({ code: err.code, message: err.message }, err.status as never)
+    }
+    throw err
+  }
+})
+
+trash.post(
+  "/restore-all",
+  requirePermission("files.restore"),
+  requirePermission("folders.restore"),
+  async (c) => {
+    const user = c.get("user")
+    const service = new TrashService(getDB(), createStorageProvider(c.env))
+
+    try {
+      const result = await service.restoreAllTrash(user.id)
+      return c.json(BatchOperationResponse.parse(result))
+    } catch (err) {
+      if (err instanceof TrashServiceError) {
+        return c.json({ code: err.code, message: err.message }, err.status as never)
+      }
+      throw err
+    }
+  },
+)
+
+trash.post("/empty", requirePermission("trash.permanent_delete"), async (c) => {
+  const user = c.get("user")
+  const service = new TrashService(getDB(), createStorageProvider(c.env))
+
+  try {
+    const result = await service.emptyTrash(user.id)
+    return c.json(BatchOperationResponse.parse(result))
   } catch (err) {
     if (err instanceof TrashServiceError) {
       return c.json({ code: err.code, message: err.message }, err.status as never)

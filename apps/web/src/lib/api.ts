@@ -730,6 +730,42 @@ export function useBatchPermanentDelete(
   })
 }
 
+export function useRestoreAllTrash(
+  workspaceId: string | null,
+): UseMutationResult<BatchOperationResponse, ApiRequestError, void> {
+  const queryClient = useQueryClient()
+
+  return useMutation<BatchOperationResponse, ApiRequestError>({
+    mutationFn: () => api.post<BatchOperationResponse>("/api/trash/restore-all"),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
+  })
+}
+
+export function useEmptyTrash(
+  workspaceId: string | null,
+): UseMutationResult<BatchOperationResponse, ApiRequestError, void> {
+  const queryClient = useQueryClient()
+
+  return useMutation<BatchOperationResponse, ApiRequestError>({
+    mutationFn: () => api.post<BatchOperationResponse>("/api/trash/empty"),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
+  })
+}
+
 export function useBatchMove(
   workspaceId: string | null,
 ): UseMutationResult<

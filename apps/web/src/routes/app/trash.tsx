@@ -2,10 +2,12 @@
 import { useMemo, useRef, useState } from "react"
 import { RotateCcw, Trash2 } from "lucide-react"
 import {
+  useEmptyTrash,
   useBatchPermanentDelete,
   useBatchRestore,
   usePermanentlyDeleteFile,
   usePermanentlyDeleteFolder,
+  useRestoreAllTrash,
   useRestoreFile,
   useRestoreFolder,
   useTrash,
@@ -44,6 +46,8 @@ export function TrashPage() {
   const deleteFolderForever = usePermanentlyDeleteFolder(workspaceId)
   const batchRestore = useBatchRestore(workspaceId)
   const batchPermanentDelete = useBatchPermanentDelete(workspaceId)
+  const restoreAllTrash = useRestoreAllTrash(workspaceId)
+  const emptyTrash = useEmptyTrash(workspaceId)
 
   const items = trashQuery.data?.data ?? []
   const selectionItems = useMemo(
@@ -60,6 +64,8 @@ export function TrashPage() {
   const selectedFolderIds = selection.selectedIdsByType("folder")
   const selectedCount = selection.selectedCount
   const canPermanentlyDelete = workspace ? can(workspace.role, "trash.permanent_delete") : false
+  const isGlobalActionPending = restoreAllTrash.isPending || emptyTrash.isPending
+  const globalActionsDisabled = items.length === 0 || trashQuery.isFetching || isGlobalActionPending
 
   const handleRestore = (item: TrashItem) => {
     const key = `${item.resourceType}-${item.id}`
@@ -106,6 +112,20 @@ export function TrashPage() {
       { files: selectedFileIds, folders: selectedFolderIds },
       { onSuccess: () => selection.clearSelection() },
     )
+  }
+
+  const handleRestoreAll = () => {
+    if (globalActionsDisabled) return
+    restoreAllTrash.mutate(undefined, { onSuccess: () => selection.clearSelection() })
+  }
+
+  const handleEmptyTrash = () => {
+    if (globalActionsDisabled || !canPermanentlyDelete) return
+    const confirmed = window.confirm(
+      "Permanently delete everything in trash? This cannot be undone.",
+    )
+    if (!confirmed) return
+    emptyTrash.mutate(undefined, { onSuccess: () => selection.clearSelection() })
   }
 
   const orderLabel =
@@ -157,6 +177,31 @@ export function TrashPage() {
         <ActionButton onClick={() => setOrder((current) => (current === "desc" ? "asc" : "desc"))}>
           {orderLabel}
         </ActionButton>
+
+        <div className="flex-1" />
+
+        <ActionButton
+          onClick={handleRestoreAll}
+          disabled={globalActionsDisabled}
+          loading={restoreAllTrash.isPending}
+          loadingLabel="Restoring..."
+          icon={<RotateCcw className="h-4 w-4" />}
+        >
+          Restore all
+        </ActionButton>
+
+        {canPermanentlyDelete && (
+          <ActionButton
+            variant="danger"
+            onClick={handleEmptyTrash}
+            disabled={globalActionsDisabled}
+            loading={emptyTrash.isPending}
+            loadingLabel="Emptying..."
+            icon={<Trash2 className="h-4 w-4" />}
+          >
+            Empty trash
+          </ActionButton>
+        )}
       </PageToolbar>
 
       {selectedCount > 0 && (
@@ -320,12 +365,16 @@ export function TrashPage() {
       {(restoreFile.isError ||
         restoreFolder.isError ||
         deleteFileForever.isError ||
-        deleteFolderForever.isError) && (
+        deleteFolderForever.isError ||
+        restoreAllTrash.isError ||
+        emptyTrash.isError) && (
         <div className="border-error/40 bg-error/10 text-error mt-4 rounded-lg border px-4 py-3 text-sm">
           {restoreFile.error?.message ??
             restoreFolder.error?.message ??
             deleteFileForever.error?.message ??
-            deleteFolderForever.error?.message}
+            deleteFolderForever.error?.message ??
+            restoreAllTrash.error?.message ??
+            emptyTrash.error?.message}
         </div>
       )}
     </div>
