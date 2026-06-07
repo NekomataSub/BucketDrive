@@ -11,10 +11,19 @@ import {
 import { useExplorerStore } from "@/stores/explorer-store"
 import { useNavigate } from "@tanstack/react-router"
 import * as ContextMenu from "@radix-ui/react-context-menu"
-import type { Folder as FolderType } from "@bucketdrive/shared"
+import { can, type Folder as FolderType, type WorkspaceRole } from "@bucketdrive/shared"
 
 const contextMenuItemClass =
   "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-primary outline-none data-[highlighted]:bg-surface-active"
+
+const depthPaddingClasses = [
+  "pl-[8px]",
+  "pl-[20px]",
+  "pl-[32px]",
+  "pl-[44px]",
+  "pl-[56px]",
+  "pl-[68px]",
+] as const
 
 interface TreeNodeProps {
   folder: FolderType
@@ -25,6 +34,9 @@ interface TreeNodeProps {
   onDelete: (folderId: string, name: string) => void
   onCreateSubfolder: (parentFolderId: string) => void
   onNavigate: (folderId: string | null) => void
+  canCreateFolder: boolean
+  canRenameFolder: boolean
+  canDeleteFolder: boolean
 }
 
 function TreeNode({
@@ -36,11 +48,16 @@ function TreeNode({
   onDelete,
   onCreateSubfolder,
   onNavigate,
+  canCreateFolder,
+  canRenameFolder,
+  canDeleteFolder,
 }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const { data: childrenData } = useFolders(workspaceId, expanded ? folder.id : undefined)
   const children = childrenData?.data ?? []
   const isActive = currentFolderId === folder.id
+  const hasFolderActions = canCreateFolder || canRenameFolder || canDeleteFolder
+  const depthClass = depthPaddingClasses[Math.min(depth, depthPaddingClasses.length - 1)]
   const handleNavigate = () => {
     onNavigate(folder.id)
   }
@@ -52,8 +69,7 @@ function TreeNode({
           <div
             className={`hover:bg-surface-hover flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
               isActive ? "bg-surface-active text-text-primary" : "text-text-secondary"
-            } focus-visible:ring-border-muted focus-visible:ring-1 focus-visible:outline-none`}
-            style={{ paddingLeft: `${depth * 12 + 8}px` }}
+            } ${depthClass} focus-visible:ring-border-muted focus-visible:ring-1 focus-visible:outline-none`}
           >
             <button
               type="button"
@@ -82,37 +98,45 @@ function TreeNode({
             </button>
           </div>
         </ContextMenu.Trigger>
-        <ContextMenu.Portal>
-          <ContextMenu.Content className="border-border-default bg-surface-default z-50 min-w-[160px] overflow-hidden rounded-lg border p-1.5 shadow-lg">
-            <ContextMenu.Item
-              className={contextMenuItemClass}
-              onClick={() => {
-                onCreateSubfolder(folder.id)
-              }}
-            >
-              <FolderPlus className="text-text-tertiary h-3.5 w-3.5" />
-              New Subfolder
-            </ContextMenu.Item>
-            <ContextMenu.Item
-              className={contextMenuItemClass}
-              onClick={() => {
-                onRename(folder.id, folder.name)
-              }}
-            >
-              <Pencil className="text-text-tertiary h-3.5 w-3.5" />
-              Rename
-            </ContextMenu.Item>
-            <ContextMenu.Item
-              className={contextMenuItemClass}
-              onClick={() => {
-                onDelete(folder.id, folder.name)
-              }}
-            >
-              <Trash2 className="text-text-tertiary h-3.5 w-3.5" />
-              Delete
-            </ContextMenu.Item>
-          </ContextMenu.Content>
-        </ContextMenu.Portal>
+        {hasFolderActions && (
+          <ContextMenu.Portal>
+            <ContextMenu.Content className="border-border-default bg-surface-default z-50 min-w-[160px] overflow-hidden rounded-lg border p-1.5 shadow-lg">
+              {canCreateFolder && (
+                <ContextMenu.Item
+                  className={contextMenuItemClass}
+                  onClick={() => {
+                    onCreateSubfolder(folder.id)
+                  }}
+                >
+                  <FolderPlus className="text-text-tertiary h-3.5 w-3.5" />
+                  New Subfolder
+                </ContextMenu.Item>
+              )}
+              {canRenameFolder && (
+                <ContextMenu.Item
+                  className={contextMenuItemClass}
+                  onClick={() => {
+                    onRename(folder.id, folder.name)
+                  }}
+                >
+                  <Pencil className="text-text-tertiary h-3.5 w-3.5" />
+                  Rename
+                </ContextMenu.Item>
+              )}
+              {canDeleteFolder && (
+                <ContextMenu.Item
+                  className={contextMenuItemClass}
+                  onClick={() => {
+                    onDelete(folder.id, folder.name)
+                  }}
+                >
+                  <Trash2 className="text-text-tertiary h-3.5 w-3.5" />
+                  Delete
+                </ContextMenu.Item>
+              )}
+            </ContextMenu.Content>
+          </ContextMenu.Portal>
+        )}
       </ContextMenu.Root>
       {expanded &&
         children.map((child) => (
@@ -126,6 +150,9 @@ function TreeNode({
             onDelete={onDelete}
             onCreateSubfolder={onCreateSubfolder}
             onNavigate={onNavigate}
+            canCreateFolder={canCreateFolder}
+            canRenameFolder={canRenameFolder}
+            canDeleteFolder={canDeleteFolder}
           />
         ))}
     </div>
@@ -135,13 +162,18 @@ function TreeNode({
 export function FolderTree() {
   const navigate = useNavigate()
   const { data: workspacesData } = useWorkspaces()
-  const workspaceId = workspacesData?.data?.[0]?.id ?? null
+  const workspace = workspacesData?.data?.[0]
+  const workspaceId = workspace?.id ?? null
+  const workspaceRole = (workspace?.role ?? "viewer") as WorkspaceRole
   const currentFolderId = useExplorerStore((s) => s.currentFolderId)
   const { data: rootFoldersData } = useFolders(workspaceId, null)
   const rootFolders = rootFoldersData?.data ?? []
   const createFolderMutation = useCreateFolder(workspaceId)
   const updateFolderMutation = useUpdateFolder(workspaceId)
   const deleteFolderMutation = useDeleteFolder(workspaceId)
+  const canCreateFolder = can(workspaceRole, "folders.create")
+  const canRenameFolder = can(workspaceRole, "folders.rename")
+  const canDeleteFolder = can(workspaceRole, "folders.delete")
 
   const handleNavigate = useCallback(
     (folderId: string | null) => {
@@ -152,13 +184,6 @@ export function FolderTree() {
     },
     [navigate],
   )
-
-  const handleCreateRootFolder = useCallback(() => {
-    const name = window.prompt("Folder name:")
-    if (name?.trim()) {
-      createFolderMutation.mutate({ name: name.trim(), parentFolderId: null })
-    }
-  }, [createFolderMutation])
 
   const handleRename = useCallback(
     (folderId: string, currentName: string) => {
@@ -198,14 +223,6 @@ export function FolderTree() {
         <span className="text-text-tertiary text-[11px] font-semibold tracking-wider uppercase">
           Folders
         </span>
-        <button
-          type="button"
-          onClick={handleCreateRootFolder}
-          className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded p-0.5 transition-colors"
-          aria-label="New root folder"
-        >
-          <FolderPlus className="h-3.5 w-3.5" />
-        </button>
       </div>
       <button
         type="button"
@@ -230,6 +247,9 @@ export function FolderTree() {
           onDelete={handleDelete}
           onCreateSubfolder={handleCreateSubfolder}
           onNavigate={handleNavigate}
+          canCreateFolder={canCreateFolder}
+          canRenameFolder={canRenameFolder}
+          canDeleteFolder={canDeleteFolder}
         />
       ))}
     </div>

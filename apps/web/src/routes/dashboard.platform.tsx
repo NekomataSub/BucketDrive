@@ -8,6 +8,7 @@ import {
   useUploadPlatformAsset,
 } from "@/lib/api"
 import { Users, Settings, Copy, Check, Upload, Image } from "lucide-react"
+import { ActionButton, PageHeader } from "@/components/shared/page-layout"
 
 export function PlatformAdminPage() {
   const { data: settings, isLoading } = usePlatformSettings()
@@ -29,14 +30,11 @@ export function PlatformAdminPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <section>
-        <p className="text-text-tertiary text-xs font-medium tracking-[0.24em] uppercase">
-          Platform Administration
-        </p>
-        <h1 className="text-text-primary mt-2 text-3xl font-semibold tracking-tight">
-          Platform Settings
-        </h1>
-      </section>
+      <PageHeader
+        eyebrow="Platform Administration"
+        title="Platform Settings"
+        description="Manage platform-wide branding, signup behavior, and platform invitations."
+      />
 
       <section className="grid gap-6 md:grid-cols-2">
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
@@ -46,7 +44,7 @@ export function PlatformAdminPage() {
           </div>
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-text-secondary block text-sm font-medium">Platform Name</label>
+              <label className="text-text-secondary block text-sm font-medium">Platform name</label>
               <input
                 type="text"
                 defaultValue={settings?.platformName}
@@ -60,7 +58,7 @@ export function PlatformAdminPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <AssetUpload
-                label="Logo"
+                label="Platform logo"
                 previewUrl={settings?.platformLogoUrl}
                 disabled={uploadAsset.isPending}
                 onSelect={(file) => {
@@ -68,7 +66,7 @@ export function PlatformAdminPage() {
                 }}
               />
               <AssetUpload
-                label="Favicon"
+                label="Platform favicon"
                 previewUrl={settings?.faviconUrl}
                 disabled={uploadAsset.isPending}
                 onSelect={(file) => {
@@ -78,7 +76,7 @@ export function PlatformAdminPage() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-text-primary text-sm font-medium">Public Signup</p>
+                <p className="text-text-primary text-sm font-medium">Platform public signup</p>
                 <p className="text-text-tertiary text-xs">Allow users to join without invitation</p>
               </div>
               <button
@@ -101,7 +99,7 @@ export function PlatformAdminPage() {
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center gap-2">
             <Users className="text-text-secondary h-5 w-5" />
-            <h2 className="text-text-primary text-base font-semibold">Invite User</h2>
+            <h2 className="text-text-primary text-base font-semibold">Platform Invitations</h2>
           </div>
           <form
             onSubmit={(e) => {
@@ -149,13 +147,16 @@ export function PlatformAdminPage() {
             {createInvitation.isError && (
               <p className="text-error text-sm">{createInvitation.error?.message ?? "Failed"}</p>
             )}
-            <button
+            <ActionButton
               type="submit"
+              variant="primary"
               disabled={createInvitation.isPending}
-              className="bg-accent w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              loading={createInvitation.isPending}
+              loadingLabel="Creating..."
+              className="w-full"
             >
-              {createInvitation.isPending ? "Creating..." : "Generate invite link"}
-            </button>
+              Generate platform invite link
+            </ActionButton>
           </form>
         </div>
       </section>

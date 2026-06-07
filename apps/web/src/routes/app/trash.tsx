@@ -12,6 +12,7 @@ import {
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
+import { ActionButton, PageHeader, PageToolbar } from "@/components/shared/page-layout"
 
 type TrashSort = "deleted_at" | "name" | "location" | "size"
 
@@ -97,35 +98,28 @@ export function TrashPage() {
 
   return (
     <div className="flex h-full flex-col p-6">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-text-primary text-lg font-semibold">Trash</h1>
-          <p className="text-text-tertiary text-xs">
-            Items are kept for {retentionDays} days, then auto-purged.
-          </p>
-        </div>
+      <PageHeader
+        title="Trash"
+        description={`Items are kept for ${String(retentionDays)} days, then auto-purged.`}
+      />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="Sort trash"
-            value={sort}
-            onChange={(event) => setSort(event.target.value as TrashSort)}
-            className="border-border-default bg-surface-default text-text-primary focus:border-accent focus:ring-accent rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
-          >
-            <option value="deleted_at">Deleted date</option>
-            <option value="name">Name</option>
-            <option value="location">Original location</option>
-            <option value="size">Size</option>
-          </select>
+      <PageToolbar>
+        <select
+          aria-label="Sort trash"
+          value={sort}
+          onChange={(event) => setSort(event.target.value as TrashSort)}
+          className="border-border-default bg-bg-tertiary text-text-primary focus:border-accent focus:ring-accent rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+        >
+          <option value="deleted_at">Deleted date</option>
+          <option value="name">Name</option>
+          <option value="location">Original location</option>
+          <option value="size">Size</option>
+        </select>
 
-          <button
-            onClick={() => setOrder((current) => (current === "desc" ? "asc" : "desc"))}
-            className="border-border-default bg-surface-default text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg border px-3 py-2 text-sm transition-colors"
-          >
-            {orderLabel}
-          </button>
-        </div>
-      </div>
+        <ActionButton onClick={() => setOrder((current) => (current === "desc" ? "asc" : "desc"))}>
+          {orderLabel}
+        </ActionButton>
+      </PageToolbar>
 
       {trashQuery.isError && (
         <div className="border-error/40 bg-error/10 text-error mb-4 rounded-lg border px-4 py-3 text-sm">

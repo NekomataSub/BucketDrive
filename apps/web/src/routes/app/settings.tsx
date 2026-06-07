@@ -1,28 +1,20 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { useEffect, useState, type ReactNode } from "react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
-import {
-  useDashboardSettings,
-  useUpdateDashboardSettings,
-  useUploadBucketBrandingLogo,
-} from "@/lib/api"
-import { Image, Upload } from "lucide-react"
+import { useDashboardSettings, useUpdateDashboardSettings } from "@/lib/api"
+import { ActionButton, PageHeader } from "@/components/shared/page-layout"
 
 export function SettingsPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const settingsQuery = useDashboardSettings(workspaceId)
   const updateSettings = useUpdateDashboardSettings(workspaceId)
-  const uploadBrandingLogo = useUploadBucketBrandingLogo(workspaceId)
 
   const [quotaGb, setQuotaGb] = useState("10")
   const [maxFileSizeMb, setMaxFileSizeMb] = useState("5120")
   const [chunkSizeMb, setChunkSizeMb] = useState("5")
   const [defaultShareExpirationDays, setDefaultShareExpirationDays] = useState("30")
   const [trashRetentionDays, setTrashRetentionDays] = useState("30")
-  const [enablePublicSignup, setEnablePublicSignup] = useState(false)
   const [allowedMimeTypes, setAllowedMimeTypes] = useState("")
-  const [brandingName, setBrandingName] = useState("")
-  const [brandingLogoUrl, setBrandingLogoUrl] = useState("")
   const [r2PublicBaseUrl, setR2PublicBaseUrl] = useState("")
 
   useEffect(() => {
@@ -34,10 +26,7 @@ export function SettingsPage() {
     setChunkSizeMb(String(settings.uploadChunkSizeBytes / (1024 * 1024)))
     setDefaultShareExpirationDays(String(settings.defaultShareExpirationDays))
     setTrashRetentionDays(String(settings.trashRetentionDays))
-    setEnablePublicSignup(settings.enablePublicSignup)
     setAllowedMimeTypes(settings.allowedMimeTypes.join(", "))
-    setBrandingName(settings.brandingName ?? "")
-    setBrandingLogoUrl(settings.brandingLogoUrl ?? "")
     setR2PublicBaseUrl(settings.r2PublicBaseUrl ?? "")
   }, [settingsQuery.data])
 
@@ -63,16 +52,27 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-text-primary text-2xl font-semibold">Bucket Settings</h1>
-        <p className="text-text-secondary mt-2 text-sm">
-          Update quota, upload policy, retention, branding, and public signup behavior.
-        </p>
-      </div>
+    <div className="flex h-full flex-col p-6">
+      <PageHeader
+        title="Bucket Settings"
+        description="Update quota, upload policy, retention, MIME rules, and public object delivery."
+        actions={
+          <ActionButton
+            type="submit"
+            form="bucket-settings-form"
+            variant="primary"
+            disabled={updateSettings.isPending}
+            loading={updateSettings.isPending}
+            loadingLabel="Saving..."
+          >
+            Save bucket settings
+          </ActionButton>
+        }
+      />
 
       <form
-        className="border-border-default bg-surface-default grid gap-6 rounded-2xl border p-6"
+        id="bucket-settings-form"
+        className="border-border-default bg-surface-default mb-4 grid gap-6 rounded-xl border p-6"
         onSubmit={(event) => {
           event.preventDefault()
           updateSettings.mutate({
@@ -82,13 +82,13 @@ export function SettingsPage() {
             uploadChunkSizeBytes: Math.max(Number(chunkSizeMb) || 0, 1) * 1024 * 1024,
             defaultShareExpirationDays: Math.max(Number(defaultShareExpirationDays) || 1, 1),
             trashRetentionDays: Math.max(Number(trashRetentionDays) || 1, 1),
-            enablePublicSignup,
+            enablePublicSignup: settings.enablePublicSignup,
             allowedMimeTypes: allowedMimeTypes
               .split(",")
               .map((entry) => entry.trim())
               .filter(Boolean),
-            brandingName: brandingName.trim() || null,
-            brandingLogoUrl: brandingLogoUrl.trim() || null,
+            brandingName: settings.brandingName,
+            brandingLogoUrl: settings.brandingLogoUrl,
             r2PublicBaseUrl: r2PublicBaseUrl.trim().replace(/\/+$/, "") || null,
           })
         }}
@@ -142,52 +142,6 @@ export function SettingsPage() {
         </Field>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Branding name">
-            <input
-              value={brandingName}
-              onChange={(event) => setBrandingName(event.target.value)}
-              className={inputClasses}
-            />
-          </Field>
-          <Field label="Branding logo">
-            <label className="border-border-muted bg-bg-tertiary hover:bg-surface-hover flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors">
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="bg-surface-default flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-                  {settings.brandingLogoAssetUrl || brandingLogoUrl ? (
-                    <img
-                      src={settings.brandingLogoAssetUrl ?? brandingLogoUrl}
-                      alt=""
-                      className="h-8 w-8 object-contain"
-                    />
-                  ) : (
-                    <Image className="text-text-tertiary h-5 w-5" />
-                  )}
-                </span>
-                <span className="text-text-secondary truncate text-sm">
-                  {uploadBrandingLogo.isPending ? "Uploading..." : "Upload image"}
-                </span>
-              </span>
-              <Upload className="text-accent h-4 w-4 shrink-0" />
-              <input
-                type="file"
-                accept="image/*"
-                disabled={uploadBrandingLogo.isPending}
-                className="sr-only"
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) uploadBrandingLogo.mutate({ file })
-                  event.target.value = ""
-                }}
-              />
-            </label>
-          </Field>
-          <Field label="External logo URL">
-            <input
-              value={brandingLogoUrl}
-              onChange={(event) => setBrandingLogoUrl(event.target.value)}
-              className={inputClasses}
-            />
-          </Field>
           <Field label="R2 public domain">
             <input
               value={r2PublicBaseUrl}
@@ -198,35 +152,16 @@ export function SettingsPage() {
           </Field>
         </div>
 
-        <label className="border-border-muted bg-bg-tertiary text-text-primary flex items-center gap-3 rounded-xl border px-4 py-3 text-sm">
-          <input
-            type="checkbox"
-            checked={enablePublicSignup}
-            onChange={(event) => setEnablePublicSignup(event.target.checked)}
-            className="accent-accent h-4 w-4"
-          />
-          Enable public signup for this bucket
-        </label>
-
         <div className="flex items-center justify-between gap-3">
           <p className="text-text-tertiary text-xs">
             Size inputs are entered as GB/MB and converted to bytes on save.
           </p>
-          <button
-            type="submit"
-            disabled={updateSettings.isPending}
-            className="bg-accent rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {updateSettings.isPending ? "Saving..." : "Save settings"}
-          </button>
         </div>
       </form>
 
-      {(settingsQuery.isError || updateSettings.isError || uploadBrandingLogo.isError) && (
+      {(settingsQuery.isError || updateSettings.isError) && (
         <div className="border-error/40 bg-error/10 text-error rounded-xl border px-4 py-3 text-sm">
-          {settingsQuery.error?.message ??
-            updateSettings.error?.message ??
-            uploadBrandingLogo.error?.message}
+          {settingsQuery.error?.message ?? updateSettings.error?.message}
         </div>
       )}
     </div>

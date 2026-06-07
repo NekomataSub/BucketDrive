@@ -6,17 +6,33 @@ import {
   Check,
   Copy,
   Globe,
+  Image,
   Link2,
   Lock,
   Pencil,
   Shield,
+  Upload,
   Users,
   X,
 } from "lucide-react"
-import { useDeleteShare, useShares, useUpdateShare, type WorkspaceData } from "@/lib/api"
+import {
+  useDashboardSettings,
+  useDeleteShare,
+  useShares,
+  useUpdateDashboardSettings,
+  useUpdateShare,
+  useUploadBucketBrandingLogo,
+  type WorkspaceData,
+} from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
+import {
+  ActionButton,
+  PageHeader,
+  PageToolbar,
+  SegmentedControl,
+} from "@/components/shared/page-layout"
 import { can, type ShareDashboardItem } from "@bucketdrive/shared"
 
 type ShareTab = "mine" | "bucket"
@@ -33,16 +49,29 @@ export function ShareManagementPage() {
     q: debouncedQuery || undefined,
     enabled: canManageAll,
   })
+  const settingsQuery = useDashboardSettings(workspaceId)
+  const updateSettings = useUpdateDashboardSettings(workspaceId)
+  const uploadBrandingLogo = useUploadBucketBrandingLogo(workspaceId)
 
   const [activeTab, setActiveTab] = useState<ShareTab>("mine")
   const [copiedShareId, setCopiedShareId] = useState<string | null>(null)
   const [editingShare, setEditingShare] = useState<ShareDashboardItem | null>(null)
+  const [shareBrandingName, setShareBrandingName] = useState("")
+  const [shareBrandingLogoUrl, setShareBrandingLogoUrl] = useState("")
 
   useEffect(() => {
     if (!canManageAll && activeTab === "bucket") {
       setActiveTab("mine")
     }
   }, [activeTab, canManageAll])
+
+  useEffect(() => {
+    const settings = settingsQuery.data
+    if (!settings) return
+
+    setShareBrandingName(settings.brandingName ?? "")
+    setShareBrandingLogoUrl(settings.brandingLogoUrl ?? "")
+  }, [settingsQuery.data])
 
   const currentQuery = activeTab === "bucket" && canManageAll ? bucketSharesQuery : mineSharesQuery
 
@@ -59,6 +88,17 @@ export function ShareManagementPage() {
       () => setCopiedShareId((current) => (current === share.id ? null : current)),
       2000,
     )
+  }
+
+  const handleSaveShareBranding = () => {
+    const settings = settingsQuery.data
+    if (!settings) return
+
+    updateSettings.mutate({
+      ...settings,
+      brandingName: shareBrandingName.trim() || null,
+      brandingLogoUrl: shareBrandingLogoUrl.trim() || null,
+    })
   }
 
   if (isLoading) {
@@ -79,38 +119,22 @@ export function ShareManagementPage() {
 
   return (
     <div className="flex h-full flex-col p-6">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-text-primary text-lg font-semibold">Share Links</h1>
-          <p className="text-text-tertiary text-xs">
-            Manage your active links, expirations, passwords, and revocations.
-          </p>
-        </div>
-        <div className="border-border-muted bg-surface-default flex rounded-lg border p-0.5">
-          <button
-            onClick={() => setActiveTab("mine")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === "mine"
-                ? "bg-surface-active text-text-primary"
-                : "text-text-tertiary hover:text-text-primary"
-            }`}
-          >
-            My Shares
-          </button>
-          {canManageAll && (
-            <button
-              onClick={() => setActiveTab("bucket")}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === "bucket"
-                  ? "bg-surface-active text-text-primary"
-                  : "text-text-tertiary hover:text-text-primary"
-              }`}
-            >
-              All Bucket Shares
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Share Links"
+        description="Manage your active links, expirations, passwords, and revocations."
+      />
+
+      <PageToolbar>
+        <SegmentedControl
+          value={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Share link scope"
+          options={[
+            { value: "mine", label: "My Shares" },
+            ...(canManageAll ? [{ value: "bucket" as const, label: "All Bucket Shares" }] : []),
+          ]}
+        />
+      </PageToolbar>
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">
         <StatsCard label="Visible Shares" value={String(currentQuery.data?.meta.total ?? 0)} />
@@ -138,6 +162,93 @@ export function ShareManagementPage() {
           be copied and sent outside the bucket.
         </p>
       </div>
+
+      {can(workspace.role, "bucket.settings.update") && (
+        <section className="border-border-default bg-surface-default mb-4 rounded-xl border p-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-text-primary text-base font-semibold">Share page branding</h2>
+              <p className="text-text-tertiary mt-1 text-xs">
+                Customize public share pages for this bucket. Empty fields use the platform
+                branding.
+              </p>
+            </div>
+            <ActionButton
+              variant="primary"
+              onClick={handleSaveShareBranding}
+              disabled={settingsQuery.isLoading || !settingsQuery.data}
+              loading={updateSettings.isPending}
+              loadingLabel="Saving..."
+            >
+              Save share branding
+            </ActionButton>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr]">
+            <label className="grid gap-2">
+              <span className="text-text-primary text-sm font-medium">Share page name</span>
+              <input
+                value={shareBrandingName}
+                onChange={(event) => setShareBrandingName(event.target.value)}
+                placeholder="Use platform name"
+                className={settingsInputClasses}
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-text-primary text-sm font-medium">Uploaded share logo</span>
+              <span className="border-border-muted bg-bg-tertiary hover:bg-surface-hover flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors">
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="bg-surface-default flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+                    {settingsQuery.data?.brandingLogoAssetUrl || shareBrandingLogoUrl ? (
+                      <img
+                        src={settingsQuery.data?.brandingLogoAssetUrl ?? shareBrandingLogoUrl}
+                        alt=""
+                        className="h-8 w-8 object-contain"
+                      />
+                    ) : (
+                      <Image className="text-text-tertiary h-5 w-5" />
+                    )}
+                  </span>
+                  <span className="text-text-secondary truncate text-sm">
+                    {uploadBrandingLogo.isPending ? "Uploading..." : "Upload image"}
+                  </span>
+                </span>
+                <Upload className="text-accent h-4 w-4 shrink-0" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadBrandingLogo.isPending}
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) uploadBrandingLogo.mutate({ file })
+                    event.target.value = ""
+                  }}
+                />
+              </span>
+            </label>
+
+            <label className="grid gap-2 md:col-span-2 xl:col-span-1">
+              <span className="text-text-primary text-sm font-medium">External share logo URL</span>
+              <input
+                value={shareBrandingLogoUrl}
+                onChange={(event) => setShareBrandingLogoUrl(event.target.value)}
+                placeholder="Use platform logo"
+                className={settingsInputClasses}
+              />
+            </label>
+          </div>
+
+          {(settingsQuery.isError || updateSettings.isError || uploadBrandingLogo.isError) && (
+            <p className="text-error mt-3 text-sm">
+              {settingsQuery.error?.message ??
+                updateSettings.error?.message ??
+                uploadBrandingLogo.error?.message}
+            </p>
+          )}
+        </section>
+      )}
 
       {shares.length === 0 ? (
         <EmptyState tab={activeTab} workspace={workspace} />
@@ -601,6 +712,9 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
+const settingsInputClasses =
+  "rounded-xl border border-border-default bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-tertiary focus:border-accent focus:ring-1 focus:ring-accent"
 
 function toDateTimeLocalValue(value: string | null) {
   if (!value) return ""

@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDashboardAudit } from "@/lib/api"
+import { PageHeader, PageToolbar } from "@/components/shared/page-layout"
 
 export function AuditPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -34,15 +35,13 @@ export function AuditPage() {
   const items = auditQuery.data?.data ?? []
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-text-primary text-2xl font-semibold">Audit Log</h1>
-        <p className="text-text-secondary mt-2 text-sm">
-          Filter activity by action and resource type. Results are newest first.
-        </p>
-      </div>
+    <div className="flex h-full flex-col p-6">
+      <PageHeader
+        title="Audit Log"
+        description="Filter activity by action and resource type. Results are newest first."
+      />
 
-      <div className="border-border-default bg-surface-default flex flex-col gap-3 rounded-2xl border p-5 md:flex-row">
+      <PageToolbar className="flex-col md:flex-row">
         <input
           value={action}
           onChange={(event) => setAction(event.target.value)}
@@ -60,7 +59,7 @@ export function AuditPage() {
           <option value="member">member</option>
           <option value="bucket">bucket</option>
         </select>
-      </div>
+      </PageToolbar>
 
       <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">
         <table className="w-full">

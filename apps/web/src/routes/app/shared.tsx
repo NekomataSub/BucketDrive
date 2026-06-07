@@ -3,6 +3,7 @@ import { Share2, Download } from "lucide-react"
 import { useWorkspaces, useShares, useDownloadUrl } from "@/lib/api"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
+import { PageHeader } from "@/components/shared/page-layout"
 import type { ShareDashboardItem } from "@bucketdrive/shared"
 
 export function SharedPage() {
@@ -37,12 +38,10 @@ export function SharedPage() {
 
   return (
     <div className="flex h-full flex-col p-6">
-      <div className="mb-6">
-        <h1 className="text-text-primary text-lg font-semibold">Shared with me</h1>
-        <p className="text-text-tertiary text-xs">
-          Files and folders shared by other bucket members
-        </p>
-      </div>
+      <PageHeader
+        title="Shared with me"
+        description="Files and folders shared by other bucket members"
+      />
 
       {shares.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2">

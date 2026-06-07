@@ -9,6 +9,13 @@ verifiable result.
 
 ## Status Overview
 
+> **UI consolidation pass — 2026-06-07:**
+>
+> - Added shared page layout controls for internal pages so headers, primary actions, toolbars, and segmented controls render consistently.
+> - Consolidated sidebar destination pages to reduce duplicated or displaced actions across files, shares, trash, audit, members, settings, dashboard, and platform administration.
+> - Split global platform settings from bucket operational settings and moved share-page branding overrides into Share Links.
+> - Removed duplicate folder creation affordance from the sidebar folder tree while preserving contextual folder actions behind RBAC checks.
+
 > **Correction pass — 2026-05-27:**
 >
 > - Mounted missing platform API/routes and added workspace creation support used by onboarding.

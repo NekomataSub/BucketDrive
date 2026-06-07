@@ -9,6 +9,12 @@ import {
   useUpdateMemberRole,
 } from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
+import {
+  ActionButton,
+  PageHeader,
+  PageToolbar,
+  SegmentedControl,
+} from "@/components/shared/page-layout"
 import { can, type WorkspaceRole } from "@bucketdrive/shared"
 
 const editableRoles: WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer"]
@@ -57,16 +63,14 @@ export function MembersPage() {
   const invitations = invitationsQuery.data?.data ?? []
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-text-primary text-2xl font-semibold">Members</h1>
-        <p className="text-text-secondary mt-2 text-sm">
-          Invite members by email and manage global bucket roles.
-        </p>
-      </div>
+    <div className="flex h-full flex-col p-6">
+      <PageHeader
+        title="Members"
+        description="Invite bucket members by email and manage global bucket roles."
+      />
 
       {canInviteMembers && (
-        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
+        <div className="border-border-default bg-surface-default mb-4 rounded-xl border p-5">
           <h2 className="text-text-primary text-base font-semibold">Invite Member</h2>
           <p className="text-text-tertiary mt-1 text-xs">
             Send an invitation link by email. The recipient can join by signing in with the invited
@@ -108,13 +112,15 @@ export function MembersPage() {
                 </option>
               ))}
             </select>
-            <button
+            <ActionButton
               type="submit"
+              variant="primary"
               disabled={addMember.isPending}
-              className="bg-accent rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              loading={addMember.isPending}
+              loadingLabel="Sending..."
             >
-              {addMember.isPending ? "Sending..." : "Send invite"}
-            </button>
+              Send invite
+            </ActionButton>
           </form>
 
           {createdInvite && (
@@ -128,17 +134,18 @@ export function MembersPage() {
                   value={createdInvite.inviteLink}
                   className="border-border-default bg-bg-tertiary text-text-secondary flex-1 rounded-lg border px-3 py-2 text-xs outline-none"
                 />
-                <button
+                <ActionButton
                   type="button"
+                  variant="primary"
+                  className="px-3 py-2 text-xs"
                   onClick={() => {
                     void navigator.clipboard.writeText(createdInvite.inviteLink)
                     setCopiedInviteId("created")
                     window.setTimeout(() => setCopiedInviteId(null), 2000)
                   }}
-                  className="bg-accent rounded-lg px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
                 >
                   {copiedInviteId === "created" ? "Copied" : "Copy link"}
-                </button>
+                </ActionButton>
               </div>
             </div>
           )}
@@ -149,30 +156,20 @@ export function MembersPage() {
         </div>
       )}
 
-      <div className="border-border-default flex items-center gap-4 border-b">
-        <button
-          type="button"
-          onClick={() => setActiveTab("members")}
-          className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
-            activeTab === "members"
-              ? "border-accent text-accent"
-              : "text-text-tertiary hover:text-text-secondary border-transparent"
-          }`}
-        >
-          Members ({members.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("invitations")}
-          className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
-            activeTab === "invitations"
-              ? "border-accent text-accent"
-              : "text-text-tertiary hover:text-text-secondary border-transparent"
-          }`}
-        >
-          Pending Invitations ({invitations.length})
-        </button>
-      </div>
+      <PageToolbar>
+        <SegmentedControl
+          value={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Member list"
+          options={[
+            { value: "members", label: `Members (${String(members.length)})` },
+            {
+              value: "invitations",
+              label: `Pending Invitations (${String(invitations.length)})`,
+            },
+          ]}
+        />
+      </PageToolbar>
 
       {activeTab === "members" && (
         <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">

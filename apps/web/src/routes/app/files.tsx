@@ -32,6 +32,12 @@ import {
   FILE_COMMAND_EVENT,
   type FileCommandAction,
 } from "@/components/shared/commands/file-operations"
+import {
+  ActionButton,
+  PageHeader,
+  PageToolbar,
+  SegmentedControl,
+} from "@/components/shared/page-layout"
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import { useNavigate, useRouterState } from "@tanstack/react-router"
@@ -670,74 +676,43 @@ export function FilesPage() {
           </div>
         )}
 
-        <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <h1 className="text-text-primary text-lg font-semibold">
-              {isSearchActive ? "Search results" : "Files"}
-            </h1>
-            <p className="text-text-tertiary text-xs">
-              {isSearchActive
-                ? `${totalFiles} results across ${bucketName}`
-                : `${totalFiles} files${foldersData?.data?.length ? ` · ${foldersData.data.length} folders` : ""}`}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="border-border-muted bg-surface-default flex rounded-lg border p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode("grid")}
-                className={`rounded-md p-1.5 transition-colors ${
-                  viewMode === "grid"
-                    ? "bg-surface-active text-text-primary"
-                    : "text-text-tertiary hover:text-text-secondary"
-                }`}
-                aria-label="Grid view"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("list")}
-                className={`rounded-md p-1.5 transition-colors ${
-                  viewMode === "list"
-                    ? "bg-surface-active text-text-primary"
-                    : "text-text-tertiary hover:text-text-secondary"
-                }`}
-                aria-label="List view"
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
-            {canCreateFolder && (
-              <button
-                type="button"
-                onClick={handleCreateFolder}
-                className="border-border-muted bg-surface-default text-text-primary hover:bg-surface-hover inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
-              >
-                <FolderPlus className="h-4 w-4" />
-                New Folder
-              </button>
-            )}
-            {canUpload && (
-              <button
-                type="button"
-                onClick={handleFileSelect}
-                className="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
-              >
-                <Upload className="h-4 w-4" />
-                Upload
-              </button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              onChange={handleFilesChosen}
-              className="hidden"
-            />
-          </div>
-        </div>
+        <PageHeader
+          title={isSearchActive ? "Search results" : "Files"}
+          description={
+            isSearchActive
+              ? `${totalFiles} results across ${bucketName}`
+              : `${totalFiles} files${foldersData?.data?.length ? ` · ${foldersData.data.length} folders` : ""}`
+          }
+          actions={
+            <>
+              {canCreateFolder && (
+                <ActionButton
+                  variant="secondary"
+                  icon={<FolderPlus className="h-4 w-4" />}
+                  onClick={handleCreateFolder}
+                >
+                  New Folder
+                </ActionButton>
+              )}
+              {canUpload && (
+                <ActionButton
+                  variant="primary"
+                  icon={<Upload className="h-4 w-4" />}
+                  onClick={handleFileSelect}
+                >
+                  Upload
+                </ActionButton>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={handleFilesChosen}
+                className="hidden"
+              />
+            </>
+          }
+        />
 
         {downloadError && (
           <div className="border-error/40 bg-error/10 text-error mb-4 rounded-lg border px-4 py-3 text-sm">
@@ -745,7 +720,24 @@ export function FilesPage() {
           </div>
         )}
 
-        <div className="border-border-default bg-surface-default mb-4 space-y-3 rounded-2xl border p-4">
+        <PageToolbar className="items-start">
+          <SegmentedControl
+            value={viewMode}
+            onChange={setViewMode}
+            ariaLabel="File view mode"
+            options={[
+              {
+                value: "grid",
+                label: <LayoutGrid className="h-4 w-4" />,
+                ariaLabel: "Grid view",
+              },
+              {
+                value: "list",
+                label: <List className="h-4 w-4" />,
+                ariaLabel: "List view",
+              },
+            ]}
+          />
           <div className="flex flex-wrap gap-2">
             {typeFilterOptions.map((option) => (
               <button
@@ -814,7 +806,7 @@ export function FilesPage() {
           </div>
 
           {allTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2">
               <span className="text-text-tertiary text-xs font-medium tracking-wide uppercase">
                 Tags
               </span>
@@ -847,7 +839,7 @@ export function FilesPage() {
           )}
 
           {isSearchActive && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap gap-2">
               {debouncedQuery && (
                 <span className="bg-accent/10 text-accent rounded-full px-3 py-1 text-xs font-medium">
                   Query: {debouncedQuery}
@@ -877,7 +869,7 @@ export function FilesPage() {
               ))}
             </div>
           )}
-        </div>
+        </PageToolbar>
 
         {totalSelected > 1 && (
           <div className="border-accent bg-accent/10 mb-3 flex items-center gap-2 rounded-lg border px-4 py-2">

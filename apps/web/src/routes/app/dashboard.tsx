@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router"
 import { BarChart3, Files, FolderTree, HardDrive, Link2, Users } from "lucide-react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDashboardOverview } from "@/lib/api"
+import { PageHeader } from "@/components/shared/page-layout"
 import { can } from "@bucketdrive/shared"
 
 const numberFormatter = new Intl.NumberFormat("en-US")
@@ -57,24 +58,11 @@ export function DashboardPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-text-tertiary text-xs font-medium tracking-[0.24em] uppercase">
-            Admin Overview
-          </p>
-          <h1 className="text-text-primary mt-2 text-3xl font-semibold tracking-tight">
-            {workspace.name}
-          </h1>
-          <p className="text-text-secondary mt-2 max-w-2xl text-sm">
-            Monitor storage, shares, member growth, and recent activity from one place.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <QuickLink to="/dashboard/files" icon={Files} label="Open Files" />
-          <QuickLink to="/dashboard/members" icon={Users} label="Manage Members" />
-          <QuickLink to="/dashboard/settings" icon={HardDrive} label="Bucket Settings" />
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="Admin Overview"
+        title={workspace.name}
+        description="Monitor storage, shares, member growth, and recent activity from one place."
+      />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <StatCard
@@ -184,7 +172,7 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+      <section>
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -224,30 +212,6 @@ export function DashboardPage() {
             )}
           </div>
         </div>
-
-        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
-          <h2 className="text-text-primary text-base font-semibold">Admin Shortcuts</h2>
-          <p className="text-text-tertiary mt-1 text-xs">
-            Jump into the most common operations for bucket administration.
-          </p>
-          <div className="mt-5 grid gap-3">
-            <ShortcutCard
-              to="/dashboard/members"
-              title="Members"
-              description="Invite teammates, update roles, and remove access."
-            />
-            <ShortcutCard
-              to="/dashboard/audit"
-              title="Audit Log"
-              description="Inspect activity by actor, action, and resource type."
-            />
-            <ShortcutCard
-              to="/dashboard/settings"
-              title="Settings"
-              description="Adjust quota, file limits, retention, branding, and MIME policy."
-            />
-          </div>
-        </div>
       </section>
     </div>
   )
@@ -272,41 +236,6 @@ function StatCard({
       <p className="text-text-tertiary mt-4 text-sm">{label}</p>
       <p className="text-text-primary mt-2 text-3xl font-semibold tracking-tight">{value}</p>
     </div>
-  )
-}
-
-function QuickLink({ to, icon: Icon, label }: { to: string; icon: typeof Files; label: string }) {
-  return (
-    <Link
-      to={to}
-      {...(to === "/dashboard/files"
-        ? { search: { folderId: undefined, previewFileId: undefined } }
-        : {})}
-      className="border-border-default bg-surface-default text-text-primary hover:bg-surface-hover inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors"
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </Link>
-  )
-}
-
-function ShortcutCard({
-  to,
-  title,
-  description,
-}: {
-  to: string
-  title: string
-  description: string
-}) {
-  return (
-    <Link
-      to={to}
-      className="border-border-muted bg-bg-tertiary hover:bg-surface-hover rounded-xl border px-4 py-4 transition-colors"
-    >
-      <p className="text-text-primary text-sm font-medium">{title}</p>
-      <p className="text-text-tertiary mt-1 text-xs">{description}</p>
-    </Link>
   )
 }
 

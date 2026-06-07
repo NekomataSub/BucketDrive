@@ -121,7 +121,9 @@ export function UploadDropZone({ onFilesDrop, className = "" }: UploadDropZonePr
           <p className="text-text-primary text-sm font-medium">
             {isDragging ? "Drop files to upload" : "Drag files or folders here to upload"}
           </p>
-          <p className="text-text-tertiary mt-1 text-xs">or click the Upload button</p>
+          <p className="text-text-tertiary mt-1 text-xs">
+            Uses the current folder selected in the explorer
+          </p>
         </div>
       </div>
     </div>
