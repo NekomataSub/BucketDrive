@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
+  BatchMoveRequest,
+  BatchOperationResponse,
   BatchUploadRequest,
   BatchUploadResponse,
   ListPlatformInvitationsResponse,
@@ -37,6 +39,34 @@ describe("shared API contracts", () => {
 
   it("rejects empty batch upload requests without files or folders", () => {
     expect(() => BatchUploadRequest.parse({ items: [], emptyFolders: [] })).toThrow()
+  })
+
+  it("accepts batch operation requests and partial responses", () => {
+    const fileId = "11111111-1111-4111-8111-111111111111"
+    const folderId = "22222222-2222-4222-8222-222222222222"
+
+    expect(
+      BatchMoveRequest.parse({
+        files: [fileId],
+        folders: [folderId],
+        targetFolderId: null,
+      }).targetFolderId,
+    ).toBeNull()
+    expect(() => BatchMoveRequest.parse({ files: [], folders: [], targetFolderId: null })).toThrow()
+
+    const response = BatchOperationResponse.parse({
+      success: false,
+      processed: [{ resourceType: "file", id: fileId }],
+      failed: [
+        {
+          resourceType: "folder",
+          id: folderId,
+          code: "FORBIDDEN",
+          message: "Permission denied",
+        },
+      ],
+    })
+    expect(response.failed).toHaveLength(1)
   })
 
   it("accepts share browse credentials in the request body", () => {

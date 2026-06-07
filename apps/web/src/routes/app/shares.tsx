@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-template-expressions */
 import * as Dialog from "@radix-ui/react-dialog"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react"
 import {
   AlertTriangle,
   Check,
@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import {
   useDashboardSettings,
+  useBatchRevokeShares,
   useDeleteShare,
   useShares,
   useUpdateDashboardSettings,
@@ -26,7 +27,9 @@ import {
 } from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { useMultiSelect } from "@/hooks/use-multi-select"
 import { useSearchStore } from "@/stores/search-store"
+import { SelectionMarquee } from "@/components/features/selection-marquee"
 import {
   ActionButton,
   PageHeader,
@@ -39,6 +42,7 @@ type ShareTab = "mine" | "bucket"
 
 export function ShareManagementPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
+  const tableRef = useRef<HTMLDivElement>(null)
   const canManageAll = can(workspace?.role ?? "viewer", "shares.manage_all")
   const query = useSearchStore((state) => state.shares.query)
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
@@ -52,6 +56,7 @@ export function ShareManagementPage() {
   const settingsQuery = useDashboardSettings(workspaceId)
   const updateSettings = useUpdateDashboardSettings(workspaceId)
   const uploadBrandingLogo = useUploadBucketBrandingLogo(workspaceId)
+  const batchRevokeShares = useBatchRevokeShares(workspaceId)
 
   const [activeTab, setActiveTab] = useState<ShareTab>("mine")
   const [copiedShareId, setCopiedShareId] = useState<string | null>(null)
@@ -76,6 +81,13 @@ export function ShareManagementPage() {
   const currentQuery = activeTab === "bucket" && canManageAll ? bucketSharesQuery : mineSharesQuery
 
   const shares = currentQuery.data?.data ?? []
+  const selectionItems = useMemo(
+    () => shares.map((share) => ({ id: share.id, type: "share" })),
+    [shares],
+  )
+  const selection = useMultiSelect({ items: selectionItems, containerRef: tableRef })
+  const selectedShareIds = selection.selectedIdsByType("share")
+  const selectedShares = shares.filter((share) => selectedShareIds.includes(share.id))
   const isLoading = workspacesLoading || currentQuery.isLoading
 
   const handleCopyLink = async (share: ShareDashboardItem) => {
@@ -101,6 +113,26 @@ export function ShareManagementPage() {
     })
   }
 
+  const handleCopySelectedLinks = async () => {
+    const links = selectedShares
+      .filter((share) => share.shareType !== "internal")
+      .map((share) => `${window.location.origin}/share/${share.id}`)
+    if (links.length === 0) return
+    await navigator.clipboard.writeText(links.join("\n"))
+  }
+
+  const handleRevokeSelected = () => {
+    if (selectedShareIds.length === 0) return
+    const confirmed = window.confirm(
+      `Revoke ${String(selectedShareIds.length)} selected share${selectedShareIds.length === 1 ? "" : "s"}?`,
+    )
+    if (!confirmed) return
+    batchRevokeShares.mutate(
+      { shareIds: selectedShareIds },
+      { onSuccess: () => selection.clearSelection() },
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
@@ -119,6 +151,7 @@ export function ShareManagementPage() {
 
   return (
     <div className="flex h-full flex-col p-6">
+      <SelectionMarquee rect={selection.selectionRect} />
       <PageHeader
         title="Share Links"
         description="Manage your active links, expirations, passwords, and revocations."
@@ -162,6 +195,39 @@ export function ShareManagementPage() {
           be copied and sent outside the bucket.
         </p>
       </div>
+
+      {selection.selectedCount > 0 && (
+        <div className="border-accent bg-accent/10 mb-3 flex items-center gap-2 rounded-lg border px-4 py-2">
+          <span className="text-text-primary text-sm font-medium">
+            {selection.selectedCount} share{selection.selectedCount === 1 ? "" : "s"} selected
+          </span>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={() => void handleCopySelectedLinks()}
+            disabled={!selectedShares.some((share) => share.shareType !== "internal")}
+            className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy links
+          </button>
+          <button
+            type="button"
+            onClick={handleRevokeSelected}
+            className="text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+          >
+            <Shield className="h-3.5 w-3.5" />
+            Revoke selected
+          </button>
+          <button
+            type="button"
+            onClick={selection.clearSelection}
+            className="text-text-tertiary hover:text-text-primary rounded-md px-3 py-1.5 text-sm transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {can(workspace.role, "bucket.settings.update") && (
         <section className="border-border-default bg-surface-default mb-4 rounded-xl border p-4">
@@ -253,9 +319,16 @@ export function ShareManagementPage() {
       {shares.length === 0 ? (
         <EmptyState tab={activeTab} workspace={workspace} />
       ) : (
-        <div className="border-border-default overflow-hidden rounded-xl border">
+        <div
+          ref={tableRef}
+          onPointerDown={selection.handleContainerPointerDown}
+          onPointerMove={selection.handleContainerPointerMove}
+          onPointerUp={selection.handleContainerPointerUp}
+          onPointerCancel={selection.handleContainerPointerCancel}
+          className="border-border-default min-h-[calc(100vh-520px)] overflow-hidden rounded-xl border"
+        >
           <table className="w-full">
-            <thead>
+            <thead data-selection-ignore>
               <tr className="border-border-muted bg-surface-default border-b">
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
                   Resource
@@ -284,12 +357,17 @@ export function ShareManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {shares.map((share) => (
+              {shares.map((share, index) => (
                 <ShareRow
                   key={share.id}
                   share={share}
+                  index={index}
                   copied={copiedShareId === share.id}
                   showCreator={activeTab === "bucket"}
+                  isSelected={selection.isSelected({ id: share.id, type: "share" })}
+                  onRowClick={(event) =>
+                    selection.handleItemClick({ id: share.id, type: "share" }, index, event)
+                  }
                   onCopyLink={handleCopyLink}
                   onEdit={() => setEditingShare(share)}
                 />
@@ -354,14 +432,20 @@ function EmptyState({ tab, workspace }: { tab: ShareTab; workspace: WorkspaceDat
 
 function ShareRow({
   share,
+  index: _index,
   copied,
   showCreator,
+  isSelected,
+  onRowClick,
   onCopyLink,
   onEdit,
 }: {
   share: ShareDashboardItem
+  index: number
   copied: boolean
   showCreator: boolean
+  isSelected: boolean
+  onRowClick: (event: MouseEvent<HTMLTableRowElement>) => void
   onCopyLink: (share: ShareDashboardItem) => Promise<void>
   onEdit: () => void
 }) {
@@ -369,7 +453,15 @@ function ShareRow({
   const canCopy = share.shareType !== "internal"
 
   return (
-    <tr className="border-border-muted hover:bg-surface-hover border-b align-top transition-colors last:border-b-0">
+    <tr
+      data-selectable-item
+      data-item-id={share.id}
+      data-item-type="share"
+      onClick={onRowClick}
+      className={`border-border-muted hover:bg-surface-hover border-b align-top transition-colors last:border-b-0 ${
+        isSelected ? "bg-accent/10" : ""
+      }`}
+    >
       <td className="px-4 py-3">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 text-lg">
@@ -426,10 +518,13 @@ function ShareRow({
         </div>
       </td>
       <td className="px-4 py-3">
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2" data-selection-ignore>
           {canCopy && (
             <button
-              onClick={() => void onCopyLink(share)}
+              onClick={(event) => {
+                event.stopPropagation()
+                void onCopyLink(share)
+              }}
               className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors"
             >
               {copied ? (
@@ -441,7 +536,10 @@ function ShareRow({
             </button>
           )}
           <button
-            onClick={onEdit}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit()
+            }}
             className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors"
           >
             <Pencil className="h-3.5 w-3.5" />

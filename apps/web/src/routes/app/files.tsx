@@ -11,6 +11,8 @@ import {
   useTags,
   useToggleFavorite,
   useBatchUpload,
+  useBatchTrash,
+  useBatchMove,
   type BreadcrumbItem,
 } from "@/lib/api"
 import { useUndoableMutations } from "@/hooks/use-undoable-mutations"
@@ -27,6 +29,7 @@ import { FileGrid } from "@/components/features/file-grid"
 import { Breadcrumbs } from "@/components/features/breadcrumbs"
 import { ShareModal } from "@/components/features/share-modal"
 import { FilePreview } from "@/components/features/file-preview"
+import { SelectionMarquee } from "@/components/features/selection-marquee"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
 import {
   FILE_COMMAND_EVENT,
@@ -198,8 +201,21 @@ export function FilesPage() {
   const createFolderMutation = useCreateFolder(workspaceId)
   const toggleFavoriteMutation = useToggleFavorite(workspaceId)
   const batchUpload = useBatchUpload(workspaceId)
+  const batchTrash = useBatchTrash(workspaceId)
+  const batchMove = useBatchMove(workspaceId)
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [selectionRect, setSelectionRect] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
+  const selectionStartRef = useRef<{ x: number; y: number; additive: boolean } | null>(null)
+  const selectionBaseRef = useRef<{ fileIds: string[]; folderIds: string[] }>({
+    fileIds: [],
+    folderIds: [],
+  })
   const [tagDialogFileId, setTagDialogFileId] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [shareModal, setShareModal] = useState<{
@@ -367,15 +383,41 @@ export function FilesPage() {
         : `Delete ${totalCount} items? They will be moved to trash.`,
     )
     if (confirmed) {
-      for (const fileId of selectedFileIds) {
-        void undoable.deleteFile(fileId)
-      }
-      for (const folderId of selectedFolderIds) {
-        void undoable.deleteFolder(folderId)
-      }
-      clearSelection()
+      batchTrash.mutate(
+        { files: selectedFileIds, folders: selectedFolderIds },
+        { onSuccess: () => clearSelection() },
+      )
     }
-  }, [selectedFileIds, selectedFolderIds, undoable, clearSelection, canDeleteFile, canDeleteFolder])
+  }, [
+    selectedFileIds,
+    selectedFolderIds,
+    batchTrash,
+    clearSelection,
+    canDeleteFile,
+    canDeleteFolder,
+  ])
+
+  const handleMoveSelected = useCallback(() => {
+    const totalCount = selectedFileIds.length + selectedFolderIds.length
+    if (totalCount === 0) return
+    if (
+      (selectedFileIds.length > 0 && !canMoveFile) ||
+      (selectedFolderIds.length > 0 && !canMoveFolder)
+    ) {
+      return
+    }
+
+    const destFolderId = window.prompt("Enter destination folder ID (or leave blank for root):")
+    if (destFolderId === null) return
+    batchMove.mutate(
+      {
+        files: selectedFileIds,
+        folders: selectedFolderIds,
+        targetFolderId: destFolderId.trim() || null,
+      },
+      { onSuccess: () => clearSelection() },
+    )
+  }, [selectedFileIds, selectedFolderIds, batchMove, clearSelection, canMoveFile, canMoveFolder])
 
   const handleNavigateParent = useCallback(() => {
     if (currentFolderId && breadcrumbsData && breadcrumbsData.length > 1) {
@@ -670,6 +712,99 @@ export function FilesPage() {
     }),
   )
 
+  const getSelectionRect = (startX: number, startY: number, endX: number, endY: number) => ({
+    left: Math.min(startX, endX),
+    top: Math.min(startY, endY),
+    width: Math.abs(endX - startX),
+    height: Math.abs(endY - startY),
+  })
+
+  const handleSelectionPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    const target = event.target
+    if (!(target instanceof Element)) return
+    if (
+      target.closest(
+        "button,a,input,select,textarea,[role='button'],[data-selectable-item],[data-selection-ignore]",
+      )
+    ) {
+      return
+    }
+    if (!event.ctrlKey && !event.metaKey && !event.shiftKey) clearSelection()
+    event.preventDefault()
+    document.body.classList.add("selection-dragging")
+    selectionBaseRef.current =
+      event.ctrlKey || event.metaKey
+        ? { fileIds: selectedFileIds, folderIds: selectedFolderIds }
+        : { fileIds: [], folderIds: [] }
+    selectionStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      additive: event.ctrlKey || event.metaKey,
+    }
+    setSelectionRect(getSelectionRect(event.clientX, event.clientY, event.clientX, event.clientY))
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const updateDragSelection = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = selectionStartRef.current
+    const container = containerRef.current
+    if (!start || !container) return
+    const rect = getSelectionRect(start.x, start.y, event.clientX, event.clientY)
+    event.preventDefault()
+    setSelectionRect(rect)
+    if (rect.width < 4 && rect.height < 4) {
+      useExplorerStore
+        .getState()
+        .selectAll(selectionBaseRef.current.fileIds, selectionBaseRef.current.folderIds)
+      return
+    }
+
+    const selectionBox = new DOMRect(rect.left, rect.top, rect.width, rect.height)
+    const fileIds = start.additive ? [...selectionBaseRef.current.fileIds] : []
+    const folderIds = start.additive ? [...selectionBaseRef.current.folderIds] : []
+    for (const node of container.querySelectorAll<HTMLElement>("[data-selectable-item]")) {
+      const itemRect = node.getBoundingClientRect()
+      const intersects =
+        selectionBox.left <= itemRect.right &&
+        selectionBox.right >= itemRect.left &&
+        selectionBox.top <= itemRect.bottom &&
+        selectionBox.bottom >= itemRect.top
+      if (!intersects) continue
+      const id = node.dataset.itemId
+      const type = node.dataset.itemType
+      if (!id || !type) continue
+      if (type === "file" && !fileIds.includes(id)) fileIds.push(id)
+      if (type === "folder" && !folderIds.includes(id)) folderIds.push(id)
+    }
+    useExplorerStore.getState().selectAll(fileIds, folderIds)
+  }
+
+  const handleSelectionPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    updateDragSelection(event)
+  }
+
+  const handleSelectionPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    updateDragSelection(event)
+    selectionStartRef.current = null
+    selectionBaseRef.current = { fileIds: [], folderIds: [] }
+    setSelectionRect(null)
+    document.body.classList.remove("selection-dragging")
+  }
+
+  const handleSelectionPointerCancel = () => {
+    selectionStartRef.current = null
+    selectionBaseRef.current = { fileIds: [], folderIds: [] }
+    setSelectionRect(null)
+    document.body.classList.remove("selection-dragging")
+  }
+
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove("selection-dragging")
+    }
+  }, [])
+
   if (wsLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
@@ -691,6 +826,7 @@ export function FilesPage() {
 
   return (
     <>
+      <SelectionMarquee rect={selectionRect} />
       <div
         className="flex h-full flex-col p-6"
         data-testid="files-page"
@@ -928,12 +1064,21 @@ export function FilesPage() {
           )}
         </PageToolbar>
 
-        {totalSelected > 1 && (
+        {totalSelected > 0 && (
           <div className="border-accent bg-accent/10 mb-3 flex items-center gap-2 rounded-lg border px-4 py-2">
             <span className="text-text-primary text-sm font-medium">
               {totalSelected} items selected
             </span>
             <div className="flex-1" />
+            {(canMoveFile || canMoveFolder) && (
+              <button
+                type="button"
+                onClick={handleMoveSelected}
+                className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+              >
+                Move selected
+              </button>
+            )}
             {canDeleteSelected && (
               <button
                 type="button"
@@ -954,7 +1099,7 @@ export function FilesPage() {
           </div>
         )}
 
-        <div className="flex-1 space-y-4" ref={containerRef}>
+        <div className="relative flex-1 space-y-4" ref={containerRef}>
           <UploadDropZone
             onFilesDrop={handleFilesDrop}
             onClickUpload={handleFileSelect}
@@ -1011,6 +1156,10 @@ export function FilesPage() {
                 onContextMove={canMoveFile || canMoveFolder ? handleContextMove : undefined}
                 onContextShare={canShareFile || canShareFolder ? handleContextShare : undefined}
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
+                onSelectionPointerDown={handleSelectionPointerDown}
+                onSelectionPointerMove={handleSelectionPointerMove}
+                onSelectionPointerUp={handleSelectionPointerUp}
+                onSelectionPointerCancel={handleSelectionPointerCancel}
               />
             ) : (
               <FileList
@@ -1062,6 +1211,10 @@ export function FilesPage() {
                 onContextMove={canMoveFile || canMoveFolder ? handleContextMove : undefined}
                 onContextShare={canShareFile || canShareFolder ? handleContextShare : undefined}
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
+                onSelectionPointerDown={handleSelectionPointerDown}
+                onSelectionPointerMove={handleSelectionPointerMove}
+                onSelectionPointerUp={handleSelectionPointerUp}
+                onSelectionPointerCancel={handleSelectionPointerCancel}
               />
             )}
             <DragOverlay dropAnimation={null}>

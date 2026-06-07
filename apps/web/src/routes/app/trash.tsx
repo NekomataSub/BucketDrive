@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-argument */
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { RotateCcw, Trash2 } from "lucide-react"
 import {
+  useBatchPermanentDelete,
+  useBatchRestore,
   usePermanentlyDeleteFile,
   usePermanentlyDeleteFolder,
   useRestoreFile,
@@ -11,13 +13,17 @@ import {
 } from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { useMultiSelect } from "@/hooks/use-multi-select"
 import { useSearchStore } from "@/stores/search-store"
+import { SelectionMarquee } from "@/components/features/selection-marquee"
 import { ActionButton, PageHeader, PageToolbar } from "@/components/shared/page-layout"
+import { can } from "@bucketdrive/shared"
 
 type TrashSort = "deleted_at" | "name" | "location" | "size"
 
 export function TrashPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
+  const tableRef = useRef<HTMLDivElement>(null)
 
   const [sort, setSort] = useState<TrashSort>("deleted_at")
   const [order, setOrder] = useState<"asc" | "desc">("desc")
@@ -36,13 +42,24 @@ export function TrashPage() {
   const restoreFolder = useRestoreFolder(workspaceId)
   const deleteFileForever = usePermanentlyDeleteFile(workspaceId)
   const deleteFolderForever = usePermanentlyDeleteFolder(workspaceId)
+  const batchRestore = useBatchRestore(workspaceId)
+  const batchPermanentDelete = useBatchPermanentDelete(workspaceId)
 
   const items = trashQuery.data?.data ?? []
+  const selectionItems = useMemo(
+    () => items.map((item) => ({ id: item.id, type: item.resourceType })),
+    [items],
+  )
+  const selection = useMultiSelect({ items: selectionItems, containerRef: tableRef })
   const retentionDays = useMemo(
     () => Math.max(...items.map((item) => item.daysRemaining), 30),
     [items],
   )
   const [busyItemKey, setBusyItemKey] = useState<string | null>(null)
+  const selectedFileIds = selection.selectedIdsByType("file")
+  const selectedFolderIds = selection.selectedIdsByType("folder")
+  const selectedCount = selection.selectedCount
+  const canPermanentlyDelete = workspace ? can(workspace.role, "trash.permanent_delete") : false
 
   const handleRestore = (item: TrashItem) => {
     const key = `${item.resourceType}-${item.id}`
@@ -69,6 +86,26 @@ export function TrashPage() {
     }
 
     deleteFolderForever.mutate({ folderId: item.id }, { onSettled: () => setBusyItemKey(null) })
+  }
+
+  const handleRestoreSelected = () => {
+    if (selectedCount === 0) return
+    batchRestore.mutate(
+      { files: selectedFileIds, folders: selectedFolderIds },
+      { onSuccess: () => selection.clearSelection() },
+    )
+  }
+
+  const handlePermanentDeleteSelected = () => {
+    if (selectedCount === 0 || !canPermanentlyDelete) return
+    const confirmed = window.confirm(
+      `Permanently delete ${String(selectedCount)} selected item${selectedCount === 1 ? "" : "s"}? This cannot be undone.`,
+    )
+    if (!confirmed) return
+    batchPermanentDelete.mutate(
+      { files: selectedFileIds, folders: selectedFolderIds },
+      { onSuccess: () => selection.clearSelection() },
+    )
   }
 
   const orderLabel =
@@ -98,6 +135,7 @@ export function TrashPage() {
 
   return (
     <div className="flex h-full flex-col p-6">
+      <SelectionMarquee rect={selection.selectionRect} />
       <PageHeader
         title="Trash"
         description={`Items are kept for ${String(retentionDays)} days, then auto-purged.`}
@@ -121,6 +159,40 @@ export function TrashPage() {
         </ActionButton>
       </PageToolbar>
 
+      {selectedCount > 0 && (
+        <div className="border-accent bg-accent/10 mb-3 flex items-center gap-2 rounded-lg border px-4 py-2">
+          <span className="text-text-primary text-sm font-medium">
+            {selectedCount} item{selectedCount === 1 ? "" : "s"} selected
+          </span>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={handleRestoreSelected}
+            className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Restore selected
+          </button>
+          {canPermanentlyDelete && (
+            <button
+              type="button"
+              onClick={handlePermanentDeleteSelected}
+              className="text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete permanently
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={selection.clearSelection}
+            className="text-text-tertiary hover:text-text-primary rounded-md px-3 py-1.5 text-sm transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       {trashQuery.isError && (
         <div className="border-error/40 bg-error/10 text-error mb-4 rounded-lg border px-4 py-3 text-sm">
           {trashQuery.error.message}
@@ -138,9 +210,16 @@ export function TrashPage() {
           </p>
         </div>
       ) : (
-        <div className="border-border-default overflow-hidden rounded-xl border">
+        <div
+          ref={tableRef}
+          onPointerDown={selection.handleContainerPointerDown}
+          onPointerMove={selection.handleContainerPointerMove}
+          onPointerUp={selection.handleContainerPointerUp}
+          onPointerCancel={selection.handleContainerPointerCancel}
+          className="border-border-default min-h-[calc(100vh-420px)] overflow-hidden rounded-xl border"
+        >
           <table className="w-full">
-            <thead>
+            <thead data-selection-ignore>
               <tr className="border-border-muted bg-surface-default border-b">
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Item</th>
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
@@ -159,10 +238,24 @@ export function TrashPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {items.map((item, index) => (
                 <tr
                   key={`${item.resourceType}-${item.id}`}
-                  className="border-border-muted hover:bg-surface-hover border-b transition-colors last:border-b-0"
+                  data-selectable-item
+                  data-item-id={item.id}
+                  data-item-type={item.resourceType}
+                  onClick={(event) =>
+                    selection.handleItemClick(
+                      { id: item.id, type: item.resourceType },
+                      index,
+                      event,
+                    )
+                  }
+                  className={`border-border-muted hover:bg-surface-hover border-b transition-colors last:border-b-0 ${
+                    selection.isSelected({ id: item.id, type: item.resourceType })
+                      ? "bg-accent/10"
+                      : ""
+                  }`}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -188,9 +281,12 @@ export function TrashPage() {
                     {item.resourceType === "file" ? formatBytes(item.sizeBytes) : "--"}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2" data-selection-ignore>
                       <button
-                        onClick={() => handleRestore(item)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleRestore(item)
+                        }}
                         disabled={busyItemKey === `${item.resourceType}-${item.id}`}
                         className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -200,7 +296,10 @@ export function TrashPage() {
                           : "Restore"}
                       </button>
                       <button
-                        onClick={() => handlePermanentDelete(item)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handlePermanentDelete(item)
+                        }}
                         disabled={busyItemKey === `${item.resourceType}-${item.id}`}
                         className="border-error/40 text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >

@@ -15,6 +15,7 @@ import { tagsHandler } from "./modules/tags/tags.handler"
 import { notificationsHandler } from "./modules/notifications/notifications.handler"
 import { trashHandler } from "./modules/trash/trash.handler"
 import { platformHandler } from "./modules/platform/platform.handler"
+import { batchHandler } from "./modules/batch/batch.handler"
 import { authMiddleware } from "./middleware/auth"
 import {
   e2eCreateFile,
@@ -130,6 +131,7 @@ app.route("/api/tags", tagsHandler)
 app.route("/api/trash", trashHandler)
 app.route("/api/notifications", notificationsHandler)
 app.route("/api/platform", platformHandler)
+app.route("/api/batch", batchHandler)
 
 app.notFound((c) => c.json({ code: "NOT_FOUND", message: "Not found" }, 404))
 

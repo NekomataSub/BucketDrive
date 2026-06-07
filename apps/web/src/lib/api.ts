@@ -20,6 +20,7 @@ import type {
   WorkspaceMemberListItem,
   WorkspaceRole,
   InvitationListItem,
+  BatchOperationResponse,
 } from "@bucketdrive/shared"
 
 interface ApiError {
@@ -647,6 +648,120 @@ export function useBatchUpload(workspaceId: string | null): UseMutationResult<
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
+  })
+}
+
+export function useBatchTrash(
+  workspaceId: string | null,
+): UseMutationResult<
+  BatchOperationResponse,
+  ApiRequestError,
+  { files: string[]; folders: string[] }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    BatchOperationResponse,
+    ApiRequestError,
+    { files: string[]; folders: string[] }
+  >({
+    mutationFn: (body) => api.post<BatchOperationResponse>("/api/batch/trash", body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
+  })
+}
+
+export function useBatchRestore(
+  workspaceId: string | null,
+): UseMutationResult<
+  BatchOperationResponse,
+  ApiRequestError,
+  { files: string[]; folders: string[] }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    BatchOperationResponse,
+    ApiRequestError,
+    { files: string[]; folders: string[] }
+  >({
+    mutationFn: (body) => api.post<BatchOperationResponse>("/api/batch/restore", body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
+  })
+}
+
+export function useBatchPermanentDelete(
+  workspaceId: string | null,
+): UseMutationResult<
+  BatchOperationResponse,
+  ApiRequestError,
+  { files: string[]; folders: string[] }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    BatchOperationResponse,
+    ApiRequestError,
+    { files: string[]; folders: string[] }
+  >({
+    mutationFn: (body) => api.post<BatchOperationResponse>("/api/batch/permanent-delete", body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
+  })
+}
+
+export function useBatchMove(
+  workspaceId: string | null,
+): UseMutationResult<
+  BatchOperationResponse,
+  ApiRequestError,
+  { files: string[]; folders: string[]; targetFolderId: string | null }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    BatchOperationResponse,
+    ApiRequestError,
+    { files: string[]; folders: string[]; targetFolderId: string | null }
+  >({
+    mutationFn: (body) => api.post<BatchOperationResponse>("/api/batch/move", body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+    },
+  })
+}
+
+export function useBatchRevokeShares(
+  workspaceId: string | null,
+): UseMutationResult<BatchOperationResponse, ApiRequestError, { shareIds: string[] }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<BatchOperationResponse, ApiRequestError, { shareIds: string[] }>({
+    mutationFn: (body) => api.post<BatchOperationResponse>("/api/batch/shares/revoke", body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
 }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-import { useMemo, useCallback } from "react"
+import { useMemo, useCallback, type PointerEvent } from "react"
 import { Folder, FolderOpen, GripVertical, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
@@ -149,6 +149,7 @@ function FolderGridCard({
     >
       <div
         ref={setRefs}
+        data-selectable-item
         data-item-id={folder.id}
         data-item-type="folder"
         data-item-index={index}
@@ -271,6 +272,7 @@ function FileGridCard({
     >
       <div
         ref={setNodeRef}
+        data-selectable-item
         data-item-id={file.id}
         data-item-type="file"
         data-item-index={index}
@@ -352,6 +354,10 @@ interface FileGridProps {
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
+  onSelectionPointerDown?: (event: PointerEvent<HTMLDivElement>) => void
+  onSelectionPointerMove?: (event: PointerEvent<HTMLDivElement>) => void
+  onSelectionPointerUp?: (event: PointerEvent<HTMLDivElement>) => void
+  onSelectionPointerCancel?: (event: PointerEvent<HTMLDivElement>) => void
 }
 
 export function FileGrid({
@@ -371,6 +377,10 @@ export function FileGrid({
   onContextMove,
   onContextShare,
   onItemDrop,
+  onSelectionPointerDown,
+  onSelectionPointerMove,
+  onSelectionPointerUp,
+  onSelectionPointerCancel,
 }: FileGridProps) {
   const selectedFileIds = useExplorerStore((s) => s.selectedFileIds)
   const selectedFolderIds = useExplorerStore((s) => s.selectedFolderIds)
@@ -412,7 +422,13 @@ export function FileGrid({
   }
 
   return (
-    <div className="max-h-[calc(100vh-320px)] overflow-auto">
+    <div
+      className="max-h-[calc(100vh-320px)] min-h-[calc(100vh-420px)] overflow-auto"
+      onPointerDown={onSelectionPointerDown}
+      onPointerMove={onSelectionPointerMove}
+      onPointerUp={onSelectionPointerUp}
+      onPointerCancel={onSelectionPointerCancel}
+    >
       <div className="grid grid-cols-2 items-stretch gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {allItems.map((item, itemIndex) => {
           if (item.type === "folder") {

@@ -9,6 +9,15 @@ verifiable result.
 
 ## Status Overview
 
+> **Batch selection pass — 2026-06-07:**
+>
+> - Added shared batch operation contracts and `/api/batch` routes for trash, restore, permanent delete, move, and share revocation.
+> - Added frontend batch hooks with cache invalidation across files, folders, search, trash, shares, and dashboard data.
+> - Extended Files, Trash, Share Links, and Shared with me with multi-selection via modifier clicks, range selection, keyboard select-all/escape, and empty-area drag selection.
+> - Fixed empty-area drag selection by moving Files selection handling into the grid/list surfaces and adding live hit-testing plus blank table panel space.
+> - Added a visible marquee overlay for drag selection and disabled native text selection only while dragging.
+> - Added contract coverage for batch payloads, partial responses, RBAC failures, and share revocation.
+
 > **Folder upload correction pass — 2026-06-07:**
 >
 > - Added explicit file/folder upload actions and preserved folder hierarchy from native folder selection and drag-and-drop.

@@ -120,6 +120,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  body.selection-dragging,
+  body.selection-dragging * {
+    user-select: none;
+  }
 }
 
 .dark {

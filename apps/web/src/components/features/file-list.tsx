@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, type PointerEvent } from "react"
 import { Folder, FolderOpen, GripVertical, MoreVertical, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
@@ -148,6 +148,7 @@ function FolderListRow({
     >
       <div
         ref={setRefs}
+        data-selectable-item
         data-item-id={folder.id}
         data-item-type="folder"
         data-item-index={index}
@@ -337,6 +338,7 @@ function FileListRow({
     >
       <div
         ref={setNodeRef}
+        data-selectable-item
         data-item-id={file.id}
         data-item-type="file"
         data-item-index={index}
@@ -541,6 +543,10 @@ interface FileListProps {
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
+  onSelectionPointerDown?: (event: PointerEvent<HTMLDivElement>) => void
+  onSelectionPointerMove?: (event: PointerEvent<HTMLDivElement>) => void
+  onSelectionPointerUp?: (event: PointerEvent<HTMLDivElement>) => void
+  onSelectionPointerCancel?: (event: PointerEvent<HTMLDivElement>) => void
 }
 
 export function FileList({
@@ -560,6 +566,10 @@ export function FileList({
   onContextMove,
   onContextShare,
   onItemDrop,
+  onSelectionPointerDown,
+  onSelectionPointerMove,
+  onSelectionPointerUp,
+  onSelectionPointerCancel,
 }: FileListProps) {
   const selectedFileIds = useExplorerStore((s) => s.selectedFileIds)
   const selectedFolderIds = useExplorerStore((s) => s.selectedFolderIds)
@@ -599,9 +609,15 @@ export function FileList({
   }
 
   return (
-    <div className="border-border-default overflow-hidden rounded-xl border">
+    <div
+      className="border-border-default min-h-[calc(100vh-420px)] overflow-hidden rounded-xl border"
+      onPointerDown={onSelectionPointerDown}
+      onPointerMove={onSelectionPointerMove}
+      onPointerUp={onSelectionPointerUp}
+      onPointerCancel={onSelectionPointerCancel}
+    >
       {/* Header */}
-      <div className="border-border-muted bg-surface-default flex border-b">
+      <div className="border-border-muted bg-surface-default flex border-b" data-selection-ignore>
         <div className="text-text-tertiary flex-1 px-4 py-2.5 text-left text-xs font-medium">
           Name
         </div>
