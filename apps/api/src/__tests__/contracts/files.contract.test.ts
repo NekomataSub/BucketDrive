@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  BatchUploadResponse,
   DeleteFileResponse,
   DownloadUrlResponse,
   FileObjectSchema,
@@ -122,5 +123,33 @@ describe("files contracts", () => {
     })
     expect(invalid.status).toBe(400)
     expectApiError(await ctx.json(invalid))
+  })
+
+  it("prepares batch uploads with nested folders and empty folder trees", async () => {
+    const ctx = createContractTestContext()
+
+    const response = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/batch-upload`, {
+      method: "POST",
+      body: JSON.stringify({
+        items: [
+          {
+            clientId: "local-1",
+            relativePath: "Album/Sub/photo.jpg",
+            mimeType: "image/jpeg",
+            sizeBytes: 12,
+          },
+        ],
+        emptyFolders: ["Album/Empty/Sub"],
+      }),
+    })
+
+    expect(response.status).toBe(201)
+    const parsed = BatchUploadResponse.parse(await ctx.json(response))
+    const item = parsed.items[0]
+
+    expect(item?.folderId).toBeTruthy()
+    expect(parsed.folders.map((entry) => entry.path)).toEqual(
+      expect.arrayContaining(["/Album", "/Album/Sub", "/Album/Empty", "/Album/Empty/Sub"]),
+    )
   })
 })

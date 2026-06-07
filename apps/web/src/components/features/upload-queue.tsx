@@ -29,7 +29,9 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
   const { processQueue, cancelItem, pauseItem, resumeItem } = useUploadProcessor(workspaceId)
   const processingRef = useRef(false)
 
-  const queuedCount = items.filter((i) => i.status === "queued" || i.status === "uploading").length
+  const queuedCount = items.filter(
+    (i) => i.status === "preparing" || i.status === "queued" || i.status === "uploading",
+  ).length
   const failedCount = items.filter((i) => i.status === "failed").length
   const pausedCount = items.filter((i) => i.status === "paused").length
   const hasItems = items.length > 0
@@ -154,6 +156,7 @@ function UploadQueueItem({
 
           {(item.status === "uploading" ||
             item.status === "queued" ||
+            item.status === "preparing" ||
             item.status === "paused") && <ProgressBar value={item.progress} className="mt-1.5" />}
 
           {showChunkProgress && (
@@ -216,6 +219,10 @@ function UploadQueueItem({
                 Cancel
               </button>
             </div>
+          )}
+
+          {item.status === "preparing" && (
+            <p className="text-text-tertiary mt-0.5 text-xs">Preparing folder structure</p>
           )}
 
           {item.status === "uploading" && (

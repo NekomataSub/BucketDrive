@@ -9,6 +9,13 @@ verifiable result.
 
 ## Status Overview
 
+> **Folder upload correction pass — 2026-06-07:**
+>
+> - Added explicit file/folder upload actions and preserved folder hierarchy from native folder selection and drag-and-drop.
+> - Prevented structured uploads from starting before batch folder creation returns per-file target folders.
+> - Allowed empty folder trees in batch-upload contracts and covered nested folder upload preparation.
+> - Stopped R2 sync from importing managed upload keys as visible `/bucket/files/<uploadId>` folders and added cleanup for prior false imports.
+
 > **UI consolidation pass — 2026-06-07:**
 >
 > - Added shared page layout controls for internal pages so headers, primary actions, toolbars, and segmented controls render consistently.

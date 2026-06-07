@@ -1,5 +1,12 @@
-import { and, eq, isNull } from "drizzle-orm"
-import { auditLog, bucketSettings, fileObject, folder } from "@bucketdrive/shared/db/schema"
+import { and, eq, inArray, isNull } from "drizzle-orm"
+import {
+  auditLog,
+  bucketSettings,
+  favorite,
+  fileObject,
+  fileObjectTag,
+  folder,
+} from "@bucketdrive/shared/db/schema"
 import { getDB } from "../lib/db"
 import { ensureBucketSettings, getOrCreateDefaultBucket } from "../lib/bucket"
 import type { StorageProvider } from "./storage"
@@ -7,6 +14,8 @@ import type { StorageProvider } from "./storage"
 const DEFAULT_MIME_TYPE = "application/octet-stream"
 const MAX_IMPORT_PAGES = 1000
 const THUMBNAILS_PREFIX_PART = "thumbnails"
+const MANAGED_UPLOAD_KEY_PATTERN =
+  /^bucket\/files\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\//i
 export const AUTO_R2_SYNC_INTERVAL_MS = 30_000
 export const SYSTEM_R2_SYNC_ACTOR_ID = "system"
 
@@ -103,8 +112,6 @@ export class R2ImportService {
     })
 
     const folderCache = new Map<string, string | null>([["", null]])
-    const existingFiles = await db.select().from(fileObject).all()
-    const existingByKey = new Map(existingFiles.map((file) => [file.storageKey, file]))
     const seenKeys = new Set<string>()
     const result: R2ImportResult = {
       scanned: 0,
@@ -118,6 +125,10 @@ export class R2ImportService {
     let pages = 0
 
     try {
+      result.deleted += await this.cleanupManagedUploadImports({ userId: params.userId, now })
+      const existingFiles = await db.select().from(fileObject).all()
+      const existingByKey = new Map(existingFiles.map((file) => [file.storageKey, file]))
+
       do {
         pages += 1
         if (pages > MAX_IMPORT_PAGES) throw new Error("R2 import exceeded maximum page count")
@@ -127,6 +138,13 @@ export class R2ImportService {
         for (const object of page.objects) {
           result.scanned += 1
           if (!object.key || object.key.endsWith("/") || isInternalObjectKey(object.key)) {
+            result.skipped += 1
+            continue
+          }
+
+          const existing = existingByKey.get(object.key)
+          if (isManagedUploadObjectKey(object.key)) {
+            if (existing && !isImportedFromR2(existing.metadata)) seenKeys.add(object.key)
             result.skipped += 1
             continue
           }
@@ -143,7 +161,6 @@ export class R2ImportService {
               object.httpMetadata?.contentType,
               normalized.fileName,
             )
-            const existing = existingByKey.get(object.key)
 
             if (existing) {
               if (existing.isDeleted) {
@@ -320,6 +337,89 @@ export class R2ImportService {
     return parentId
   }
 
+  private async cleanupManagedUploadImports(params: {
+    userId: string
+    now: string
+  }): Promise<number> {
+    const db = getDB()
+    const importedManagedFiles = (await db.select().from(fileObject).all()).filter(
+      (file) => isManagedUploadObjectKey(file.storageKey) && isImportedFromR2(file.metadata),
+    )
+
+    if (importedManagedFiles.length === 0) return 0
+
+    const fileIds = importedManagedFiles.map((file) => file.id)
+    const candidateFolderIds = new Set(
+      importedManagedFiles
+        .map((file) => file.folderId)
+        .filter((folderId): folderId is string => Boolean(folderId)),
+    )
+
+    await db.delete(fileObjectTag).where(inArray(fileObjectTag.fileObjectId, fileIds)).run()
+    await db.delete(favorite).where(inArray(favorite.fileObjectId, fileIds)).run()
+    await db.delete(fileObject).where(inArray(fileObject.id, fileIds)).run()
+
+    for (const file of importedManagedFiles) {
+      await db
+        .insert(auditLog)
+        .values({
+          id: crypto.randomUUID(),
+          actorId: params.userId,
+          action: "file.r2_internal_import_cleanup",
+          resourceType: "file",
+          resourceId: file.id,
+          metadata: JSON.stringify({ storageKey: file.storageKey }),
+          createdAt: params.now,
+        })
+        .run()
+    }
+
+    await this.cleanupEmptyManagedImportFolders(candidateFolderIds)
+    return importedManagedFiles.length
+  }
+
+  private async cleanupEmptyManagedImportFolders(initialFolderIds: Set<string>): Promise<void> {
+    const db = getDB()
+    const allFolders = await db.select().from(folder).where(eq(folder.isDeleted, false)).all()
+    const foldersById = new Map(allFolders.map((row) => [row.id, row]))
+    const candidateIds = new Set<string>()
+
+    for (const folderId of initialFolderIds) {
+      let current = foldersById.get(folderId)
+      while (current && isManagedImportFolderPath(current.path)) {
+        candidateIds.add(current.id)
+        current = current.parentFolderId ? foldersById.get(current.parentFolderId) : undefined
+      }
+    }
+
+    const sortedCandidates = [...candidateIds]
+      .map((id) => foldersById.get(id))
+      .filter((row): row is (typeof allFolders)[number] => Boolean(row))
+      .sort((a, b) => b.path.split("/").length - a.path.split("/").length)
+
+    for (const candidate of sortedCandidates) {
+      const hasFiles = Boolean(
+        await db
+          .select({ id: fileObject.id })
+          .from(fileObject)
+          .where(and(eq(fileObject.folderId, candidate.id), eq(fileObject.isDeleted, false)))
+          .get(),
+      )
+      if (hasFiles) continue
+
+      const hasChildren = Boolean(
+        await db
+          .select({ id: folder.id })
+          .from(folder)
+          .where(and(eq(folder.parentFolderId, candidate.id), eq(folder.isDeleted, false)))
+          .get(),
+      )
+      if (hasChildren) continue
+
+      await db.delete(folder).where(eq(folder.id, candidate.id)).run()
+    }
+  }
+
   private async updateSyncState(
     settingsId: string,
     values: {
@@ -344,6 +444,24 @@ function normalizeObjectKey(key: string): { folderParts: string[]; fileName: str
 
 function isInternalObjectKey(key: string): boolean {
   return key.includes(`/${THUMBNAILS_PREFIX_PART}/`) || key.startsWith(`${THUMBNAILS_PREFIX_PART}/`)
+}
+
+function isManagedUploadObjectKey(key: string): boolean {
+  return MANAGED_UPLOAD_KEY_PATTERN.test(key)
+}
+
+function isManagedImportFolderPath(path: string): boolean {
+  return path === "/bucket" || path === "/bucket/files" || path.startsWith("/bucket/files/")
+}
+
+function isImportedFromR2(metadata: string | null): boolean {
+  if (!metadata) return false
+  try {
+    const parsed = JSON.parse(metadata) as { importedFromR2?: unknown }
+    return parsed.importedFromR2 === true
+  } catch {
+    return false
+  }
 }
 
 function getExtension(fileName: string): string | null {

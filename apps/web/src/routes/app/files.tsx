@@ -40,6 +40,7 @@ import {
 } from "@/components/shared/page-layout"
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 import { useNavigate, useRouterState } from "@tanstack/react-router"
 import type { WorkspaceRole } from "@bucketdrive/shared"
 import { DEFAULT_BRAND_NAME } from "@/lib/branding"
@@ -71,6 +72,7 @@ function normalizeWorkspaceRole(role: unknown): WorkspaceRole {
 
 export function FilesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const routeSearch = useRouterState({
@@ -470,6 +472,11 @@ export function FilesPage() {
     fileInputRef.current?.click()
   }
 
+  const handleFolderSelect = () => {
+    if (!canUpload) return
+    folderInputRef.current?.click()
+  }
+
   const handleCreateFolder = () => {
     if (!canCreateFolder) return
     const name = window.prompt("Folder name:")
@@ -564,7 +571,7 @@ export function FilesPage() {
           fileSize: u.file.size,
           mimeType: u.file.type || "application/octet-stream",
           progress: 0,
-          status: "queued" as const,
+          status: "preparing" as const,
           chunks: [],
           retryCount: 0,
           relativePath: u.relativePath,
@@ -593,14 +600,37 @@ export function FilesPage() {
             totalChunks: res.totalParts,
             chunkSize: res.partSize,
             targetFolderId: res.folderId ?? undefined,
+            status: "queued",
           })
         }
-      } catch {
-        // Already in store as queued; processor will handle normally (initiateUpload per file)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to prepare folder upload"
+        for (const item of uploadItems) {
+          store.updateItem(item.id, {
+            status: "failed",
+            error: message,
+          })
+        }
       }
     },
     [addFiles, currentFolderId, batchUpload],
   )
+
+  const handleFolderFilesChosen = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const chosenFiles = Array.from(event.target.files ?? [])
+    if (chosenFiles.length > 0) {
+      void handleFilesDrop(
+        chosenFiles.map((file) => ({
+          file,
+          relativePath: file.webkitRelativePath || file.name,
+        })),
+        [],
+      )
+    }
+    if (folderInputRef.current) {
+      folderInputRef.current.value = ""
+    }
+  }
 
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
@@ -695,13 +725,32 @@ export function FilesPage() {
                 </ActionButton>
               )}
               {canUpload && (
-                <ActionButton
-                  variant="primary"
-                  icon={<Upload className="h-4 w-4" />}
-                  onClick={handleFileSelect}
-                >
-                  Upload
-                </ActionButton>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <ActionButton variant="primary" icon={<Upload className="h-4 w-4" />}>
+                      Upload
+                    </ActionButton>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content
+                      align="end"
+                      className="border-border-default bg-surface-default z-50 min-w-40 rounded-lg border p-1 shadow-lg"
+                    >
+                      <DropdownMenu.Item
+                        onSelect={handleFileSelect}
+                        className="text-text-primary hover:bg-surface-hover focus:bg-surface-hover cursor-pointer rounded-md px-3 py-2 text-sm outline-none"
+                      >
+                        Files
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
+                        onSelect={handleFolderSelect}
+                        className="text-text-primary hover:bg-surface-hover focus:bg-surface-hover cursor-pointer rounded-md px-3 py-2 text-sm outline-none"
+                      >
+                        Folder
+                      </DropdownMenu.Item>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
               )}
               <input
                 ref={fileInputRef}
@@ -709,6 +758,14 @@ export function FilesPage() {
                 multiple
                 onChange={handleFilesChosen}
                 className="hidden"
+              />
+              <input
+                ref={folderInputRef}
+                type="file"
+                multiple
+                onChange={handleFolderFilesChosen}
+                className="hidden"
+                {...{ webkitdirectory: "", directory: "" }}
               />
             </>
           }

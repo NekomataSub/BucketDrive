@@ -1,7 +1,14 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
-export type UploadStatus = "queued" | "uploading" | "paused" | "completed" | "failed" | "cancelled"
+export type UploadStatus =
+  | "preparing"
+  | "queued"
+  | "uploading"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "cancelled"
 
 export interface UploadChunk {
   partNumber: number

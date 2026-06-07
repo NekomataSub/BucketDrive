@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  BatchUploadRequest,
   BatchUploadResponse,
   ListPlatformInvitationsResponse,
   ListMembersResponse,
@@ -23,6 +24,19 @@ describe("shared API contracts", () => {
     })
 
     expect(parsed.items[0]?.folderId).toBeNull()
+  })
+
+  it("allows batch upload requests for empty folder trees", () => {
+    const parsed = BatchUploadRequest.parse({
+      items: [],
+      emptyFolders: ["Album/Empty/Sub"],
+    })
+
+    expect(parsed.emptyFolders).toContain("Album/Empty/Sub")
+  })
+
+  it("rejects empty batch upload requests without files or folders", () => {
+    expect(() => BatchUploadRequest.parse({ items: [], emptyFolders: [] })).toThrow()
   })
 
   it("accepts share browse credentials in the request body", () => {

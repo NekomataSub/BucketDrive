@@ -75,7 +75,7 @@ test("file explorer separates drag handles from open and preview actions", async
   assert.match(shortcuts, /itemToOpen\?\.type === "file" && onPreviewItem/)
 })
 
-test("upload drop zone opens the file picker on click while keeping drag upload", async () => {
+test("upload menu supports file and folder picker while keeping drag upload", async () => {
   const [dropZone, filesRoute] = await Promise.all([
     read("src/components/features/upload-drop-zone.tsx"),
     read("src/routes/app/files.tsx"),
@@ -87,6 +87,14 @@ test("upload drop zone opens the file picker on click while keeping drag upload"
   assert.match(dropZone, /onDrop=\{handleDrop\}/)
   assert.match(dropZone, /Click or drag files or folders here to upload/)
   assert.match(filesRoute, /fileInputRef\.current\?\.click\(\)/)
+  assert.match(filesRoute, /folderInputRef\.current\?\.click\(\)/)
+  assert.match(filesRoute, /DropdownMenu\.Root/)
+  assert.match(filesRoute, />\s*Files\s*</)
+  assert.match(filesRoute, />\s*Folder\s*</)
+  assert.match(filesRoute, /webkitdirectory/)
+  assert.match(filesRoute, /file\.webkitRelativePath \|\| file\.name/)
+  assert.match(filesRoute, /status:\s*"preparing" as const/)
+  assert.match(filesRoute, /status:\s*"queued"/)
   assert.match(filesRoute, /onClickUpload=\{handleFileSelect\}/)
 })
 

@@ -139,11 +139,15 @@ export const BatchUploadItemRequest = z.object({
   checksum: z.string().optional(),
 })
 
-export const BatchUploadRequest = z.object({
-  items: z.array(BatchUploadItemRequest).min(1).max(100),
-  parentFolderId: z.string().uuid().nullable().optional(),
-  emptyFolders: z.array(z.string().min(1)).max(100).optional(),
-})
+export const BatchUploadRequest = z
+  .object({
+    items: z.array(BatchUploadItemRequest).max(100),
+    parentFolderId: z.string().uuid().nullable().optional(),
+    emptyFolders: z.array(z.string().min(1)).max(100).optional(),
+  })
+  .refine((body) => body.items.length > 0 || (body.emptyFolders?.length ?? 0) > 0, {
+    message: "Batch upload requires at least one file or folder",
+  })
 
 export const BatchUploadFolderCreated = z.object({
   id: z.string().uuid(),
