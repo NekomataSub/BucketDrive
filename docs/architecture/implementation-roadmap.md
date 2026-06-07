@@ -16,6 +16,7 @@ verifiable result.
 > - Extended Files, Trash, Share Links, and Shared with me with multi-selection via modifier clicks, range selection, keyboard select-all/escape, and empty-area drag selection.
 > - Fixed empty-area drag selection by moving Files selection handling into the grid/list surfaces and adding live hit-testing plus blank table panel space.
 > - Added a visible marquee overlay for drag selection and disabled native text selection only while dragging.
+> - Replaced the separate Files bulk-action bar with an in-place toolbar mode that swaps filters for bulk actions while items are selected.
 > - Added contract coverage for batch payloads, partial responses, RBAC failures, and share revocation.
 
 > **Folder upload correction pass — 2026-06-07:**

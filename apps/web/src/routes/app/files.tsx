@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands, @typescript-eslint/restrict-template-expressions */
 import { useRef, useMemo, useCallback, useState, useEffect } from "react"
-import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X } from "lucide-react"
+import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X, ArrowRightLeft } from "lucide-react"
 import {
   useFiles,
   useFolders,
@@ -913,191 +913,206 @@ export function FilesPage() {
           </div>
         )}
 
-        <PageToolbar className="items-start">
-          <SegmentedControl
-            value={viewMode}
-            onChange={setViewMode}
-            ariaLabel="File view mode"
-            options={[
-              {
-                value: "grid",
-                label: <LayoutGrid className="h-4 w-4" />,
-                ariaLabel: "Grid view",
-              },
-              {
-                value: "list",
-                label: <List className="h-4 w-4" />,
-                ariaLabel: "List view",
-              },
-            ]}
-          />
-          <div className="flex flex-wrap gap-2">
-            {typeFilterOptions.map((option) => (
+        <PageToolbar className="relative items-start">
+          <div
+            className={
+              totalSelected > 0
+                ? "invisible flex w-full min-w-0 items-center gap-2"
+                : "flex w-full min-w-0 items-center gap-2"
+            }
+          >
+            <SegmentedControl
+              value={viewMode}
+              onChange={setViewMode}
+              ariaLabel="File view mode"
+              options={[
+                {
+                  value: "grid",
+                  label: <LayoutGrid className="h-4 w-4" />,
+                  ariaLabel: "Grid view",
+                },
+                {
+                  value: "list",
+                  label: <List className="h-4 w-4" />,
+                  ariaLabel: "List view",
+                },
+              ]}
+            />
+            <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
+              {typeFilterOptions.map((option) => (
+                <button
+                  type="button"
+                  key={option.value}
+                  onClick={() => setDashboardType(option.value)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    dashboardSearch.type === option.value
+                      ? "bg-accent text-white"
+                      : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+
               <button
                 type="button"
-                key={option.value}
-                onClick={() => setDashboardType(option.value)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  dashboardSearch.type === option.value
-                    ? "bg-accent text-white"
+                onClick={() => setDashboardFavoriteOnly(!dashboardSearch.favoriteOnly)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  dashboardSearch.favoriteOnly
+                    ? "bg-warning/20 text-warning"
                     : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
                 }`}
               >
-                {option.label}
+                <Star
+                  className={`h-3.5 w-3.5 ${dashboardSearch.favoriteOnly ? "fill-warning" : ""}`}
+                />
+                Favorites
               </button>
-            ))}
 
-            <button
-              type="button"
-              onClick={() => setDashboardFavoriteOnly(!dashboardSearch.favoriteOnly)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                dashboardSearch.favoriteOnly
-                  ? "bg-warning/20 text-warning"
-                  : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
-              }`}
-            >
-              <Star
-                className={`h-3.5 w-3.5 ${dashboardSearch.favoriteOnly ? "fill-warning" : ""}`}
-              />
-              Favorites
-            </button>
+              {isSearchActive && (
+                <>
+                  <select
+                    value={dashboardSearch.sort}
+                    onChange={(event) =>
+                      setDashboardSort(event.target.value as typeof dashboardSearch.sort)
+                    }
+                    className="border-border-default bg-surface-secondary text-text-primary focus:border-accent rounded-full border px-3 py-1.5 text-xs font-medium outline-none"
+                  >
+                    {debouncedQuery && <option value="relevance">Relevance</option>}
+                    <option value="name">Name</option>
+                    <option value="created_at">Date</option>
+                    <option value="size">Size</option>
+                    <option value="type">Type</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDashboardOrder(dashboardSearch.order === "asc" ? "desc" : "asc")
+                    }
+                    className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                  >
+                    {dashboardSearch.order === "asc" ? "Ascending" : "Descending"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearDashboardSearch}
+                    className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Clear search
+                  </button>
+                </>
+              )}
+            </div>
+
+            {allTags.length > 0 && (
+              <div className="hidden min-w-0 items-center gap-2 xl:flex">
+                <span className="text-text-tertiary text-xs font-medium tracking-wide uppercase">
+                  Tags
+                </span>
+                {allTags.map((tag) => {
+                  const selected = dashboardSearch.selectedTagIds.includes(tag.id)
+                  const colorClasses = getTagColorClasses(tag.color)
+
+                  return (
+                    <button
+                      type="button"
+                      key={tag.id}
+                      onClick={() => {
+                        setDashboardSelectedTagIds(
+                          selected
+                            ? dashboardSearch.selectedTagIds.filter((id) => id !== tag.id)
+                            : [...dashboardSearch.selectedTagIds, tag.id],
+                        )
+                      }}
+                      className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        selected
+                          ? `border-transparent ${colorClasses.chipClassName}`
+                          : "border-border-default bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                      }`}
+                    >
+                      {tag.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
             {isSearchActive && (
-              <>
-                <select
-                  value={dashboardSearch.sort}
-                  onChange={(event) =>
-                    setDashboardSort(event.target.value as typeof dashboardSearch.sort)
-                  }
-                  className="border-border-default bg-surface-secondary text-text-primary focus:border-accent rounded-full border px-3 py-1.5 text-xs font-medium outline-none"
-                >
-                  {debouncedQuery && <option value="relevance">Relevance</option>}
-                  <option value="name">Name</option>
-                  <option value="created_at">Date</option>
-                  <option value="size">Size</option>
-                  <option value="type">Type</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDashboardOrder(dashboardSearch.order === "asc" ? "desc" : "asc")
-                  }
-                  className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
-                >
-                  {dashboardSearch.order === "asc" ? "Ascending" : "Descending"}
-                </button>
-                <button
-                  type="button"
-                  onClick={clearDashboardSearch}
-                  className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Clear search
-                </button>
-              </>
+              <div className="hidden min-w-0 gap-2 2xl:flex">
+                {debouncedQuery && (
+                  <span className="bg-accent/10 text-accent shrink-0 rounded-full px-3 py-1 text-xs font-medium">
+                    Query: {debouncedQuery}
+                  </span>
+                )}
+                {dashboardSearch.favoriteOnly && (
+                  <span className="bg-warning/10 text-warning shrink-0 rounded-full px-3 py-1 text-xs font-medium">
+                    Favorites only
+                  </span>
+                )}
+                {dashboardSearch.type !== "all" && (
+                  <span className="bg-surface-secondary text-text-primary shrink-0 rounded-full px-3 py-1 text-xs font-medium">
+                    Type:{" "}
+                    {
+                      typeFilterOptions.find((option) => option.value === dashboardSearch.type)
+                        ?.label
+                    }
+                  </span>
+                )}
+                {selectedTagNames.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className={[
+                      "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
+                      getTagColorClasses(tag.color).chipClassName,
+                    ].join(" ")}
+                  >
+                    Tag: {tag.name}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
 
-          {allTags.length > 0 && (
-            <div className="flex w-full flex-wrap items-center gap-2">
-              <span className="text-text-tertiary text-xs font-medium tracking-wide uppercase">
-                Tags
+          {totalSelected > 0 && (
+            <div className="absolute inset-0 flex items-center gap-2 p-3">
+              <span className="text-text-primary shrink-0 text-sm font-medium">
+                {totalSelected} item{totalSelected === 1 ? "" : "s"} selected
               </span>
-              {allTags.map((tag) => {
-                const selected = dashboardSearch.selectedTagIds.includes(tag.id)
-                const colorClasses = getTagColorClasses(tag.color)
-
-                return (
+              <div className="flex-1" />
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {(canMoveFile || canMoveFolder) && (
                   <button
                     type="button"
-                    key={tag.id}
-                    onClick={() => {
-                      setDashboardSelectedTagIds(
-                        selected
-                          ? dashboardSearch.selectedTagIds.filter((id) => id !== tag.id)
-                          : [...dashboardSearch.selectedTagIds, tag.id],
-                      )
-                    }}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      selected
-                        ? `border-transparent ${colorClasses.chipClassName}`
-                        : "border-border-default bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
-                    }`}
+                    onClick={handleMoveSelected}
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
-                    {tag.name}
+                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                    Move selected
                   </button>
-                )
-              })}
-            </div>
-          )}
-
-          {isSearchActive && (
-            <div className="flex w-full flex-wrap gap-2">
-              {debouncedQuery && (
-                <span className="bg-accent/10 text-accent rounded-full px-3 py-1 text-xs font-medium">
-                  Query: {debouncedQuery}
-                </span>
-              )}
-              {dashboardSearch.favoriteOnly && (
-                <span className="bg-warning/10 text-warning rounded-full px-3 py-1 text-xs font-medium">
-                  Favorites only
-                </span>
-              )}
-              {dashboardSearch.type !== "all" && (
-                <span className="bg-surface-secondary text-text-primary rounded-full px-3 py-1 text-xs font-medium">
-                  Type:{" "}
-                  {typeFilterOptions.find((option) => option.value === dashboardSearch.type)?.label}
-                </span>
-              )}
-              {selectedTagNames.map((tag) => (
-                <span
-                  key={tag.id}
-                  className={[
-                    "rounded-full px-3 py-1 text-xs font-medium",
-                    getTagColorClasses(tag.color).chipClassName,
-                  ].join(" ")}
+                )}
+                {canDeleteSelected && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelected}
+                    className="text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete selected
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => clearSelection()}
+                  className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                 >
-                  Tag: {tag.name}
-                </span>
-              ))}
+                  <X className="h-3.5 w-3.5" />
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
         </PageToolbar>
-
-        {totalSelected > 0 && (
-          <div className="border-accent bg-accent/10 mb-3 flex items-center gap-2 rounded-lg border px-4 py-2">
-            <span className="text-text-primary text-sm font-medium">
-              {totalSelected} items selected
-            </span>
-            <div className="flex-1" />
-            {(canMoveFile || canMoveFolder) && (
-              <button
-                type="button"
-                onClick={handleMoveSelected}
-                className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
-              >
-                Move selected
-              </button>
-            )}
-            {canDeleteSelected && (
-              <button
-                type="button"
-                onClick={handleDeleteSelected}
-                className="text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete selected
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => clearSelection()}
-              className="text-text-tertiary hover:text-text-primary rounded-md px-3 py-1.5 text-sm transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
 
         <div className="relative flex-1 space-y-4" ref={containerRef}>
           <UploadDropZone
