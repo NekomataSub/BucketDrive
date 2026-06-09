@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8787 --inspector-port 9229",
+    "dev": "CI=true wrangler dev --port 8787 --inspector-port 9229",
     "deploy": "wrangler deploy",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -13,20 +13,20 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.6.9",
+    "@better-auth/drizzle-adapter": "^1.6.15",
     "@bucketdrive/shared": "workspace:*",
-    "@cf-wasm/photon": "^0.3.5",
+    "@cf-wasm/photon": "^0.3.6",
     "aws4fetch": "^1.0.20",
-    "better-auth": "^1.0.0",
+    "better-auth": "^1.6.15",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3",
-    "hono": "^4.7.0",
-    "zod": "^3.24.0"
+    "hono": "^4.12.25",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250100.0",
-    "typescript": "^5.7.0",
-    "vitest": "^4.1.5",
-    "wrangler": "^3.100.0"
+    "@cloudflare/workers-types": "^4.20260609.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8",
+    "wrangler": "^4.99.0"
   }
 }

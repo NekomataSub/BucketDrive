@@ -2,9 +2,9 @@ import { z } from "zod"
 import { AuthUserId } from "./common"
 
 export const FileObjectSchema = z.object({
-  id: z.string().uuid(),
-  bucketId: z.string().uuid(),
-  folderId: z.string().uuid().nullable(),
+  id: z.uuid(),
+  bucketId: z.uuid(),
+  folderId: z.uuid().nullable(),
   ownerId: AuthUserId,
   storageKey: z.string(),
   originalName: z.string(),
@@ -15,13 +15,13 @@ export const FileObjectSchema = z.object({
   thumbnailKey: z.string().nullable(),
   metadata: z.string().nullable(),
   isDeleted: z.boolean(),
-  deletedAt: z.string().datetime().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  deletedAt: z.iso.datetime().nullable(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
   tags: z
     .array(
       z.object({
-        id: z.string().uuid(),
+        id: z.uuid(),
         name: z.string(),
         color: z.string(),
       }),

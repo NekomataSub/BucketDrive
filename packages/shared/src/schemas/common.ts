@@ -49,7 +49,7 @@ export type ErrorCode = z.infer<typeof ErrorCode>
 export const ApiErrorSchema = z.object({
   code: ErrorCode,
   message: z.string(),
-  details: z.record(z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
 })
 
 export type ApiError = z.infer<typeof ApiErrorSchema>
@@ -63,7 +63,7 @@ export const PaginationMetaSchema = z.object({
 
 export type PaginationMeta = z.infer<typeof PaginationMetaSchema>
 
-export function PaginatedResponseSchema<T extends z.ZodTypeAny>(itemSchema: T) {
+export function PaginatedResponseSchema<T extends z.ZodType>(itemSchema: T) {
   return z.object({
     data: z.array(itemSchema),
     meta: PaginationMetaSchema,

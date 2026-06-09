@@ -10,7 +10,7 @@ export const NotificationTypeSchema = z.enum([
 ])
 
 export const NotificationSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   userId: z.string(),
   type: NotificationTypeSchema,
   title: z.string(),
@@ -41,7 +41,7 @@ export const UnreadCountResponse = z.object({
 
 export const MarkReadResponse = z.object({
   success: z.boolean(),
-  id: z.string().uuid(),
+  id: z.uuid(),
 })
 
 export const MarkAllReadResponse = z.object({

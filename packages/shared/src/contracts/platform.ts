@@ -4,8 +4,8 @@ import { WorkspaceRole } from "../schemas/common"
 export const PlatformSettingsResponse = z.object({
   platformName: z.string(),
   enablePublicSignup: z.boolean(),
-  platformLogoUrl: z.string().url().or(z.string().startsWith("/")).nullable(),
-  faviconUrl: z.string().url().or(z.string().startsWith("/")).nullable(),
+  platformLogoUrl: z.url().or(z.string().startsWith("/")).nullable(),
+  faviconUrl: z.url().or(z.string().startsWith("/")).nullable(),
 })
 
 export const UpdatePlatformSettingsRequest = z.object({
@@ -24,11 +24,11 @@ export const UploadPlatformAssetResponse = z.object({
 })
 
 export const BucketResponse = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string(),
   role: WorkspaceRole,
   storageQuotaBytes: z.number(),
-  createdAt: z.string().datetime(),
+  createdAt: z.iso.datetime(),
 })
 
 export const PlatformJoinResponse = z.object({
@@ -37,17 +37,17 @@ export const PlatformJoinResponse = z.object({
 })
 
 export const CreatePlatformInvitationRequest = z.object({
-  email: z.string().email(),
+  email: z.email(),
   role: WorkspaceRole.exclude(["owner"]),
 })
 
 export const PlatformInvitationListItemSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
+  id: z.uuid(),
+  email: z.email(),
   role: WorkspaceRole,
   status: z.enum(["pending", "accepted", "revoked", "expired"]),
-  expiresAt: z.string().datetime(),
-  createdAt: z.string().datetime(),
+  expiresAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
   inviteLink: z.string().optional(),
 })
 
@@ -56,12 +56,12 @@ export const ListPlatformInvitationsResponse = z.object({
 })
 
 export const CreatePlatformInvitationResponse = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
+  id: z.uuid(),
+  email: z.email(),
   role: WorkspaceRole,
   status: z.enum(["pending", "accepted", "revoked", "expired"]),
-  expiresAt: z.string().datetime(),
-  createdAt: z.string().datetime(),
+  expiresAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
   inviteLink: z.string(),
 })
 

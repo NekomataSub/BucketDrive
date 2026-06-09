@@ -5,31 +5,31 @@ export const InvitationStatus = z.enum(["pending", "accepted", "revoked", "expir
 export type InvitationStatus = z.infer<typeof InvitationStatus>
 
 export const CreateInvitationRequest = z.object({
-  email: z.string().email(),
+  email: z.email(),
   role: WorkspaceRole.exclude(["owner"]),
 })
 
 export const InvitationListItemSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
+  id: z.uuid(),
+  email: z.email(),
   role: WorkspaceRole,
   invitedBy: AuthUserId,
   invitedByName: z.string(),
   status: InvitationStatus,
-  expiresAt: z.string().datetime(),
-  createdAt: z.string().datetime(),
+  expiresAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
 })
 
 export const ListInvitationsResponse = PaginatedResponseSchema(InvitationListItemSchema)
 
 export const InvitationDetailResponse = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
+  id: z.uuid(),
+  email: z.email(),
   role: WorkspaceRole,
   invitedByName: z.string(),
   status: InvitationStatus,
-  expiresAt: z.string().datetime(),
-  createdAt: z.string().datetime(),
+  expiresAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
 })
 
 export const AcceptInvitationRequest = z.object({
@@ -43,7 +43,7 @@ export const AcceptInvitationResponse = z.object({
 
 export const RevokeInvitationResponse = z.object({
   success: z.literal(true),
-  invitationId: z.string().uuid(),
+  invitationId: z.uuid(),
 })
 
 export const InitiateOwnershipTransferRequest = z.object({

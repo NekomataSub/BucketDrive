@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull, ne, or, sql, type InferSelectModel } from "drizzle-orm"
+import type { z } from "zod"
 import {
   auditLog,
   bucketSettings,
@@ -20,8 +21,10 @@ import type {
 type DB = ReturnType<typeof getDB>
 type FileRow = InferSelectModel<typeof fileObject>
 type FolderRow = InferSelectModel<typeof folder>
-type zInfer<T extends { _type: unknown }> = T["_type"]
 type TrashBatchResourceType = "file" | "folder"
+type ListTrashQuery = z.infer<typeof ListTrashRequest>
+type RestoreFileResult = z.infer<typeof RestoreFileResponse>
+type RestoreFolderResult = z.infer<typeof RestoreFolderResponse>
 type TrashBatchResult = {
   success: boolean
   processed: Array<{ resourceType: TrashBatchResourceType; id: string }>
@@ -83,7 +86,7 @@ export class TrashService {
     private storage: StorageProvider,
   ) {}
 
-  async listTrash(query: typeof ListTrashRequest._type) {
+  async listTrash(query: ListTrashQuery) {
     const retentionDays = await this.getRetentionDays()
     const [files, folders, folderRows] = await Promise.all([
       this.db.select().from(fileObject).where(eq(fileObject.isDeleted, true)).all(),
@@ -244,10 +247,7 @@ export class TrashService {
     return { success: true as const, folderId: params.folderId }
   }
 
-  async restoreFile(params: {
-    fileId: string
-    actorId: string
-  }): Promise<zInfer<typeof RestoreFileResponse>> {
+  async restoreFile(params: { fileId: string; actorId: string }): Promise<RestoreFileResult> {
     const file = await this.db
       .select()
       .from(fileObject)
@@ -294,10 +294,7 @@ export class TrashService {
     return { success: true, fileId: file.id, restoredToFolderId, restoredName, restoredToRoot }
   }
 
-  async restoreFolder(params: {
-    folderId: string
-    actorId: string
-  }): Promise<zInfer<typeof RestoreFolderResponse>> {
+  async restoreFolder(params: { folderId: string; actorId: string }): Promise<RestoreFolderResult> {
     const target = await this.db.select().from(folder).where(eq(folder.id, params.folderId)).get()
     if (!target) throw new TrashServiceError("FOLDER_NOT_FOUND", "Folder not found", 404)
     if (!target.isDeleted) throw new TrashServiceError("CONFLICT", "Folder is not in trash", 409)

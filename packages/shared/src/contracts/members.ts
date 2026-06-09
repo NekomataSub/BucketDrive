@@ -5,17 +5,17 @@ export const BucketMemberListItemSchema = z.object({
   id: AuthUserId,
   userId: AuthUserId,
   role: WorkspaceRole,
-  email: z.string().email(),
+  email: z.email(),
   name: z.string(),
   image: z.string().nullable(),
-  createdAt: z.string().datetime(),
+  createdAt: z.iso.datetime(),
 })
 
 export const WorkspaceMemberListItemSchema = BucketMemberListItemSchema
 export const ListMembersResponse = PaginatedResponseSchema(BucketMemberListItemSchema)
 
 export const AddMemberRequest = z.object({
-  email: z.string().email(),
+  email: z.email(),
   role: WorkspaceRole.exclude(["owner"]),
 })
 

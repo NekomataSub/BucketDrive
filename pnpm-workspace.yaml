@@ -2,3 +2,33 @@ packages:
   - "apps/*"
   - "packages/*"
   - "tooling/*"
+overrides:
+  esbuild: ^0.28.0
+  shell-quote: ^1.8.4
+  tmp: ^0.2.6
+  uuid: ^14.0.0
+  ws: ^8.20.1
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  sharp: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - "@cloudflare/workerd-darwin-64@1.20260609.1"
+  - "@cloudflare/workerd-darwin-arm64@1.20260609.1"
+  - "@cloudflare/workerd-linux-64@1.20260609.1"
+  - "@cloudflare/workerd-linux-arm64@1.20260609.1"
+  - "@cloudflare/workerd-windows-64@1.20260609.1"
+  - "@cloudflare/workers-types@4.20260609.1"
+  - "@turbo/darwin-64@2.9.17"
+  - "@turbo/darwin-arm64@2.9.17"
+  - "@turbo/linux-64@2.9.17"
+  - "@turbo/linux-arm64@2.9.17"
+  - "@turbo/windows-64@2.9.17"
+  - "@turbo/windows-arm64@2.9.17"
+  - hono@4.12.25
+  - miniflare@4.20260609.0
+  - prettier@3.8.4
+  - turbo@2.9.17
+  - workerd@1.20260609.1
+  - wrangler@4.99.0

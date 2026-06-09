@@ -17,21 +17,21 @@ export const StorageTrendPointSchema = z.object({
 })
 
 export const LargestFileSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string(),
   sizeBytes: z.number().int().min(0),
   mimeType: z.string(),
-  createdAt: z.string().datetime(),
+  createdAt: z.iso.datetime(),
 })
 
 export const RecentActivityItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   actorId: z.string(),
   actorName: z.string().nullable(),
   action: z.string(),
   resourceType: z.string(),
   resourceId: z.string().nullable(),
-  createdAt: z.string().datetime(),
+  createdAt: z.iso.datetime(),
 })
 
 export const DashboardOverviewResponse = z.object({
@@ -45,14 +45,14 @@ export const DashboardAuditRequest = z.object({
   actorId: z.string().optional(),
   action: z.string().trim().min(1).max(120).optional(),
   resourceType: z.string().trim().min(1).max(80).optional(),
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 })
 
 export const DashboardAuditItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   actorId: z.string(),
   actorName: z.string().nullable(),
   action: z.string(),
@@ -60,8 +60,8 @@ export const DashboardAuditItemSchema = z.object({
   resourceId: z.string().nullable(),
   ipAddress: z.string().nullable(),
   userAgent: z.string().nullable(),
-  metadata: z.record(z.unknown()).nullable(),
-  createdAt: z.string().datetime(),
+  metadata: z.record(z.string(), z.unknown()).nullable(),
+  createdAt: z.iso.datetime(),
 })
 
 export const DashboardAuditResponse = PaginatedResponseSchema(DashboardAuditItemSchema)

@@ -376,8 +376,9 @@ describe("R2ImportService sync", () => {
       ])
       .run()
 
-    await new R2ImportService(createStorage([{ key: "bucket/legit/readme.txt", size: 10 }]))
-      .syncBucket({ userId: "user-1" })
+    await new R2ImportService(
+      createStorage([{ key: "bucket/legit/readme.txt", size: 10 }]),
+    ).syncBucket({ userId: "user-1" })
 
     const paths = db
       .select()

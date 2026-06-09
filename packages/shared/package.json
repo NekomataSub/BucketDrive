@@ -21,13 +21,13 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "zod": "^3.24.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@libsql/client": "^0.17.3",
-    "drizzle-kit": "^0.30.0",
+    "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
-    "typescript": "^5.7.0",
-    "vitest": "^4.1.5"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
   }
 }

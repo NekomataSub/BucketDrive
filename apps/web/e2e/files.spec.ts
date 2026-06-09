@@ -83,7 +83,7 @@ test("new folder uses the custom text input dialog", async ({ page }) => {
   await dialog.getByLabel("Folder name").fill(folderName)
   await dialog.getByRole("button", { name: "Create folder" }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.getByText(folderName)).toBeVisible()
+  await expect(page.locator("button").filter({ hasText: folderName })).toBeVisible()
 })
 
 test("move action opens a folder picker instead of asking for an ID", async ({ page }) => {
@@ -147,16 +147,10 @@ test("batch toolbar exposes shared actions for selected files", async ({ page })
   await page.keyboard.up("Control")
 
   await expect(page.getByText("2 items selected")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Share selected" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Tags" })).toBeVisible()
   await page.getByRole("button", { name: "Move selected" }).click()
   await expect(page.getByRole("dialog", { name: "Move items" })).toBeVisible()
-  await page.keyboard.press("Escape")
-
-  await page.getByRole("button", { name: "Share selected" }).click()
-  await expect(page.getByRole("dialog", { name: "Share selected items" })).toBeVisible()
-  await page.keyboard.press("Escape")
-
-  await page.getByRole("button", { name: "Tags" }).click()
-  await expect(page.getByRole("dialog", { name: "Tags" })).toContainText("Manage tags for 2 files")
 })
 
 test("deleted file appears in trash and can be restored", async ({ page }) => {

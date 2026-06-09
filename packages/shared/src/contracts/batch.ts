@@ -1,8 +1,8 @@
 import { z } from "zod"
 
 const BatchResourceIdsBaseSchema = z.object({
-  files: z.array(z.string().uuid()).max(100).default([]),
-  folders: z.array(z.string().uuid()).max(100).default([]),
+  files: z.array(z.uuid()).max(100).default([]),
+  folders: z.array(z.uuid()).max(100).default([]),
 })
 
 const BatchResourceIdsSchema = BatchResourceIdsBaseSchema.refine(
@@ -18,14 +18,14 @@ export const BatchPermanentDeleteRequest = BatchResourceIdsSchema
 export const BatchDownloadRequest = BatchResourceIdsSchema
 
 export const BatchMoveRequest = BatchResourceIdsBaseSchema.extend({
-  targetFolderId: z.string().uuid().nullable(),
+  targetFolderId: z.uuid().nullable(),
 }).refine((body) => body.files.length > 0 || body.folders.length > 0, {
   message: "Batch request requires at least one file or folder",
 })
 
 export const BatchRevokeSharesRequest = z
   .object({
-    shareIds: z.array(z.string().uuid()).max(100),
+    shareIds: z.array(z.uuid()).max(100),
   })
   .refine((body) => body.shareIds.length > 0, {
     message: "Batch request requires at least one share",
@@ -33,7 +33,7 @@ export const BatchRevokeSharesRequest = z
 
 export const BatchProcessedItemSchema = z.object({
   resourceType: z.enum(["file", "folder", "share"]),
-  id: z.string().uuid(),
+  id: z.uuid(),
 })
 
 export const BatchFailureSchema = BatchProcessedItemSchema.extend({
@@ -48,11 +48,11 @@ export const BatchOperationResponse = z.object({
 })
 
 export const BatchDownloadFileSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   path: z.string().min(1),
   fileName: z.string().min(1),
   sizeBytes: z.number().int().min(0),
-  signedUrl: z.string().url(),
+  signedUrl: z.url(),
 })
 
 export const BatchDownloadResponse = z.object({

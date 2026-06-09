@@ -13,10 +13,10 @@ export const ListTrashRequest = z.object({
 
 const TrashItemBaseSchema = z.object({
   resourceType: z.enum(["file", "folder"]),
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string(),
   originalLocation: z.string(),
-  deletedAt: z.string().datetime(),
+  deletedAt: z.iso.datetime(),
   daysRemaining: z.number().int().min(0),
 })
 
@@ -38,28 +38,28 @@ export const ListTrashResponse = PaginatedResponseSchema(TrashItemSchema)
 
 export const RestoreFileResponse = z.object({
   success: z.literal(true),
-  fileId: z.string().uuid(),
-  restoredToFolderId: z.string().uuid().nullable(),
+  fileId: z.uuid(),
+  restoredToFolderId: z.uuid().nullable(),
   restoredName: z.string(),
   restoredToRoot: z.boolean(),
 })
 
 export const RestoreFolderResponse = z.object({
   success: z.literal(true),
-  folderId: z.string().uuid(),
-  restoredToFolderId: z.string().uuid().nullable(),
+  folderId: z.uuid(),
+  restoredToFolderId: z.uuid().nullable(),
   restoredName: z.string(),
   restoredToRoot: z.boolean(),
 })
 
 export const PermanentlyDeleteFileResponse = z.object({
   success: z.literal(true),
-  fileId: z.string().uuid(),
+  fileId: z.uuid(),
 })
 
 export const PermanentlyDeleteFolderResponse = z.object({
   success: z.literal(true),
-  folderId: z.string().uuid(),
+  folderId: z.uuid(),
 })
 
 export type TrashItem = z.infer<typeof TrashItemSchema>

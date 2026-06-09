@@ -2034,6 +2034,14 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - Delayed member and invitation queries until the current bucket context is resolved in the web client.
 > - Added platform invitation endpoints for listing, creating, and accepting invites through the existing bucket invitation table.
 
+## Implementation Notes - Dependency Refresh
+
+> - Updated the monorepo to `pnpm@11.5.2` and refreshed direct runtime, UI, Cloudflare, build, lint, typecheck, and test dependencies to their latest available releases.
+> - Added pnpm 11 workspace policy for approved native/toolchain builds and security overrides for stale transitive `shell-quote`, `tmp`, `ws`, `uuid`, and `esbuild` advisories.
+> - Migrated shared Zod contracts/schemas to Zod 4 validators and public `z.infer` typing, and adjusted Vite 8 manual chunking for Rolldown.
+> - Restored `/api/workspaces` and `/api/workspaces/:workspaceId/...` compatibility routing over the single-bucket API so E2E and legacy clients keep working.
+> - Set Wrangler dev scripts to run non-interactively under Wrangler 4.99, avoiding the new AI skills installation prompt during `pnpm dev`.
+
 ---
 
 # Quick Reference

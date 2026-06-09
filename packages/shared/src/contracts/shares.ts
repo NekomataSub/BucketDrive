@@ -7,11 +7,11 @@ import {
 } from "../schemas/share"
 
 export const CreateShareRequest = z.object({
-  resourceId: z.string().uuid(),
+  resourceId: z.uuid(),
   resourceType: z.enum(["file", "folder"]),
   shareType: z.enum(["internal", "external_direct", "external_explorer"]),
   password: z.string().min(4).max(128).optional(),
-  expiresAt: z.string().datetime().optional(),
+  expiresAt: z.iso.datetime().optional(),
   permissions: z.array(z.enum(["read", "download"])).optional(),
 })
 
@@ -29,7 +29,7 @@ export const ListSharesResponse = z.object({
 
 export const UpdateShareRequest = z.object({
   password: z.string().min(4).max(128).nullable().optional(),
-  expiresAt: z.string().datetime().nullable().optional(),
+  expiresAt: z.iso.datetime().nullable().optional(),
   isActive: z.boolean().optional(),
 })
 
@@ -40,12 +40,12 @@ export const ShareAccessRequest = z.object({
 export const ShareAccessResponse = z.object({
   resourceType: z.enum(["file", "folder"]),
   resourceName: z.string(),
-  signedUrl: z.string().url().optional(),
-  publicUrl: z.string().url().optional(),
+  signedUrl: z.url().optional(),
+  publicUrl: z.url().optional(),
   files: z
     .array(
       z.object({
-        id: z.string().uuid(),
+        id: z.uuid(),
         name: z.string(),
         mimeType: z.string(),
         sizeBytes: z.number(),
@@ -55,45 +55,45 @@ export const ShareAccessResponse = z.object({
   folders: z
     .array(
       z.object({
-        id: z.string().uuid(),
+        id: z.uuid(),
         name: z.string(),
       }),
     )
     .optional(),
-  brandingLogoUrl: z.string().url().nullable(),
+  brandingLogoUrl: z.url().nullable(),
   brandingName: z.string().nullable(),
 })
 
 export const ShareInfoResponse = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   resourceType: z.enum(["file", "folder"]),
   resourceName: z.string(),
   shareType: ShareLinkSchema.shape.shareType,
   hasPassword: z.boolean(),
   isActive: z.boolean(),
-  expiresAt: z.string().datetime().nullable(),
+  expiresAt: z.iso.datetime().nullable(),
   createdAt: z.string(),
-  brandingLogoUrl: z.string().url().nullable(),
+  brandingLogoUrl: z.url().nullable(),
   brandingName: z.string().nullable(),
 })
 
 export const ShareBrowseRequest = z.object({
-  folderId: z.string().uuid().optional(),
+  folderId: z.uuid().optional(),
   password: z.string().optional(),
 })
 
 export const ShareBrowseResponse = z.object({
   resourceName: z.string(),
-  currentFolderId: z.string().uuid().nullable(),
+  currentFolderId: z.uuid().nullable(),
   breadcrumbs: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.uuid(),
       name: z.string(),
     }),
   ),
   files: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.uuid(),
       name: z.string(),
       mimeType: z.string(),
       sizeBytes: z.number(),
@@ -101,10 +101,10 @@ export const ShareBrowseResponse = z.object({
   ),
   folders: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.uuid(),
       name: z.string(),
     }),
   ),
-  brandingLogoUrl: z.string().url().nullable(),
+  brandingLogoUrl: z.url().nullable(),
   brandingName: z.string().nullable(),
 })

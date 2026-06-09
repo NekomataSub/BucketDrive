@@ -21,5 +21,5 @@ export const UpdateTagRequest = z
 
 export const DeleteTagResponse = z.object({
   success: z.literal(true),
-  tagId: z.string().uuid(),
+  tagId: z.uuid(),
 })

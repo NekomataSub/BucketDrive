@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8788 --inspector-port 9230",
+    "dev": "CI=true wrangler dev --port 8788 --inspector-port 9230",
     "deploy": "wrangler deploy",
     "build": "tsc --noEmit",
     "lint": "eslint .",
@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@bucketdrive/shared": "workspace:*",
-    "@cf-wasm/photon": "^0.3.5"
+    "@cf-wasm/photon": "^0.3.6"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250100.0",
-    "typescript": "^5.7.0",
-    "wrangler": "^3.100.0"
+    "@cloudflare/workers-types": "^4.20260609.1",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.99.0"
   }
 }

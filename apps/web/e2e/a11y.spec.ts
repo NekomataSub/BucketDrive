@@ -28,7 +28,7 @@ test("authenticated app pages have no automated accessibility violations", async
 
   const pages = [
     { path: "/dashboard/files", heading: "Files" },
-    { path: "/dashboard/settings", heading: "Workspace Settings" },
+    { path: "/dashboard/settings", heading: "Bucket Settings" },
     { path: "/dashboard/trash", heading: "Trash" },
   ]
 

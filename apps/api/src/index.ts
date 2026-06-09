@@ -16,6 +16,7 @@ import { notificationsHandler } from "./modules/notifications/notifications.hand
 import { trashHandler } from "./modules/trash/trash.handler"
 import { platformHandler } from "./modules/platform/platform.handler"
 import { batchHandler } from "./modules/batch/batch.handler"
+import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 import { authMiddleware } from "./middleware/auth"
 import {
   e2eCreateFile,
@@ -117,6 +118,19 @@ app.get("/api/storage/status", authMiddleware, (c) => {
     expectedCorsOrigin: c.env.APP_URL ?? "http://localhost:5173",
   })
 })
+
+app.route("/api/workspaces", workspacesHandler)
+app.route("/api/workspaces/:workspaceId/files", filesHandler)
+app.route("/api/workspaces/:workspaceId/folders", foldersHandler)
+app.route("/api/workspaces/:workspaceId/members", membersHandler)
+app.route("/api/workspaces/:workspaceId/invitations", invitationsHandler)
+app.route("/api/workspaces/:workspaceId/search", searchHandler)
+app.route("/api/workspaces/:workspaceId/dashboard", dashboardHandler)
+app.route("/api/workspaces/:workspaceId/shares", sharesHandler)
+app.route("/api/workspaces/:workspaceId/tags", tagsHandler)
+app.route("/api/workspaces/:workspaceId/trash", trashHandler)
+app.route("/api/workspaces/:workspaceId/notifications", notificationsHandler)
+app.route("/api/workspaces/:workspaceId/batch", batchHandler)
 
 app.route("/api/files", filesHandler)
 app.route("/api/folders", foldersHandler)
