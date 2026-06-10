@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "CI=true wrangler dev --port 8787 --inspector-port 9229",
+    "dev": "CI=true wrangler dev --port 8787 --inspector-port 9229 --remote",
     "deploy": "wrangler deploy",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

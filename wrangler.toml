@@ -7,8 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "bucketdrive-db"
-# Local-only placeholder so Wrangler can apply migrations to D1 local state.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "4d32efe1-77cc-4963-a6e9-89187f97e2f7"
 migrations_dir = "packages/shared/src/db/migrations"
 
 [[env.staging.d1_databases]]
