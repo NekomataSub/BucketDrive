@@ -113,6 +113,30 @@ describe("batch contracts", () => {
     expect(body.message).toBe("No downloadable files found")
   })
 
+  it("streams zip downloads with more than ten files", async () => {
+    const ctx = createContractTestContext()
+    const files = Array.from({ length: 11 }, (_, index) => {
+      const fileNumber = String(index + 1)
+      return ctx.seedFile({
+        originalName: `Report ${fileNumber}.txt`,
+        storageKey: `bucket/files/report-${fileNumber}.txt`,
+      })
+    })
+    await Promise.all(
+      files.map((file) => ctx.env.STORAGE.put(file.storageKey, `content for ${file.originalName}`)),
+    )
+
+    const downloaded = await ctx.request(`/api/workspaces/${ctx.workspaceId}/batch/download`, {
+      method: "POST",
+      body: JSON.stringify({ files: files.map((file) => file.id), folders: [] }),
+    })
+
+    expect(downloaded.status).toBe(200)
+    expect(downloaded.headers.get("Content-Type")).toContain("application/zip")
+    const zip = unzipSync(new Uint8Array(await downloaded.arrayBuffer()))
+    expect(Object.keys(zip).sort()).toEqual(files.map((file) => file.originalName).sort())
+  })
+
   it("returns signed download URLs for batch download", async () => {
     const ctx = createContractTestContext()
     const folder = ctx.seedFolder({ name: "Reports", path: "/Reports" })
@@ -137,6 +161,39 @@ describe("batch contracts", () => {
     expect(paths).toEqual(["Reports/Report.txt", "Root.txt"])
     expect(body.files[0]?.url).toBeTruthy()
     expect(body.files[1]?.url).toBeTruthy()
+  })
+
+  it("returns a batch download manifest without signed URLs", async () => {
+    const ctx = createContractTestContext()
+    const file = ctx.seedFile({ originalName: "Root.txt", sizeBytes: 9 })
+
+    const res = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/batch/download-urls?manifestOnly=1`,
+      {
+        method: "POST",
+        body: JSON.stringify({ files: [file.id], folders: [] }),
+      },
+    )
+
+    expect(res.status).toBe(200)
+    const body = await ctx.json<{
+      files: Array<{
+        id: string
+        path: string
+        sizeBytes: number
+        signedUrl?: string
+        url?: string
+      }>
+    }>(res)
+    expect(body.files).toEqual([
+      expect.objectContaining({
+        id: file.id,
+        path: "Root.txt",
+        sizeBytes: 9,
+      }),
+    ])
+    expect(body.files[0]?.signedUrl).toBeUndefined()
+    expect(body.files[0]?.url).toBeUndefined()
   })
 
   it("revokes shares in batch and validates empty payloads", async () => {

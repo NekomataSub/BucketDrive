@@ -147,7 +147,18 @@ app.route("/api/notifications", notificationsHandler)
 app.route("/api/platform", platformHandler)
 app.route("/api/batch", batchHandler)
 
-app.notFound((c) => c.json({ code: "NOT_FOUND", message: "Not found" }, 404))
+app.notFound((c) => {
+  const url = new URL(c.req.url)
+  const isNavigationRequest =
+    (c.req.method === "GET" || c.req.method === "HEAD") && !url.pathname.startsWith("/api")
+
+  if (isNavigationRequest) {
+    const appUrl = c.env.APP_URL ?? "http://localhost:5173"
+    return c.redirect(`${appUrl.replace(/\/$/, "")}${url.pathname}${url.search}`, 302)
+  }
+
+  return c.json({ code: "NOT_FOUND", message: "Not found" }, 404)
+})
 
 app.onError((err, c) => {
   if (err instanceof ZodError) {

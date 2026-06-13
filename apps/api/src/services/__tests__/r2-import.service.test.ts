@@ -226,7 +226,7 @@ describe("R2ImportService sync", () => {
     expect(result.imported).toBe(1)
   })
 
-  it("skips managed upload storage keys instead of importing them as folders", async () => {
+  it("imports managed upload storage keys as visible R2 content", async () => {
     const result = await new R2ImportService(
       createStorage([
         {
@@ -236,10 +236,20 @@ describe("R2ImportService sync", () => {
       ]),
     ).syncBucket({ userId: "user-1" })
 
-    expect(result.imported).toBe(0)
-    expect(result.skipped).toBe(1)
-    expect(db.select().from(fileObject).all()).toHaveLength(0)
-    expect(db.select().from(folder).all()).toHaveLength(0)
+    expect(result.imported).toBe(1)
+    expect(result.skipped).toBe(0)
+    expect(db.select().from(fileObject).all()).toHaveLength(1)
+    expect(
+      db
+        .select()
+        .from(folder)
+        .all()
+        .map((row) => row.path),
+    ).toEqual([
+      "/bucket",
+      "/bucket/files",
+      "/bucket/files/00000000-0000-4000-8000-000000000001",
+    ])
   })
 
   it("does not trash existing uploaded files when their managed R2 object is present", async () => {
@@ -270,124 +280,92 @@ describe("R2ImportService sync", () => {
     expect(file?.isDeleted).toBe(false)
   })
 
-  it("cleans up previously imported managed upload keys and empty synthetic folders", async () => {
-    db.insert(folder)
-      .values([
-        {
-          id: "folder-bucket",
-          name: "bucket",
-          path: "/bucket",
-          createdBy: "user-1",
-        },
-        {
-          id: "folder-files",
-          parentFolderId: "folder-bucket",
-          name: "files",
-          path: "/bucket/files",
-          createdBy: "user-1",
-        },
-        {
-          id: "folder-upload",
-          parentFolderId: "folder-files",
-          name: "00000000-0000-4000-8000-000000000001",
-          path: "/bucket/files/00000000-0000-4000-8000-000000000001",
-          createdBy: "user-1",
-        },
-      ])
-      .run()
+  it("imports empty folder markers and internal R2 explorer objects", async () => {
+    const result = await new R2ImportService(
+      createStorage([
+        { key: "Animes/", size: 0 },
+        { key: "Animes/Love Live!/", size: 0 },
+        { key: ".r2-explorer/sharable-links/0be7070824.json", size: 387 },
+      ]),
+    ).syncBucket({ userId: "user-1" })
+
+    expect(result.imported).toBe(1)
+    expect(result.skipped).toBe(2)
+    expect(
+      db
+        .select()
+        .from(folder)
+        .all()
+        .map((row) => row.path)
+        .sort(),
+    ).toEqual([
+      "/.r2-explorer",
+      "/.r2-explorer/sharable-links",
+      "/Animes",
+      "/Animes/Love Live!",
+    ])
+    expect(db.select().from(fileObject).all()[0]?.storageKey).toBe(
+      ".r2-explorer/sharable-links/0be7070824.json",
+    )
+  })
+
+  it("reactivates deleted files when the R2 object exists again", async () => {
     db.insert(fileObject)
       .values({
         id: "file-imported",
         bucketId: "bucket-1",
-        folderId: "folder-upload",
         ownerId: "user-1",
-        storageKey: "bucket/files/00000000-0000-4000-8000-000000000001/photo.jpg",
-        originalName: "photo.jpg",
-        mimeType: "image/jpeg",
-        extension: ".jpg",
-        sizeBytes: 128,
+        storageKey: "report.txt",
+        originalName: "report.txt",
+        mimeType: "text/plain",
+        extension: ".txt",
+        sizeBytes: 10,
         metadata: JSON.stringify({ importedFromR2: true }),
+        isDeleted: true,
+        deletedAt: "2026-05-01T00:00:00.000Z",
       })
       .run()
 
-    const result = await new R2ImportService(createStorage([])).syncBucket({ userId: "user-1" })
+    const result = await new R2ImportService(
+      createStorage([{ key: "report.txt", size: 20, httpMetadata: { contentType: "text/plain" } }]),
+    ).syncBucket({ userId: "user-1" })
 
-    expect(result.deleted).toBe(1)
-    expect(db.select().from(fileObject).all()).toHaveLength(0)
-    expect(db.select().from(folder).all()).toHaveLength(0)
+    const [file] = db.select().from(fileObject).all()
+    expect(result.updated).toBe(1)
+    expect(file?.isDeleted).toBe(false)
+    expect(file?.deletedAt).toBeNull()
+    expect(file?.sizeBytes).toBe(20)
   })
 
-  it("keeps synthetic parent folders when they contain legitimate content", async () => {
+  it("trashes database folders missing from R2 when they are empty", async () => {
     db.insert(folder)
       .values([
         {
-          id: "folder-bucket",
-          name: "bucket",
-          path: "/bucket",
+          id: "folder-documents",
+          name: "Documents",
+          path: "/Documents",
           createdBy: "user-1",
         },
         {
-          id: "folder-files",
-          parentFolderId: "folder-bucket",
-          name: "files",
-          path: "/bucket/files",
-          createdBy: "user-1",
-        },
-        {
-          id: "folder-upload",
-          parentFolderId: "folder-files",
-          name: "00000000-0000-4000-8000-000000000001",
-          path: "/bucket/files/00000000-0000-4000-8000-000000000001",
-          createdBy: "user-1",
-        },
-        {
-          id: "folder-legit",
-          parentFolderId: "folder-bucket",
-          name: "legit",
-          path: "/bucket/legit",
+          id: "folder-animes",
+          name: "Animes",
+          path: "/Animes",
           createdBy: "user-1",
         },
       ])
       .run()
-    db.insert(fileObject)
-      .values([
-        {
-          id: "file-imported",
-          bucketId: "bucket-1",
-          folderId: "folder-upload",
-          ownerId: "user-1",
-          storageKey: "bucket/files/00000000-0000-4000-8000-000000000001/photo.jpg",
-          originalName: "photo.jpg",
-          mimeType: "image/jpeg",
-          extension: ".jpg",
-          sizeBytes: 128,
-          metadata: JSON.stringify({ importedFromR2: true }),
-        },
-        {
-          id: "file-legit",
-          bucketId: "bucket-1",
-          folderId: "folder-legit",
-          ownerId: "user-1",
-          storageKey: "bucket/legit/readme.txt",
-          originalName: "readme.txt",
-          mimeType: "text/plain",
-          extension: ".txt",
-          sizeBytes: 10,
-        },
-      ])
-      .run()
 
-    await new R2ImportService(
-      createStorage([{ key: "bucket/legit/readme.txt", size: 10 }]),
-    ).syncBucket({ userId: "user-1" })
+    const result = await new R2ImportService(createStorage([{ key: "Animes/", size: 0 }])).syncBucket({
+      userId: "user-1",
+    })
 
-    const paths = db
+    const rows = db
       .select()
       .from(folder)
       .all()
-      .map((row) => row.path)
 
-    expect(paths).toEqual(expect.arrayContaining(["/bucket", "/bucket/legit"]))
-    expect(paths).not.toContain("/bucket/files")
+    expect(result.deleted).toBe(1)
+    expect(rows.find((row) => row.path === "/Documents")?.isDeleted).toBe(true)
+    expect(rows.find((row) => row.path === "/Animes")?.isDeleted).toBe(false)
   })
 })

@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { and, eq, inArray } from "drizzle-orm"
-import { Zip, ZipDeflate } from "fflate"
+import { Zip, ZipPassThrough } from "fflate"
 import { auditLog, fileObject, folder } from "@bucketdrive/shared/db/schema"
 import {
   BatchDownloadRequest,
@@ -193,7 +193,7 @@ batch.post("/download", async (c) => {
   const db = getDB()
   const storage = createStorageProvider(c.env)
   const result = createBatchResult()
-  let zipFiles: ZipFile[] = []
+  const zipFiles: ZipFile[] = []
   const usedNames = new Set<string>()
 
   for (const fileId of unique(body.files)) {
@@ -282,28 +282,28 @@ batch.post("/download", async (c) => {
     result.processed.push({ resourceType: "folder", id: folderId })
   }
 
-  if (zipFiles.length === 0 && result.failed.length === 0) {
+  if (zipFiles.length === 0) {
     return c.json(
       {
         code: "NO_DOWNLOADABLE_FILES",
-        message: "No downloadable files found",
+        message:
+          result.failed.length === 0
+            ? "No downloadable files found"
+            : "No downloadable files found for this selection",
         failed: result.failed,
       },
-      404 as never,
+      getNoDownloadStatus(result.failed) as never,
     )
   }
 
   const zipName = `bucketdrive-selection-${new Date().toISOString().slice(0, 10)}.zip`
 
-  return new Response(
-    streamZipFiles(storage, zipFiles, result.failed),
-    {
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": buildAttachmentDisposition(zipName),
-      },
+  return new Response(streamZipFiles(storage, zipFiles), {
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": buildAttachmentDisposition(zipName),
     },
-  )
+  })
 })
 
 batch.post("/download-urls", async (c) => {
@@ -312,8 +312,9 @@ batch.post("/download-urls", async (c) => {
   const db = getDB()
   const storage = createStorageProvider(c.env)
   const result = createBatchResult()
-  let zipFiles: ZipFile[] = []
+  const zipFiles: ZipFile[] = []
   const usedNames = new Set<string>()
+  const manifestOnly = c.req.query("manifestOnly") === "1"
 
   for (const fileId of unique(body.files)) {
     if (!(await canAccessFile(fileId, user, "files.read"))) {
@@ -401,29 +402,38 @@ batch.post("/download-urls", async (c) => {
     result.processed.push({ resourceType: "folder", id: folderId })
   }
 
-  if (zipFiles.length === 0 && result.failed.length === 0) {
+  if (zipFiles.length === 0) {
     return c.json(
       {
         code: "NO_DOWNLOADABLE_FILES",
-        message: "No downloadable files found",
+        message:
+          result.failed.length === 0
+            ? "No downloadable files found"
+            : "No downloadable files found for this selection",
         failed: result.failed,
       },
-      404 as never,
+      getNoDownloadStatus(result.failed) as never,
     )
   }
 
   const filesWithUrls = await Promise.all(
     zipFiles.map(async (zipFile) => {
-      const url = await storage.generateSignedDownloadUrl(
-        zipFile.file.storageKey,
-        900,
-        { filename: zipFile.file.originalName },
-      )
-      return {
+      const entry = {
         id: zipFile.file.id,
         name: zipFile.file.originalName,
+        fileName: zipFile.file.originalName,
+        sizeBytes: zipFile.file.sizeBytes,
         path: zipFile.path,
+      }
+      if (manifestOnly) return entry
+
+      const url = await storage.generateSignedDownloadUrl(zipFile.file.storageKey, 900, {
+        filename: zipFile.file.originalName,
+      })
+      return {
+        ...entry,
         url,
+        signedUrl: url,
       }
     }),
   )
@@ -514,11 +524,7 @@ function addFileToZipPlan(params: {
   params.result.processed.push({ resourceType: "file", id: params.file.id })
 }
 
-function streamZipFiles(
-  storage: StorageProvider,
-  zipFiles: ZipFile[],
-  failed: FailedItem[],
-) {
+function streamZipFiles(storage: StorageProvider, zipFiles: ZipFile[]) {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       const zip = new Zip((error, chunk) => {
@@ -541,9 +547,7 @@ function streamZipFiles(
               source = object.body
             }
           } catch {
-            console.warn(
-              `Batch download: failed to read ${zipFile.file.originalName}`,
-            )
+            console.warn(`Batch download: failed to read ${zipFile.file.originalName}`)
           }
 
           if (!source) {
@@ -554,7 +558,7 @@ function streamZipFiles(
             continue
           }
 
-          const entry = new ZipDeflate(zipFile.path, { level: 6 })
+          const entry = new ZipPassThrough(zipFile.path)
           zip.add(entry)
 
           const reader = source.getReader()
@@ -577,7 +581,7 @@ function streamZipFiles(
             "If you need these files, please try downloading them individually.",
           ].join("\n")
 
-          const entry = new ZipDeflate("_errors.txt", { level: 6 })
+          const entry = new ZipPassThrough("_errors.txt")
           zip.add(entry)
           entry.push(new TextEncoder().encode(errorText), true)
         }

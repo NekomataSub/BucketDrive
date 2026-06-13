@@ -1,14 +1,5 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands, @typescript-eslint/restrict-template-expressions */
 
-interface WindowWithFilePicker extends Window {
-  showSaveFilePicker?: (options?: {
-    suggestedName?: string
-    types?: Array<{ description?: string; accept: Record<string, string[]> }>
-  }) => Promise<{
-    createWritable: () => Promise<WritableStream>
-  }>
-}
-
 import { useRef, useMemo, useCallback, useState, useEffect } from "react"
 import {
   Upload,
@@ -74,7 +65,17 @@ import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 import { useNavigate, useRouterState } from "@tanstack/react-router"
 import type { WorkspaceRole } from "@bucketdrive/shared"
+import { downloadZip } from "client-zip"
 import { DEFAULT_BRAND_NAME } from "@/lib/branding"
+
+interface WindowWithFilePicker extends Window {
+  showSaveFilePicker?: (options?: {
+    suggestedName?: string
+    types?: Array<{ description?: string; accept: Record<string, string[]> }>
+  }) => Promise<{
+    createWritable: () => Promise<WritableStream>
+  }>
+}
 
 const typeFilterOptions = [
   { value: "all", label: "All files" },
@@ -121,24 +122,19 @@ type MoveAction =
     }
 
 type BatchDownloadStatus = "idle" | "preparing" | "downloading" | "zipping" | "failed"
+type BatchDownloadUrlFile = {
+  id: string
+  name?: string
+  fileName?: string
+  path: string
+  sizeBytes?: number
+}
 
 function normalizeWorkspaceRole(role: unknown): WorkspaceRole {
   const normalized = typeof role === "string" ? role.split(",")[0]?.trim().toLowerCase() : "viewer"
   return workspaceRoles.includes(normalized as WorkspaceRole)
     ? (normalized as WorkspaceRole)
     : "viewer"
-}
-
-function getDownloadFilename(contentDisposition: string | null) {
-  if (!contentDisposition) return null
-
-  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition)
-  if (utf8Match?.[1]) {
-    return decodeURIComponent(utf8Match[1])
-  }
-
-  const asciiMatch = /filename="([^"]+)"/i.exec(contentDisposition)
-  return asciiMatch?.[1] ?? null
 }
 
 export function FilesPage() {
@@ -519,7 +515,7 @@ export function FilesPage() {
     setBatchDownloadStatus("preparing")
     setDownloadError(null)
     try {
-      const res = await fetch("/api/batch/download", {
+      const res = await fetch("/api/batch/download-urls?manifestOnly=1", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -540,21 +536,40 @@ export function FilesPage() {
         )
       }
 
-      const filename =
-        getDownloadFilename(res.headers.get("Content-Disposition")) ??
-        `bucketdrive-selection-${new Date().toISOString().slice(0, 10)}.zip`
+      const data = (await res.json()) as { files?: BatchDownloadUrlFile[] }
+      const files = data.files ?? []
+      if (files.length === 0) throw new Error("No downloadable files found")
 
+      setBatchDownloadStatus("zipping")
+      const filename = `bucketdrive-selection-${new Date().toISOString().slice(0, 10)}.zip`
+      async function* zipEntries() {
+        for (const file of files) {
+          const fileResponse = await fetch(`/api/files/${encodeURIComponent(file.id)}/content`, {
+            credentials: "include",
+            signal: controller.signal,
+          })
+          if (!fileResponse.ok) {
+            throw new Error(file.fileName ?? file.name ?? file.path)
+          }
+          if (typeof file.sizeBytes === "number") {
+            yield { name: file.path, size: file.sizeBytes, input: fileResponse }
+          } else {
+            yield { name: file.path, input: fileResponse }
+          }
+        }
+      }
+      const zipResponse = downloadZip(zipEntries(), { buffersAreUTF8: true })
       const win = window as unknown as WindowWithFilePicker
-      if (win.showSaveFilePicker && res.body) {
+      if (win.showSaveFilePicker && zipResponse.body) {
         const handle = await win.showSaveFilePicker({
           suggestedName: filename,
           types: [{ description: "ZIP archive", accept: { "application/zip": [".zip"] } }],
         })
         const writable = await handle.createWritable()
-        await res.body.pipeTo(writable)
+        await zipResponse.body.pipeTo(writable)
       } else {
         setBatchDownloadStatus("downloading")
-        const blob = await res.blob()
+        const blob = await zipResponse.blob()
         if (blob.size === 0) {
           throw new Error("Batch download returned an empty ZIP")
         }

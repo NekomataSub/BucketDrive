@@ -64,6 +64,16 @@ describe("files contracts", () => {
     expect(download.status).toBe(200)
     DownloadUrlResponse.parse(await ctx.json(download))
 
+    await ctx.env.STORAGE.put(existing.storageKey, "alpha content", {
+      httpMetadata: { contentType: "text/plain" },
+    })
+    const content = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/files/${existing.id}/content`,
+    )
+    expect(content.status).toBe(200)
+    expect(content.headers.get("Content-Type")).toContain("text/plain")
+    expect(await content.text()).toBe("alpha content")
+
     const renamed = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/${existing.id}`, {
       method: "PATCH",
       body: JSON.stringify({ name: "Renamed.txt" }),

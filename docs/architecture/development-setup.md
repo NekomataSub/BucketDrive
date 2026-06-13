@@ -142,16 +142,19 @@ This runs:
 1. Go to GitHub → Settings → Developer settings → OAuth Apps
 2. Click "New OAuth App"
 3. Set:
-   - Homepage URL: `http://localhost:8787`
-   - Authorization callback URL: `http://localhost:8787/api/auth/callback/github`
+   - Homepage URL: `http://localhost:5173`
+   - Authorization callback URL: `http://localhost:5173/api/auth/callback/github`
 4. Copy Client ID and Client Secret to `.dev.vars`
 
 ## Google OAuth Client
 
 1. Go to Google Cloud Console → APIs & Services → Credentials
 2. Create OAuth 2.0 Client ID
-3. Add authorized redirect URI: `http://localhost:8787/api/auth/callback/google`
+3. Add authorized redirect URI: `http://localhost:5173/api/auth/callback/google`
 4. Copy Client ID and Client Secret to `.dev.vars`
+
+The frontend runs on Vite at `http://localhost:5173` and proxies `/api/*` requests to Wrangler
+at `http://localhost:8787`. Open the app on port `5173`; the Worker port is API-only.
 
 ---
 

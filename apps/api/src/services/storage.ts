@@ -168,7 +168,7 @@ export class R2StorageProvider implements StorageProvider {
     body: ReadableStream<Uint8Array> | ArrayBuffer | Uint8Array | string
     contentType?: string
   }): Promise<void> {
-    await this.binding.put(input.key, input.body as ArrayBuffer, {
+    await this.binding.put(input.key, input.body, {
       httpMetadata: input.contentType ? { contentType: input.contentType } : undefined,
     })
   }
@@ -188,7 +188,7 @@ export class R2StorageProvider implements StorageProvider {
   }
 
   async headObject(key: string): Promise<{ size: number; contentType?: string } | null> {
-    const object = await this.binding.head(key)
+    const object = await headR2Object(this.binding, key)
     if (!object) return null
     return {
       size: object.size,
@@ -284,23 +284,6 @@ function decodeXml(value: string): string {
     .replaceAll("&amp;", "&")
 }
 
-function isLocalEndpoint(endpoint: string): boolean {
-  try {
-    const url = new URL(endpoint)
-    const hostname = url.hostname
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "::1" ||
-      hostname.startsWith("127.") ||
-      hostname.startsWith("[::1]") ||
-      hostname.endsWith(".local")
-    )
-  } catch {
-    return false
-  }
-}
-
 export function createStorageProvider(env: {
   STORAGE: R2Bucket
   R2_ACCESS_KEY_ID?: string
@@ -381,7 +364,7 @@ class R2BindingProvider implements StorageProvider {
     body: ReadableStream<Uint8Array> | ArrayBuffer | Uint8Array | string
     contentType?: string
   }): Promise<void> {
-    await this.binding.put(input.key, input.body as ArrayBuffer, {
+    await this.binding.put(input.key, input.body, {
       httpMetadata: input.contentType ? { contentType: input.contentType } : undefined,
     })
   }
@@ -402,7 +385,7 @@ class R2BindingProvider implements StorageProvider {
   }
 
   async headObject(key: string): Promise<{ size: number; contentType?: string } | null> {
-    const object = await this.binding.head(key)
+    const object = await headR2Object(this.binding, key)
     if (!object) return null
     return {
       size: object.size,
@@ -444,6 +427,12 @@ class R2BindingProvider implements StorageProvider {
     const multipart = this.binding.resumeMultipartUpload(key, uploadId)
     await multipart.abort()
   }
+}
+
+function headR2Object(binding: R2Bucket, key: string): Promise<R2Object | null> {
+  // Cloudflare's generated R2 head type is opaque to typescript-eslint in this workspace.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+  return binding.head(key)
 }
 
 export function buildPublicObjectUrl(

@@ -9,6 +9,14 @@ verifiable result.
 
 ## Status Overview
 
+> **Remote D1/R2 recovery pass — 2026-06-13:**
+>
+> - Repaired the remote single-bucket D1 shape after the `--remote` migration by dropping stale `workspace_id` columns with an operation script.
+> - Updated R2 import to sync the full bucket tree, including folder markers and legacy explorer paths, while reactivating files that still exist in R2.
+> - Redirected non-API Worker requests back to the Vite app so `/` and `/login` no longer return JSON/Worker 404s during local dev.
+> - Moved heavy batch ZIP generation out of the Worker path: batch downloads now resolve a manifest and assemble the ZIP in the browser with `client-zip`.
+> - Added same-origin file content streaming plus contracts for batch manifests, file content downloads, and SPA fallback routing.
+
 > **Batch selection pass — 2026-06-07:**
 >
 > - Added shared batch operation contracts and `/api/batch` routes for trash, restore, permanent delete, move, and share revocation.

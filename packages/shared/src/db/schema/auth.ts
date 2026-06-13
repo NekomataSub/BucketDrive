@@ -8,6 +8,7 @@ export const user = sqliteTable("user", {
   emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
   image: text("image"),
   isPlatformAdmin: integer("is_platform_admin", { mode: "boolean" }).notNull().default(false),
+  canCreateWorkspaces: integer("can_create_workspaces", { mode: "boolean" }).notNull().default(false),
   role: text("role").notNull().default("viewer"),
   createdAt: text("created_at")
     .notNull()

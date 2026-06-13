@@ -66,7 +66,7 @@ files.get("/", requirePermission("files.read"), async (c) => {
   const db = getDB()
   const user = c.get("user")
 
-  await syncR2IfStale({ env: c.env, userId: user.id })
+  c.executionCtx.waitUntil(syncR2IfStale({ env: c.env, userId: user.id }))
 
   const where = and(
     eq(fileObject.isDeleted, false),
@@ -168,7 +168,6 @@ files.post("/upload/complete", requirePermission("files.upload"), async (c) => {
 })
 
 files.post("/upload/direct", requirePermission("files.upload"), async (c) => {
-  const user = c.get("user")
   const storage = createStorageProvider(c.env)
   const uploadId = c.req.header("x-upload-id")
   const storageKey = c.req.header("x-storage-key")
@@ -176,7 +175,10 @@ files.post("/upload/direct", requirePermission("files.upload"), async (c) => {
 
   try {
     if (!uploadId || !storageKey) {
-      return c.json({ code: "INVALID_REQUEST", message: "Missing uploadId or storageKey headers" }, 400 as never)
+      return c.json(
+        { code: "INVALID_REQUEST", message: "Missing uploadId or storageKey headers" },
+        400 as never,
+      )
     }
 
     const stream = c.req.raw.body
@@ -415,6 +417,21 @@ files.get("/:fileId/download", requirePermission("files.read"), async (c) => {
       publicUrl: buildPublicObjectUrl(settings.r2PublicBaseUrl, file.storageKey) ?? undefined,
     }),
   )
+})
+
+files.get("/:fileId/content", requirePermission("files.read"), async (c) => {
+  const file = await getActiveFile(c.req.param("fileId"))
+  if (!file) return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+
+  const object = await createStorageProvider(c.env).getObject(file.storageKey)
+  if (!object) return c.json({ code: "FILE_NOT_FOUND", message: "File content not found" }, 404)
+
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": object.contentType ?? file.mimeType,
+      "Content-Length": String(object.size),
+    },
+  })
 })
 
 files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
