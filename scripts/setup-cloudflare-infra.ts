@@ -55,6 +55,24 @@ function getBucketNameFromWrangler(environment: string): string {
   return match ? match[1] : ""
 }
 
+function getPagesProjectName(): string {
+  const pagesProjectName = process.env.PAGES_PROJECT_NAME
+  if (pagesProjectName) return pagesProjectName
+
+  const envFile = existsSync(".env.staging")
+    ? ".env.staging"
+    : existsSync(".env.production")
+      ? ".env.production"
+      : null
+  if (envFile) {
+    const envContent = readFileSync(envFile, "utf8")
+    const match = envContent.match(/PAGES_PROJECT_NAME\s*=\s*(.+)/)
+    if (match) return match[1].trim()
+  }
+
+  return ""
+}
+
 function main() {
   const environment = process.argv[2] as Environment
   if (!environment || !["staging", "production"].includes(environment)) {
@@ -66,6 +84,7 @@ function main() {
   const dbName = environment === "staging" ? "bucketdrive-db-staging" : "bucketdrive-db"
   const d1Key = environment === "staging" ? "STAGING_D1_DATABASE_ID" : "PRODUCTION_D1_DATABASE_ID"
   const bucketName = getBucketNameFromWrangler(environment)
+  const pagesProjectName = getPagesProjectName()
 
   // --- D1 Database ---
   console.log(`\n🔍 Checking D1 database "${dbName}"...`)
@@ -103,12 +122,31 @@ function main() {
     }
   }
 
+  // --- Pages Project ---
+  if (pagesProjectName) {
+    console.log(`\n🔍 Checking Pages project "${pagesProjectName}"...`)
+    const pagesList = runWranglerIgnoreError(["pages", "project", "list"])
+
+    if (pagesList.includes(pagesProjectName)) {
+      console.log(`✅ Pages project "${pagesProjectName}" already exists`)
+    } else {
+      console.log(`🆕 Creating Pages project "${pagesProjectName}"...`)
+      try {
+        runWrangler(["pages", "project", "create", pagesProjectName])
+        console.log(`✅ Created Pages project "${pagesProjectName}"`)
+      } catch {
+        console.log(`⚠️ Pages project creation failed (project may already exist or name is taken)`)
+      }
+    }
+  }
+
   // --- Output ---
   const output = {
     d1_database_id: d1Id,
     d1_key: d1Key,
     environment,
     bucket_name: bucketName,
+    pages_project_name: pagesProjectName,
   }
   writeFileSync("setup-output.json", JSON.stringify(output, null, 2))
 
