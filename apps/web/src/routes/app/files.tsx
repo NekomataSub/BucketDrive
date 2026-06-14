@@ -1333,7 +1333,7 @@ export function FilesPage() {
                       Favorites only
                     </span>
                   )}
-                  
+
                   {selectedTagNames.map((tag) => (
                     <span
                       key={tag.id}

@@ -245,11 +245,7 @@ describe("R2ImportService sync", () => {
         .from(folder)
         .all()
         .map((row) => row.path),
-    ).toEqual([
-      "/bucket",
-      "/bucket/files",
-      "/bucket/files/00000000-0000-4000-8000-000000000001",
-    ])
+    ).toEqual(["/bucket", "/bucket/files", "/bucket/files/00000000-0000-4000-8000-000000000001"])
   })
 
   it("does not trash existing uploaded files when their managed R2 object is present", async () => {
@@ -298,12 +294,7 @@ describe("R2ImportService sync", () => {
         .all()
         .map((row) => row.path)
         .sort(),
-    ).toEqual([
-      "/.r2-explorer",
-      "/.r2-explorer/sharable-links",
-      "/Animes",
-      "/Animes/Love Live!",
-    ])
+    ).toEqual(["/.r2-explorer", "/.r2-explorer/sharable-links", "/Animes", "/Animes/Love Live!"])
     expect(db.select().from(fileObject).all()[0]?.storageKey).toBe(
       ".r2-explorer/sharable-links/0be7070824.json",
     )
@@ -355,14 +346,13 @@ describe("R2ImportService sync", () => {
       ])
       .run()
 
-    const result = await new R2ImportService(createStorage([{ key: "Animes/", size: 0 }])).syncBucket({
+    const result = await new R2ImportService(
+      createStorage([{ key: "Animes/", size: 0 }]),
+    ).syncBucket({
       userId: "user-1",
     })
 
-    const rows = db
-      .select()
-      .from(folder)
-      .all()
+    const rows = db.select().from(folder).all()
 
     expect(result.deleted).toBe(1)
     expect(rows.find((row) => row.path === "/Documents")?.isDeleted).toBe(true)

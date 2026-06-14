@@ -1,16 +1,16 @@
-name: Deploy to Staging
+name: Deploy to Production
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy to Staging
+    name: Deploy to Production
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -32,9 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Create staging env file
+      - name: Create production env file
         run: |
-          cat > .env.staging << 'EOF'
+          cat > .env.production << 'EOF'
           APP_URL=${{ vars.APP_URL }}
           API_URL=${{ vars.API_URL }}
           BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
@@ -50,27 +50,27 @@ jobs:
           PLATFORM_OWNER_EMAIL=${{ secrets.PLATFORM_OWNER_EMAIL }}
           CLOUDFLARE_ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
-          STAGING_D1_DATABASE_ID=${{ vars.STAGING_D1_DATABASE_ID }}
+          PRODUCTION_D1_DATABASE_ID=${{ vars.PRODUCTION_D1_DATABASE_ID }}
           PLAYWRIGHT_BASE_URL=${{ vars.PLAYWRIGHT_BASE_URL }}
           PAGES_PROJECT_NAME=${{ vars.PAGES_PROJECT_NAME }}
           PAGES_BRANCH=${{ vars.PAGES_BRANCH }}
           EOF
 
-      - name: Check staging environment
-        run: pnpm env:check:staging
+      - name: Check production environment
+        run: pnpm env:check:production
 
       - name: Prepare Wrangler configs
-        run: pnpm env:prepare:staging
+        run: pnpm env:prepare:production
 
       - name: Apply D1 migrations
-        run: pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 migrations apply bucketdrive-db-staging --remote --env staging
+        run: pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 migrations apply bucketdrive-db --remote --env production
 
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env staging --config wrangler.toml
+          command: deploy --env production --config wrangler.toml
 
       - name: Deploy background Workers
         uses: cloudflare/wrangler-action@v3
@@ -79,7 +79,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/workers
           packageManager: pnpm
-          command: deploy --env staging
+          command: deploy --env production
 
       - name: Build frontend
         run: pnpm build
@@ -92,7 +92,7 @@ jobs:
           command: pages deploy apps/web/dist --project-name=${{ vars.PAGES_PROJECT_NAME }} --branch=${{ vars.PAGES_BRANCH }}
 
       - name: Push runtime secrets
-        run: pnpm env:push:staging
+        run: pnpm env:push:production
 
       - name: End-to-end tests
         run: pnpm test:e2e

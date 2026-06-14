@@ -49,13 +49,15 @@ Production Deploy (tag push: v*)
 
 ---
 
-# GitHub Actions Workflow
+# GitHub Actions Workflows
+
+Workflow files are versioned in `.github/workflows/`.
 
 ## `ci.yml` — Pull Request Checks
 
 Triggered on `pull_request` to `main` and `push` to `main`.
 
-The versioned workflow in `.github/workflows/ci.yml` runs:
+Runs:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -74,34 +76,55 @@ on upstream package builds.
 
 Triggered on `push` to `main` and `workflow_dispatch`.
 
-The versioned workflow in `.github/workflows/deploy-staging.yml` runs:
+Uses the `staging` GitHub Environment and requires the following secrets/variables:
 
-```bash
-pnpm install --frozen-lockfile
-pnpm env:prepare:staging
-pnpm env:check:staging
-pnpm db:migrate:staging
-pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml deploy --env staging
-pnpm build
-pnpm perf:bundle
-pnpm perf:lighthouse
-pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name "$PAGES_PROJECT_NAME" --branch "$PAGES_BRANCH"
-pnpm test:e2e
-pnpm test:a11y
-```
+| Type                 | Key                      | Purpose                          |
+| -------------------- | ------------------------ | -------------------------------- |
+| Repository secret    | `CLOUDFLARE_API_TOKEN`   | Wrangler CLI authentication      |
+| Repository secret    | `CLOUDFLARE_ACCOUNT_ID`  | Wrangler CLI account scope       |
+| Environment variable | `STAGING_D1_DATABASE_ID` | Fills `wrangler.toml` D1 binding |
+| Environment variable | `APP_URL`                | Frontend URL                     |
+| Environment variable | `API_URL`                | Worker URL                       |
+| Environment variable | `PLAYWRIGHT_BASE_URL`    | E2E target URL                   |
+| Environment variable | `PAGES_PROJECT_NAME`     | Cloudflare Pages project name    |
+| Environment variable | `PAGES_BRANCH`           | Pages branch name                |
+| Environment secret   | `BETTER_AUTH_SECRET`     | Better Auth session key          |
+| Environment secret   | `BETTER_AUTH_URL`        | Same as `API_URL`                |
+| Environment secret   | `GITHUB_CLIENT_ID`       | OAuth app credentials            |
+| Environment secret   | `GITHUB_CLIENT_SECRET`   | OAuth app credentials            |
+| Environment secret   | `GOOGLE_CLIENT_ID`       | OAuth client credentials         |
+| Environment secret   | `GOOGLE_CLIENT_SECRET`   | OAuth client credentials         |
+| Environment secret   | `R2_ACCESS_KEY_ID`       | R2 S3 API token                  |
+| Environment secret   | `R2_SECRET_ACCESS_KEY`   | R2 S3 API token                  |
+| Environment secret   | `R2_BUCKET_NAME`         | R2 bucket name                   |
+| Environment secret   | `R2_ENDPOINT`            | R2 S3 endpoint                   |
+| Environment secret   | `PLATFORM_OWNER_EMAIL`   | First admin email                |
 
-The staging E2E base URL is read from `PLAYWRIGHT_BASE_URL`, matching `playwright.config.ts`.
-`pnpm env:prepare:staging` fills API/Workers Wrangler configs from `STAGING_D1_DATABASE_ID`,
-`APP_URL`, and `API_URL` in the GitHub environment. `pnpm env:check:staging` fails early if
-Cloudflare credentials, runtime values, OAuth, or the staging D1 ID are missing.
+The workflow runs:
 
-## `deploy-prod.yml` — Production Deploy
+1. `pnpm env:check:staging` — validates that all required keys are present
+2. `pnpm env:prepare:staging` — patches `wrangler.toml` files with the D1 ID and URLs
+3. `wrangler d1 migrations apply --remote --env staging` — applies database migrations to the remote staging database
+4. `wrangler deploy --env staging` (API Worker) — deploys the API Worker
+5. `wrangler deploy --env staging` (Workers) — deploys the background Workers
+6. `pnpm build` — builds the frontend
+7. `wrangler pages deploy` — deploys the built frontend to Cloudflare Pages
+8. `pnpm env:push:staging` — pushes runtime secrets to Cloudflare Workers secret store
+9. `pnpm test:e2e` — runs Playwright E2E tests against the staging URL
+10. `pnpm test:a11y` — runs accessibility checks
+
+## `deploy-production.yml` — Production Deploy
 
 Triggered on: `push` of `v*` tag (e.g., `v1.0.0`)
 
-Same structure as staging but targets `--env production` and production D1 database.
+Same structure as staging but:
 
-Requires manual approval step (GitHub Environments protection rule).
+- Uses the `production` GitHub Environment
+- Uses `PRODUCTION_D1_DATABASE_ID` instead of `STAGING_D1_DATABASE_ID`
+- Targets `--env production` for all Wrangler commands
+- Uses production URLs
+
+Requires **manual approval** via GitHub Environment protection rules.
 
 ---
 
@@ -117,57 +140,89 @@ Requires manual approval step (GitHub Environments protection rule).
 
 # Environment Variables
 
-### Frontend (`apps/web`)
+## Local Development
 
-```
-VITE_API_URL=https://api.bucketdrive.app
-VITE_APP_NAME=BucketDrive
-```
+The canonical local file is `.dev.vars` at the repository root. Use `pnpm env:link` to create
+symlinks so that `apps/api/` and `apps/workers/` also read from it.
 
-Vite prefixes all client-side env vars with `VITE_`.
-
-### Backend (`apps/api`)
-
-```
-# .env.staging / .env.production, then pnpm env:push:staging or pnpm env:push:production
-
-# Better Auth
-BETTER_AUTH_SECRET=<random-64-char>
-BETTER_AUTH_URL=https://api.bucketdrive.app
-GITHUB_CLIENT_ID=...
-GITHUB_CLIENT_SECRET=...
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-
-# R2
-R2_BUCKET_NAME=bucketdrive-files
-R2_ACCESS_KEY_ID=...
-R2_SECRET_ACCESS_KEY=...
-R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
-
-# D1
-STAGING_D1_DATABASE_ID=... # bound via wrangler.toml [[env.staging.d1_databases]]
-PRODUCTION_D1_DATABASE_ID=... # bound via wrangler.toml [[env.production.d1_databases]]
-
-# App
-APP_URL=https://bucketdrive.app
-API_URL=https://api.bucketdrive.app
-PLATFORM_OWNER_EMAIL=admin@example.com
+```bash
+cp .env.example .dev.vars
+pnpm env:link
+# Edit .dev.vars with your credentials
 ```
 
-`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are local/CI deploy credentials, not Worker
-runtime vars, so `pnpm env:push:*` does not upload them as secrets.
+## CI/CD (GitHub Actions)
 
-For staging, create the D1 database once and store the returned non-secret database ID as the
-GitHub environment variable `STAGING_D1_DATABASE_ID`. Production uses `PRODUCTION_D1_DATABASE_ID`.
-GitHub Actions reads the same variable names defined in `.env.example`; it does not import a local
-env file.
+GitHub Actions does not read `.env` files. Instead, it creates a temporary `.env.staging` or
+`.env.production` file dynamically from the environment secrets and variables configured in the
+GitHub repository settings.
+
+### Required Repository Secrets
+
+| Secret                  | Source                            |
+| ----------------------- | --------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | Cloudflare Dashboard → API Tokens |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Dashboard → Account ID |
+
+### Required Environment Variables
+
+| Variable                    | Staging                                         | Production                              |
+| --------------------------- | ----------------------------------------------- | --------------------------------------- |
+| `STAGING_D1_DATABASE_ID`    | `npx wrangler d1 create bucketdrive-db-staging` | —                                       |
+| `PRODUCTION_D1_DATABASE_ID` | —                                               | `npx wrangler d1 create bucketdrive-db` |
+| `APP_URL`                   | `https://staging.bucketdrive.dev`               | `https://drive.nekomata.moe`            |
+| `API_URL`                   | `https://staging-api.bucketdrive.dev`           | `https://drive.nekomata.moe/api`        |
+| `PLAYWRIGHT_BASE_URL`       | Same as `APP_URL`                               | Same as `APP_URL`                       |
+| `PAGES_PROJECT_NAME`        | `bucketdrive`                                   | `bucketdrive`                           |
+| `PAGES_BRANCH`              | `staging`                                       | `production`                            |
+
+### Required Environment Secrets
+
+All of the following must be stored as **environment secrets** (not repository secrets) to ensure
+they are scoped to the correct environment:
+
+| Secret                 | How to obtain                                             |
+| ---------------------- | --------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`   | `openssl rand -base64 64`                                 |
+| `BETTER_AUTH_URL`      | Same as `API_URL`                                         |
+| `GITHUB_CLIENT_ID`     | GitHub OAuth App → Client ID                              |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth App → Client Secret                          |
+| `GOOGLE_CLIENT_ID`     | Google Cloud Console → OAuth 2.0 Client ID                |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud Console → Client Secret                      |
+| `R2_ACCESS_KEY_ID`     | Cloudflare R2 Dashboard → Manage R2 API Tokens → Token ID |
+| `R2_SECRET_ACCESS_KEY` | Cloudflare R2 Dashboard → Token Secret                    |
+| `R2_BUCKET_NAME`       | Your bucket name                                          |
+| `R2_ENDPOINT`          | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`           |
+| `PLATFORM_OWNER_EMAIL` | Admin email address                                       |
+
+> `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI deploy credentials**, not
+> Worker runtime vars. `pnpm env:push:*` explicitly skips these keys and never uploads them to
+> Cloudflare's secret store.
+
+## Setting up D1
+
+Create the databases and capture the IDs:
 
 ```bash
 npx wrangler d1 create bucketdrive-db-staging
-STAGING_D1_DATABASE_ID=<database-id> pnpm env:prepare:staging
-STAGING_D1_DATABASE_ID=<database-id> CLOUDFLARE_ACCOUNT_ID=<account-id> CLOUDFLARE_API_TOKEN=<token> pnpm env:check:staging
+npx wrangler d1 create bucketdrive-db
 ```
+
+Store the returned `database_id` values as `STAGING_D1_DATABASE_ID` and `PRODUCTION_D1_DATABASE_ID`
+environment variables in the respective GitHub Environments.
+
+## Setting up R2
+
+Create the buckets and API tokens:
+
+```bash
+npx wrangler r2 bucket create bucketdrive-staging
+npx wrangler r2 bucket create bucketdrive-files
+```
+
+Then create an R2 API token in the Cloudflare Dashboard → R2 → Manage R2 API Tokens. The token
+needs **Object Read & Write** permissions on the buckets. Save the **Access Key ID** and **Secret
+Access Key** as `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`.
 
 ---
 

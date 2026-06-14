@@ -504,7 +504,14 @@ export function useUploadProcessor(workspaceId: string) {
         return false
       }
     },
-    [workspaceId, updateItem, initiateMutation, processMultipartUpload, processSingleUpload, processDirectUpload],
+    [
+      workspaceId,
+      updateItem,
+      initiateMutation,
+      processMultipartUpload,
+      processSingleUpload,
+      processDirectUpload,
+    ],
   )
 
   const cancelItem = useCallback(
