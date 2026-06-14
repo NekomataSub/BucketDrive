@@ -29,9 +29,6 @@ const SettingsPage = lazy(() =>
 const ShareManagementPage = lazy(() =>
   import("./app/shares").then((module) => ({ default: module.ShareManagementPage })),
 )
-const SharedPage = lazy(() =>
-  import("./app/shared").then((module) => ({ default: module.SharedPage })),
-)
 const TrashPage = lazy(() =>
   import("./app/trash").then((module) => ({ default: module.TrashPage })),
 )
@@ -153,12 +150,6 @@ const settingsRoute = createRoute({
   component: withSuspense(SettingsPage),
 })
 
-const sharedRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/shared",
-  component: withSuspense(SharedPage),
-})
-
 const shareManagementRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/shares",
@@ -194,7 +185,6 @@ const routeTree = rootRoute.addChildren([
     membersRoute,
     auditRoute,
     settingsRoute,
-    sharedRoute,
     shareManagementRoute,
     trashRoute,
     platformRoute,

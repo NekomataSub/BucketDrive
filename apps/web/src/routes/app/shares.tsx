@@ -85,7 +85,10 @@ export function ShareManagementPage() {
 
   const currentQuery = activeTab === "bucket" && canManageAll ? bucketSharesQuery : mineSharesQuery
 
-  const shares = currentQuery.data?.data ?? []
+  const shares = useMemo(
+    () => (currentQuery.data?.data ?? []).filter((share) => share.shareType !== "internal"),
+    [currentQuery.data?.data],
+  )
   const selectionItems = useMemo(
     () => shares.map((share) => ({ id: share.id, type: "share" })),
     [shares],
@@ -96,8 +99,6 @@ export function ShareManagementPage() {
   const isLoading = workspacesLoading || currentQuery.isLoading
 
   const handleCopyLink = async (share: ShareDashboardItem) => {
-    if (share.shareType === "internal") return
-
     const link = `${window.location.origin}/share/${share.id}`
     await navigator.clipboard.writeText(link)
     setCopiedShareId(share.id)
@@ -119,9 +120,7 @@ export function ShareManagementPage() {
   }
 
   const handleCopySelectedLinks = async () => {
-    const links = selectedShares
-      .filter((share) => share.shareType !== "internal")
-      .map((share) => `${window.location.origin}/share/${share.id}`)
+    const links = selectedShares.map((share) => `${window.location.origin}/share/${share.id}`)
     if (links.length === 0) return
     await navigator.clipboard.writeText(links.join("\n"))
   }
@@ -184,15 +183,15 @@ export function ShareManagementPage() {
       </PageToolbar>
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">
-        <StatsCard label="Visible Shares" value={String(currentQuery.data?.meta.total ?? 0)} />
+        <StatsCard label="Visible Links" value={String(shares.length)} />
         <StatsCard
           label="Locked Links"
           value={String(shares.filter((share) => share.isLocked).length)}
           tone={shares.some((share) => share.isLocked) ? "warning" : "default"}
         />
         <StatsCard
-          label="External Links"
-          value={String(shares.filter((share) => share.shareType !== "internal").length)}
+          label="Password Protected"
+          value={String(shares.filter((share) => share.hasPassword).length)}
         />
         <StatsCard
           label="Total Downloads"
@@ -204,9 +203,8 @@ export function ShareManagementPage() {
 
       <div className="border-border-default bg-surface-secondary mb-4 rounded-xl border px-4 py-3">
         <p className="text-text-secondary text-sm">
-          Internal shares stay inside the bucket and appear in{" "}
-          <span className="text-text-primary font-medium">Shared with me</span>. External shares can
-          be copied and sent outside the bucket.
+          Links can be copied and sent outside the bucket. Bucket members already access files from
+          the shared file explorer.
         </p>
       </div>
 
@@ -219,7 +217,7 @@ export function ShareManagementPage() {
           <button
             type="button"
             onClick={() => void handleCopySelectedLinks()}
-            disabled={!selectedShares.some((share) => share.shareType !== "internal")}
+            disabled={selectedShares.length === 0}
             className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Copy className="h-3.5 w-3.5" />

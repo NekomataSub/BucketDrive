@@ -1,16 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/restrict-template-expressions */
 import { Link } from "@tanstack/react-router"
-import {
-  Files,
-  Share2,
-  Trash2,
-  Settings,
-  Link2,
-  Shield,
-  ScrollText,
-  Users,
-  Globe,
-} from "lucide-react"
+import { Files, Trash2, Settings, Link2, Shield, ScrollText, Users, Globe } from "lucide-react"
 import { FolderTree } from "@/components/features/folder-tree"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { usePlatformMe, useDashboardOverview } from "@/lib/api"
@@ -23,7 +13,6 @@ export function Sidebar() {
 
   const navItems = [
     { to: "/dashboard/files", icon: Files, label: "Files", visible: true },
-    { to: "/shared", icon: Share2, label: "Shared With Me", visible: true },
     { to: "/dashboard/shares", icon: Link2, label: "Share Links", visible: true },
     { to: "/dashboard/trash", icon: Trash2, label: "Trash", visible: true },
     {

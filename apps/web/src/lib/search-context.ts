@@ -1,4 +1,4 @@
-type SearchRouteKey = "dashboard" | "trash" | "shared" | "shares"
+type SearchRouteKey = "dashboard" | "trash" | "shares"
 
 interface SearchContextConfig {
   enabled: boolean
@@ -20,14 +20,6 @@ export function getSearchContextFromPath(pathname: string): SearchContextConfig 
       enabled: true,
       routeKey: "trash",
       placeholder: "Search trash by name or location",
-    }
-  }
-
-  if (pathname === "/shared") {
-    return {
-      enabled: true,
-      routeKey: "shared",
-      placeholder: "Search shared items",
     }
   }
 

@@ -9,6 +9,12 @@ verifiable result.
 
 ## Status Overview
 
+> **Shared-with-me removal pass — 2026-06-13:**
+>
+> - Removed the dedicated `/shared` frontend route, sidebar entry, command palette command, and route-specific search state.
+> - Simplified single-item and batch sharing flows so the UI only creates external file/folder links.
+> - Updated Share Links to present external links only, while leaving legacy internal-share API support intact.
+
 > **Remote D1/R2 recovery pass — 2026-06-13:**
 >
 > - Repaired the remote single-bucket D1 shape after the `--remote` migration by dropping stale `workspace_id` columns with an operation script.

@@ -32,15 +32,6 @@ const navigationDefs: NavigationCommandDef[] = [
     keywords: ["files", "explorer", "documents"],
   },
   {
-    id: "nav-shared",
-    title: "Go to Shared with Me",
-    subtitle: "View files shared with you",
-    icon: Share2,
-    to: "/shared",
-    category: "navigation",
-    keywords: ["shared", "shares", "received"],
-  },
-  {
     id: "nav-shares",
     title: "Go to Share Links",
     subtitle: "Manage your share links",

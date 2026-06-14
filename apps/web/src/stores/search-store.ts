@@ -1,6 +1,6 @@
 import { create } from "zustand"
 
-export type SearchRouteKey = "dashboard" | "trash" | "shared" | "shares"
+export type SearchRouteKey = "dashboard" | "trash" | "shares"
 export type SearchTypeFilter = "all" | "documents" | "images" | "videos" | "audio" | "archives"
 export type SearchSort = "relevance" | "name" | "created_at" | "size" | "type"
 export type SearchOrder = "asc" | "desc"
@@ -20,7 +20,6 @@ interface DashboardSearchState extends RouteSearchState {
 export interface SearchStoreState {
   dashboard: DashboardSearchState
   trash: RouteSearchState
-  shared: RouteSearchState
   shares: RouteSearchState
   setRouteQuery: (route: SearchRouteKey, query: string) => void
   setDashboardType: (type: SearchTypeFilter) => void
@@ -47,7 +46,6 @@ const emptyDashboardState = (): DashboardSearchState => ({
 export const useSearchStore = create<SearchStoreState>((set) => ({
   dashboard: emptyDashboardState(),
   trash: emptyRouteState(),
-  shared: emptyRouteState(),
   shares: emptyRouteState(),
   setRouteQuery: (route, query) => {
     set((state) => ({

@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions */
 import * as Dialog from "@radix-ui/react-dialog"
-import { Check, Copy, Globe, Lock, Share2, Users, X } from "lucide-react"
+import { Check, Copy, Globe, Lock, Share2, X } from "lucide-react"
 import { useState } from "react"
 import { useCreateShare } from "@/lib/api"
 import { StyledSelect } from "@/components/shared/styled-select"
-
-type ShareMode = "internal" | "external"
 
 interface BatchShareItem {
   id: string
@@ -35,8 +33,6 @@ export function BatchShareDialog({
   items,
 }: BatchShareDialogProps) {
   const createShare = useCreateShare(workspaceId)
-  const [shareMode, setShareMode] = useState<ShareMode>("external")
-  const [permissions, setPermissions] = useState<("read" | "download")[]>(["read", "download"])
   const [password, setPassword] = useState("")
   const [expiresIn, setExpiresIn] = useState("")
   const [links, setLinks] = useState<Array<{ name: string; link: string }>>([])
@@ -45,8 +41,6 @@ export function BatchShareDialog({
   const [hasCreated, setHasCreated] = useState(false)
 
   const reset = () => {
-    setShareMode("external")
-    setPermissions(["read", "download"])
     setPassword("")
     setExpiresIn("")
     setLinks([])
@@ -65,14 +59,6 @@ export function BatchShareDialog({
     return date.toISOString()
   }
 
-  const togglePermission = (permission: "read" | "download") => {
-    setPermissions((current) =>
-      current.includes(permission)
-        ? current.filter((candidate) => candidate !== permission)
-        : [...current, permission],
-    )
-  }
-
   const handleCreate = async () => {
     const nextLinks: Array<{ name: string; link: string }> = []
     const nextFailed: Array<{ name: string; message: string }> = []
@@ -82,22 +68,14 @@ export function BatchShareDialog({
         const share = await createShare.mutateAsync({
           resourceId: item.id,
           resourceType: item.type,
-          shareType:
-            shareMode === "internal"
-              ? "internal"
-              : item.type === "file"
-                ? "external_direct"
-                : "external_explorer",
-          permissions: shareMode === "internal" ? permissions : undefined,
-          password: shareMode === "external" && password ? password : undefined,
-          expiresAt: shareMode === "external" ? getExpiresAt() : undefined,
+          shareType: item.type === "file" ? "external_direct" : "external_explorer",
+          password: password ? password : undefined,
+          expiresAt: getExpiresAt(),
         })
-        if (shareMode === "external") {
-          nextLinks.push({
-            name: item.name,
-            link: `${window.location.origin}/share/${share.id}`,
-          })
-        }
+        nextLinks.push({
+          name: item.name,
+          link: `${window.location.origin}/share/${share.id}`,
+        })
       } catch (error) {
         nextFailed.push({
           name: item.name,
@@ -146,76 +124,36 @@ export function BatchShareDialog({
 
               <div>
                 <p className="text-text-secondary mb-2 text-sm">Share type</p>
-                <div className="flex gap-2">
-                  {(
-                    [
-                      { value: "external" as const, icon: Globe, label: "External links" },
-                      { value: "internal" as const, icon: Users, label: "Bucket members" },
-                    ] as const
-                  ).map(({ value, icon: Icon, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setShareMode(value)}
-                      className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                        shareMode === value
-                          ? "border-accent bg-accent/10 text-accent"
-                          : "border-border-muted bg-surface-default text-text-secondary hover:border-border-default"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {label}
-                    </button>
-                  ))}
+                <div className="border-accent bg-accent/10 text-accent flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium">
+                  <Globe className="h-4 w-4" />
+                  External links
                 </div>
               </div>
 
-              {shareMode === "internal" ? (
-                <div className="border-border-muted bg-surface-secondary rounded-lg border p-3">
-                  <p className="text-text-secondary mb-2 text-xs font-medium">Permissions</p>
-                  <div className="flex gap-2">
-                    {(["read", "download"] as const).map((permission) => (
-                      <button
-                        key={permission}
-                        type="button"
-                        onClick={() => togglePermission(permission)}
-                        className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                          permissions.includes(permission)
-                            ? "bg-accent text-white"
-                            : "border-border-muted bg-surface-default text-text-secondary hover:border-border-default border"
-                        }`}
-                      >
-                        {permission}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <label className="block">
-                    <span className="text-text-secondary flex items-center gap-1.5 text-xs font-medium">
-                      <Lock className="h-3 w-3" />
-                      Password protection
-                    </span>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Optional: password (min 4 chars)"
-                      className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-text-secondary text-xs font-medium">Expiration</span>
-                    <StyledSelect
-                      value={expiresIn}
-                      onValueChange={setExpiresIn}
-                      options={expirationOptions}
-                      triggerClassName="mt-1.5 w-full rounded-lg bg-surface-default"
-                    />
-                  </label>
-                </div>
-              )}
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="text-text-secondary flex items-center gap-1.5 text-xs font-medium">
+                    <Lock className="h-3 w-3" />
+                    Password protection
+                  </span>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Optional: password (min 4 chars)"
+                    className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-text-secondary text-xs font-medium">Expiration</span>
+                  <StyledSelect
+                    value={expiresIn}
+                    onValueChange={setExpiresIn}
+                    options={expirationOptions}
+                    triggerClassName="mt-1.5 w-full rounded-lg bg-surface-default"
+                  />
+                </label>
+              </div>
 
               <div className="flex justify-end gap-3">
                 <Dialog.Close className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-4 py-2 text-sm font-medium transition-colors">
@@ -229,7 +167,7 @@ export function BatchShareDialog({
                   disabled={
                     createShare.isPending ||
                     items.length === 0 ||
-                    (shareMode === "external" && password.length > 0 && password.length < 4)
+                    (password.length > 0 && password.length < 4)
                   }
                   className="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
                 >
@@ -240,7 +178,7 @@ export function BatchShareDialog({
             </div>
           ) : (
             <div className="space-y-4">
-              {shareMode === "external" && links.length > 0 ? (
+              {links.length > 0 && (
                 <>
                   <div className="border-border-muted bg-surface-secondary max-h-56 overflow-auto rounded-lg border p-3">
                     {links.map((entry) => (
@@ -270,10 +208,6 @@ export function BatchShareDialog({
                     )}
                   </button>
                 </>
-              ) : (
-                <div className="border-border-muted bg-surface-secondary text-text-secondary rounded-lg border p-3 text-sm">
-                  Internal shares were created for bucket members.
-                </div>
               )}
 
               {failed.length > 0 && (
