@@ -30,6 +30,47 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate required secrets and vars
+        run: |
+          missing=""
+          check() {
+            local val="$1"
+            local name="$2"
+            if [ -z "$val" ]; then
+              missing="${missing}${name}, "
+            fi
+          }
+
+          check "${{ vars.APP_URL }}" "vars.APP_URL"
+          check "${{ vars.API_URL }}" "vars.API_URL"
+          check "${{ secrets.BETTER_AUTH_SECRET }}" "secrets.BETTER_AUTH_SECRET"
+          check "${{ secrets.BETTER_AUTH_URL }}" "secrets.BETTER_AUTH_URL"
+          check "${{ secrets.GH_CLIENT_ID }}" "secrets.GH_CLIENT_ID"
+          check "${{ secrets.GH_CLIENT_SECRET }}" "secrets.GH_CLIENT_SECRET"
+          check "${{ secrets.GOOGLE_CLIENT_ID }}" "secrets.GOOGLE_CLIENT_ID"
+          check "${{ secrets.GOOGLE_CLIENT_SECRET }}" "secrets.GOOGLE_CLIENT_SECRET"
+          check "${{ secrets.R2_ACCESS_KEY_ID }}" "secrets.R2_ACCESS_KEY_ID"
+          check "${{ secrets.R2_SECRET_ACCESS_KEY }}" "secrets.R2_SECRET_ACCESS_KEY"
+          check "${{ secrets.R2_BUCKET_NAME }}" "secrets.R2_BUCKET_NAME"
+          check "${{ secrets.R2_ENDPOINT }}" "secrets.R2_ENDPOINT"
+          check "${{ secrets.PLATFORM_OWNER_EMAIL }}" "secrets.PLATFORM_OWNER_EMAIL"
+          check "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" "secrets.CLOUDFLARE_ACCOUNT_ID"
+          check "${{ secrets.CLOUDFLARE_API_TOKEN }}" "secrets.CLOUDFLARE_API_TOKEN"
+          check "${{ vars.PRODUCTION_D1_DATABASE_ID }}" "vars.PRODUCTION_D1_DATABASE_ID"
+          check "${{ vars.PLAYWRIGHT_BASE_URL }}" "vars.PLAYWRIGHT_BASE_URL"
+          check "${{ vars.PAGES_PROJECT_NAME }}" "vars.PAGES_PROJECT_NAME"
+          check "${{ vars.PAGES_BRANCH }}" "vars.PAGES_BRANCH"
+
+          if [ -n "$missing" ]; then
+            echo "❌ Missing required repository secrets/vars for production environment:"
+            echo "${missing%, }"
+            echo ""
+            echo "Configure them at: Settings > Environments > production > Secrets and variables"
+            exit 1
+          fi
+
+          echo "✅ All required secrets and vars are present."
+
       - name: Create production env file
         run: |
           cat > .env.production << 'EOF'
