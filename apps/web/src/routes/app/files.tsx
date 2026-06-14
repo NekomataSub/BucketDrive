@@ -1333,15 +1333,7 @@ export function FilesPage() {
                       Favorites only
                     </span>
                   )}
-                  {dashboardSearch.type !== "all" && (
-                    <span className="bg-surface-secondary text-text-primary shrink-0 rounded-full px-3 py-1 text-xs font-medium">
-                      Type:{" "}
-                      {
-                        typeFilterOptions.find((option) => option.value === dashboardSearch.type)
-                          ?.label
-                      }
-                    </span>
-                  )}
+                  
                   {selectedTagNames.map((tag) => (
                     <span
                       key={tag.id}
