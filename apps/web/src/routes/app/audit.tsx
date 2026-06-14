@@ -44,7 +44,7 @@ export function AuditPage() {
   const items = auditQuery.data?.data ?? []
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full min-w-0 flex-col p-4 sm:p-6">
       <PageHeader
         title="Audit Log"
         description="Filter activity by action and resource type. Results are newest first."
@@ -66,7 +66,23 @@ export function AuditPage() {
       </PageToolbar>
 
       <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">
-        <table className="w-full">
+        <div className="divide-border-muted divide-y md:hidden">
+          {items.map((item) => (
+            <div key={item.id} className="space-y-2 p-4">
+              <p className="text-text-primary text-sm font-medium break-words">{item.action}</p>
+              <p className="text-text-secondary text-xs">{item.actorName ?? item.actorId}</p>
+              <p className="text-text-secondary text-xs break-words">
+                {item.resourceType}
+                {item.resourceId ? ` • ${item.resourceId}` : ""}
+              </p>
+              <p className="text-text-tertiary text-xs">
+                {new Date(item.createdAt).toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <table className="hidden w-full md:table">
           <thead>
             <tr className="border-border-muted bg-bg-tertiary border-b">
               <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Action</th>

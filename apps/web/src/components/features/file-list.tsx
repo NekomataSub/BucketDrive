@@ -663,14 +663,17 @@ export function FileList({
 
   return (
     <div
-      className="border-border-default min-h-[calc(100vh-420px)] overflow-hidden rounded-xl border"
+      className="border-border-default min-h-48 overflow-hidden rounded-xl border sm:min-h-[calc(100dvh-420px)]"
       onPointerDown={onSelectionPointerDown}
       onPointerMove={onSelectionPointerMove}
       onPointerUp={onSelectionPointerUp}
       onPointerCancel={onSelectionPointerCancel}
     >
       {/* Header */}
-      <div className="border-border-muted bg-surface-default flex border-b" data-selection-ignore>
+      <div
+        className="border-border-muted bg-surface-default hidden border-b sm:flex"
+        data-selection-ignore
+      >
         <div className="text-text-tertiary flex-1 px-4 py-2.5 text-left text-xs font-medium">
           Name
         </div>
@@ -686,7 +689,7 @@ export function FileList({
         <div className="w-10 px-4 py-2.5" />
       </div>
 
-      <div className="max-h-[calc(100vh-320px)] overflow-auto">
+      <div className="max-h-[calc(100dvh-300px)] overflow-auto">
         {allItems.map((item, index) => {
           if (item.type === "folder") {
             const folder = item.data

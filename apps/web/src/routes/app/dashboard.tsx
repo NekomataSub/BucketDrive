@@ -44,7 +44,7 @@ export function DashboardPage() {
 
   if (overviewQuery.isError) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="border-error/40 bg-error/10 text-error rounded-xl border px-4 py-3 text-sm">
           {overviewQuery.error.message}
         </div>
@@ -65,7 +65,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
+    <div className="flex h-full min-w-0 flex-col gap-6 p-4 sm:p-6">
       <PageHeader
         eyebrow="Admin Overview"
         title={workspace.name}
@@ -208,7 +208,7 @@ export function DashboardPage() {
               overview.recentActivity.map((item) => (
                 <div
                   key={item.id}
-                  className="border-border-muted bg-bg-tertiary flex items-start justify-between gap-3 rounded-xl border px-4 py-3"
+                  className="border-border-muted bg-bg-tertiary flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
                 >
                   <div>
                     <p className="text-text-primary text-sm font-medium">{item.action}</p>

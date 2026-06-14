@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import type { ReactNode } from "react"
+import { useState } from "react"
 import { Sidebar } from "./sidebar"
 import { Topbar } from "./topbar"
 import { CommandPalette } from "@/components/features/command-palette"
@@ -13,20 +14,30 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   useCommandPaletteShortcut()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <ToastProvider>
-      <div className="bg-bg-primary flex h-screen flex-col">
+      <div className="bg-bg-primary flex h-dvh flex-col">
         <a
           href="#main-content"
           className="focus:bg-accent sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
         >
           Skip to content
         </a>
-        <Topbar />
+        <Topbar
+          onOpenSidebar={() => {
+            setSidebarOpen(true)
+          }}
+        />
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
-          <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto">
+          <Sidebar
+            mobileOpen={sidebarOpen}
+            onClose={() => {
+              setSidebarOpen(false)
+            }}
+          />
+          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 overflow-auto">
             {children}
           </main>
         </div>

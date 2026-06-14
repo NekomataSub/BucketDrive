@@ -52,13 +52,13 @@ export function PageHeader({ title, description, eyebrow, actions }: PageHeaderP
           </p>
         )}
         <h1
-          className={`text-text-primary font-semibold tracking-tight ${eyebrow ? "mt-2 text-3xl" : "text-lg"}`}
+          className={`text-text-primary truncate font-semibold tracking-tight ${eyebrow ? "mt-2 text-2xl sm:text-3xl" : "text-lg"}`}
         >
           {title}
         </h1>
         {description && <p className="text-text-tertiary mt-1 text-xs">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 sm:justify-end">{actions}</div>}
     </section>
   )
 }
@@ -66,7 +66,7 @@ export function PageHeader({ title, description, eyebrow, actions }: PageHeaderP
 export function PageToolbar({ children, className = "" }: PageToolbarProps) {
   return (
     <div
-      className={`border-border-default bg-surface-default mb-4 flex flex-wrap items-center gap-2 rounded-xl border p-3 ${className}`}
+      className={`border-border-default bg-surface-default mb-4 flex min-w-0 flex-wrap items-center gap-2 rounded-xl border p-3 ${className}`}
     >
       {children}
     </div>
@@ -87,7 +87,7 @@ export function ActionButton({
     <button
       type="button"
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariants[variant]} ${className}`}
+      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariants[variant]} ${className}`}
       {...props}
     >
       {icon}
@@ -104,7 +104,7 @@ export function SegmentedControl<T extends string>({
 }: SegmentedControlProps<T>) {
   return (
     <div
-      className="border-border-muted bg-surface-default flex rounded-lg border p-0.5"
+      className="border-border-muted bg-surface-default flex max-w-full overflow-x-auto rounded-lg border p-0.5"
       role="group"
       aria-label={ariaLabel}
     >
@@ -116,7 +116,7 @@ export function SegmentedControl<T extends string>({
             onChange(option.value)
           }}
           aria-label={option.ariaLabel}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+          className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
             value === option.value
               ? "bg-surface-active text-text-primary"
               : "text-text-tertiary hover:text-text-primary"

@@ -106,7 +106,7 @@ export function MembersPage() {
   })()
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full min-w-0 flex-col p-4 sm:p-6">
       <PageHeader
         title="Members"
         description="Invite bucket members by email and manage global bucket roles."
@@ -166,7 +166,7 @@ export function MembersPage() {
               <p className="text-text-primary text-sm font-medium">
                 Invitation sent to {createdInvite.email}
               </p>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <input
                   readOnly
                   value={createdInvite.inviteLink}
@@ -211,7 +211,55 @@ export function MembersPage() {
 
       {activeTab === "members" && (
         <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">
-          <table className="w-full">
+          <div className="divide-border-muted divide-y md:hidden">
+            {members.map((entry) => (
+              <div key={entry.id} className="space-y-3 p-4">
+                <div className="flex items-start gap-3">
+                  {entry.image ? (
+                    <img src={entry.image} alt={entry.name} className="h-10 w-10 rounded-full" />
+                  ) : (
+                    <div className="bg-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium text-white">
+                      {entry.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-text-primary truncate text-sm font-medium">{entry.name}</p>
+                    <p className="text-text-secondary truncate text-xs">{entry.email}</p>
+                    <p className="text-text-tertiary mt-1 text-xs">
+                      Joined {new Date(entry.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <StyledSelect
+                    value={entry.role}
+                    onValueChange={(nextRole) =>
+                      updateMemberRole.mutate({
+                        memberId: entry.id,
+                        role: nextRole,
+                      })
+                    }
+                    disabled={!canManageMembers}
+                    options={editableRoleOptions}
+                    triggerClassName="bg-bg-tertiary capitalize"
+                    contentClassName="capitalize"
+                  />
+                  {can(currentUserRole, "users.remove") && (
+                    <button
+                      onClick={() => {
+                        setConfirmAction({ type: "member", id: entry.id, name: entry.name })
+                      }}
+                      className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <table className="hidden w-full md:table">
             <thead>
               <tr className="border-border-muted bg-bg-tertiary border-b">
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">User</th>
@@ -293,7 +341,54 @@ export function MembersPage() {
 
       {activeTab === "invitations" && (
         <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">
-          <table className="w-full">
+          <div className="divide-border-muted divide-y md:hidden">
+            {invitations.map((entry) => (
+              <div key={entry.id} className="space-y-3 p-4">
+                <div className="min-w-0">
+                  <p className="text-text-primary truncate text-sm font-medium">{entry.email}</p>
+                  <p className="text-text-secondary mt-1 text-xs capitalize">Role: {entry.role}</p>
+                  <p className="text-text-tertiary mt-1 text-xs">
+                    Invited by {entry.invitedByName}
+                  </p>
+                  <p className="text-text-tertiary mt-1 text-xs">
+                    Expires {new Date(entry.expiresAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    onClick={() => {
+                      const baseUrl = window.location.origin
+                      const link = `${baseUrl}/join?token=${entry.id}`
+                      void navigator.clipboard.writeText(link)
+                      setCopiedInviteId(entry.id)
+                      window.setTimeout(
+                        () =>
+                          setCopiedInviteId((current) => (current === entry.id ? null : current)),
+                        2000,
+                      )
+                    }}
+                    className="border-border-default text-text-secondary hover:bg-surface-hover rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+                  >
+                    {copiedInviteId === entry.id ? "Copied" : "Copy link"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setConfirmAction({
+                        type: "invitation",
+                        id: entry.id,
+                        email: entry.email,
+                      })
+                    }}
+                    className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <table className="hidden w-full md:table">
             <thead>
               <tr className="border-border-muted bg-bg-tertiary border-b">
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">

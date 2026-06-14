@@ -292,7 +292,7 @@ export function FilePreview({
         aria-hidden="true"
       />
       {/* Panel */}
-      <div className="bg-surface-default fixed inset-y-0 right-0 z-50 flex w-full flex-col shadow-2xl md:w-[400px] lg:w-[480px]">
+      <div className="bg-surface-default fixed inset-0 z-50 flex w-full flex-col shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:w-[400px] lg:w-[480px]">
         {/* Header */}
         <div className="border-border-default flex items-center gap-3 border-b px-4 py-3">
           <button
@@ -339,7 +339,7 @@ export function FilePreview({
         <div className="flex-1 overflow-hidden">{renderContent()}</div>
 
         {/* Footer hints */}
-        <div className="border-border-default text-text-tertiary flex items-center justify-between border-t px-4 py-2 text-[11px]">
+        <div className="border-border-default text-text-tertiary hidden items-center justify-between border-t px-4 py-2 text-[11px] sm:flex">
           <span>Use arrow keys to navigate</span>
           <span>ESC to close</span>
         </div>

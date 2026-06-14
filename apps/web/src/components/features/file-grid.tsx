@@ -432,13 +432,13 @@ export function FileGrid({
 
   return (
     <div
-      className="max-h-[calc(100vh-320px)] min-h-[calc(100vh-420px)] overflow-auto"
+      className="max-h-[calc(100dvh-300px)] min-h-48 overflow-auto sm:min-h-[calc(100dvh-420px)]"
       onPointerDown={onSelectionPointerDown}
       onPointerMove={onSelectionPointerMove}
       onPointerUp={onSelectionPointerUp}
       onPointerCancel={onSelectionPointerCancel}
     >
-      <div className="grid grid-cols-2 items-stretch gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] items-stretch gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {allItems.map((item, itemIndex) => {
           if (item.type === "folder") {
             const folder = item.data

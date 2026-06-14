@@ -37,7 +37,7 @@ export function PlatformAdminPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
+    <div className="flex h-full min-w-0 flex-col gap-6 p-4 sm:p-6">
       <PageHeader
         eyebrow="Platform Administration"
         title="Platform Settings"
@@ -173,7 +173,7 @@ export function PlatformAdminPage() {
               (inv: { id: string; email: string; role: string; inviteLink?: string }) => (
                 <div
                   key={inv.id}
-                  className="border-border-muted bg-bg-tertiary flex items-center justify-between rounded-xl border px-4 py-3"
+                  className="border-border-muted bg-bg-tertiary flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="text-text-primary text-sm font-medium">{inv.email}</p>

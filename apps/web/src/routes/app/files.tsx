@@ -1014,6 +1014,7 @@ export function FilesPage() {
 
   const handleSelectionPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
+    if (event.pointerType !== "mouse") return
     const target = event.target
     if (!(target instanceof Element)) return
     if (
@@ -1121,7 +1122,7 @@ export function FilesPage() {
     <>
       <SelectionMarquee rect={selectionRect} />
       <div
-        className="flex h-full flex-col p-6"
+        className="flex h-full min-w-0 flex-col p-4 sm:p-6"
         data-testid="files-page"
         data-workspace-role={workspaceRole}
       >
@@ -1206,172 +1207,166 @@ export function FilesPage() {
           </div>
         )}
 
-        <PageToolbar className="relative items-start">
-          <div
-            className={
-              totalSelected > 0
-                ? "invisible flex w-full min-w-0 items-center gap-2"
-                : "flex w-full min-w-0 items-center gap-2"
-            }
-          >
-            <SegmentedControl
-              value={viewMode}
-              onChange={setViewMode}
-              ariaLabel="File view mode"
-              options={[
-                {
-                  value: "grid",
-                  label: <LayoutGrid className="h-4 w-4" />,
-                  ariaLabel: "Grid view",
-                },
-                {
-                  value: "list",
-                  label: <List className="h-4 w-4" />,
-                  ariaLabel: "List view",
-                },
-              ]}
-            />
-            <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
-              {typeFilterOptions.map((option) => (
+        <PageToolbar>
+          {totalSelected === 0 ? (
+            <div className="grid w-full min-w-0 gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+              <SegmentedControl
+                value={viewMode}
+                onChange={setViewMode}
+                ariaLabel="File view mode"
+                options={[
+                  {
+                    value: "grid",
+                    label: <LayoutGrid className="h-4 w-4" />,
+                    ariaLabel: "Grid view",
+                  },
+                  {
+                    value: "list",
+                    label: <List className="h-4 w-4" />,
+                    ariaLabel: "List view",
+                  },
+                ]}
+              />
+              <div className="flex min-w-0 [scrollbar-width:none] gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+                {typeFilterOptions.map((option) => (
+                  <button
+                    type="button"
+                    key={option.value}
+                    onClick={() => setDashboardType(option.value)}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                      dashboardSearch.type === option.value
+                        ? "bg-accent text-white"
+                        : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+
                 <button
                   type="button"
-                  key={option.value}
-                  onClick={() => setDashboardType(option.value)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    dashboardSearch.type === option.value
-                      ? "bg-accent text-white"
+                  onClick={() => setDashboardFavoriteOnly(!dashboardSearch.favoriteOnly)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    dashboardSearch.favoriteOnly
+                      ? "bg-warning/20 text-warning"
                       : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
                   }`}
                 >
-                  {option.label}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => setDashboardFavoriteOnly(!dashboardSearch.favoriteOnly)}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  dashboardSearch.favoriteOnly
-                    ? "bg-warning/20 text-warning"
-                    : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
-                }`}
-              >
-                <Star
-                  className={`h-3.5 w-3.5 ${dashboardSearch.favoriteOnly ? "fill-warning" : ""}`}
-                />
-                Favorites
-              </button>
-
-              {isSearchActive && (
-                <>
-                  <StyledSelect
-                    value={dashboardSearch.sort}
-                    onValueChange={setDashboardSort}
-                    options={dashboardSortOptions}
-                    triggerClassName="bg-surface-secondary rounded-full py-1.5 text-xs"
-                    contentClassName="min-w-[140px]"
+                  <Star
+                    className={`h-3.5 w-3.5 ${dashboardSearch.favoriteOnly ? "fill-warning" : ""}`}
                   />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDashboardOrder(dashboardSearch.order === "asc" ? "desc" : "asc")
-                    }
-                    className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
-                  >
-                    {dashboardSearch.order === "asc" ? "Ascending" : "Descending"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearDashboardSearch}
-                    className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Clear search
-                  </button>
-                </>
-              )}
-            </div>
+                  Favorites
+                </button>
 
-            {allTags.length > 0 && (
-              <div className="hidden min-w-0 items-center gap-2 xl:flex">
-                <span className="text-text-tertiary text-xs font-medium tracking-wide uppercase">
-                  Tags
-                </span>
-                {allTags.map((tag) => {
-                  const selected = dashboardSearch.selectedTagIds.includes(tag.id)
-                  const colorClasses = getTagColorClasses(tag.color)
-
-                  return (
+                {isSearchActive && (
+                  <>
+                    <StyledSelect
+                      value={dashboardSearch.sort}
+                      onValueChange={setDashboardSort}
+                      options={dashboardSortOptions}
+                      triggerClassName="bg-surface-secondary rounded-full py-1.5 text-xs"
+                      contentClassName="min-w-[140px]"
+                    />
                     <button
                       type="button"
-                      key={tag.id}
-                      onClick={() => {
-                        setDashboardSelectedTagIds(
-                          selected
-                            ? dashboardSearch.selectedTagIds.filter((id) => id !== tag.id)
-                            : [...dashboardSearch.selectedTagIds, tag.id],
-                        )
-                      }}
-                      className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                        selected
-                          ? `border-transparent ${colorClasses.chipClassName}`
-                          : "border-border-default bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
-                      }`}
+                      onClick={() =>
+                        setDashboardOrder(dashboardSearch.order === "asc" ? "desc" : "asc")
+                      }
+                      className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
                     >
-                      {tag.name}
+                      {dashboardSearch.order === "asc" ? "Ascending" : "Descending"}
                     </button>
-                  )
-                })}
+                    <button
+                      type="button"
+                      onClick={clearDashboardSearch}
+                      className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Clear search
+                    </button>
+                  </>
+                )}
               </div>
-            )}
 
-            {isSearchActive && (
-              <div className="hidden min-w-0 gap-2 2xl:flex">
-                {debouncedQuery && (
-                  <span className="bg-accent/10 text-accent shrink-0 rounded-full px-3 py-1 text-xs font-medium">
-                    Query: {debouncedQuery}
+              {allTags.length > 0 && (
+                <div className="col-span-full hidden min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto xl:flex [&::-webkit-scrollbar]:hidden">
+                  <span className="text-text-tertiary shrink-0 text-xs font-medium tracking-wide uppercase">
+                    Tags
                   </span>
-                )}
-                {dashboardSearch.favoriteOnly && (
-                  <span className="bg-warning/10 text-warning shrink-0 rounded-full px-3 py-1 text-xs font-medium">
-                    Favorites only
-                  </span>
-                )}
-                {dashboardSearch.type !== "all" && (
-                  <span className="bg-surface-secondary text-text-primary shrink-0 rounded-full px-3 py-1 text-xs font-medium">
-                    Type:{" "}
-                    {
-                      typeFilterOptions.find((option) => option.value === dashboardSearch.type)
-                        ?.label
-                    }
-                  </span>
-                )}
-                {selectedTagNames.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className={[
-                      "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
-                      getTagColorClasses(tag.color).chipClassName,
-                    ].join(" ")}
-                  >
-                    Tag: {tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+                  {allTags.map((tag) => {
+                    const selected = dashboardSearch.selectedTagIds.includes(tag.id)
+                    const colorClasses = getTagColorClasses(tag.color)
 
-          {totalSelected > 0 && (
-            <div className="absolute inset-0 flex items-center gap-2 p-3">
+                    return (
+                      <button
+                        type="button"
+                        key={tag.id}
+                        onClick={() => {
+                          setDashboardSelectedTagIds(
+                            selected
+                              ? dashboardSearch.selectedTagIds.filter((id) => id !== tag.id)
+                              : [...dashboardSearch.selectedTagIds, tag.id],
+                          )
+                        }}
+                        className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                          selected
+                            ? `border-transparent ${colorClasses.chipClassName}`
+                            : "border-border-default bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {isSearchActive && (
+                <div className="col-span-full hidden min-w-0 [scrollbar-width:none] gap-2 overflow-x-auto 2xl:flex [&::-webkit-scrollbar]:hidden">
+                  {debouncedQuery && (
+                    <span className="bg-accent/10 text-accent shrink-0 rounded-full px-3 py-1 text-xs font-medium">
+                      Query: {debouncedQuery}
+                    </span>
+                  )}
+                  {dashboardSearch.favoriteOnly && (
+                    <span className="bg-warning/10 text-warning shrink-0 rounded-full px-3 py-1 text-xs font-medium">
+                      Favorites only
+                    </span>
+                  )}
+                  {dashboardSearch.type !== "all" && (
+                    <span className="bg-surface-secondary text-text-primary shrink-0 rounded-full px-3 py-1 text-xs font-medium">
+                      Type:{" "}
+                      {
+                        typeFilterOptions.find((option) => option.value === dashboardSearch.type)
+                          ?.label
+                      }
+                    </span>
+                  )}
+                  {selectedTagNames.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className={[
+                        "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
+                        getTagColorClasses(tag.color).chipClassName,
+                      ].join(" ")}
+                    >
+                      Tag: {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
               <span className="text-text-primary shrink-0 text-sm font-medium">
                 {totalSelected} item{totalSelected === 1 ? "" : "s"} selected
               </span>
-              <div className="flex-1" />
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="hidden flex-1 sm:block" />
+              <div className="flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto sm:flex-wrap sm:justify-end [&::-webkit-scrollbar]:hidden">
                 <button
                   type="button"
                   onClick={handleCopySelected}
-                  className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                 >
                   <Copy className="h-3.5 w-3.5" />
                   Copy selected
@@ -1382,7 +1377,7 @@ export function FilesPage() {
                     void handleDownloadSelected()
                   }}
                   disabled={batchDownloadStatus !== "idle"}
-                  className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors disabled:opacity-50"
+                  className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors disabled:opacity-50"
                 >
                   <Download className="h-3.5 w-3.5" />
                   {batchDownloadStatus === "preparing"
@@ -1401,7 +1396,7 @@ export function FilesPage() {
                   <button
                     type="button"
                     onClick={handleShareSelected}
-                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Share2 className="h-3.5 w-3.5" />
                     Share selected
@@ -1411,7 +1406,7 @@ export function FilesPage() {
                   <button
                     type="button"
                     onClick={handleFavoriteSelected}
-                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Star className="h-3.5 w-3.5" />
                     Favorite files
@@ -1421,7 +1416,7 @@ export function FilesPage() {
                   <button
                     type="button"
                     onClick={handleTagsSelected}
-                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Tags className="h-3.5 w-3.5" />
                     Tags
@@ -1431,7 +1426,7 @@ export function FilesPage() {
                   <button
                     type="button"
                     onClick={handleMoveSelected}
-                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <ArrowRightLeft className="h-3.5 w-3.5" />
                     Move selected
@@ -1441,7 +1436,7 @@ export function FilesPage() {
                   <button
                     type="button"
                     onClick={handleDeleteSelected}
-                    className="text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                    className="text-error hover:bg-error/10 inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Delete selected
@@ -1450,7 +1445,7 @@ export function FilesPage() {
                 <button
                   type="button"
                   onClick={() => clearSelection()}
-                  className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                 >
                   <X className="h-3.5 w-3.5" />
                   Cancel

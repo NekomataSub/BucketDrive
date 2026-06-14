@@ -52,7 +52,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full min-w-0 flex-col p-4 sm:p-6">
       <PageHeader
         title="Bucket Settings"
         description="Update quota, upload policy, retention, MIME rules, and public object delivery."
@@ -72,7 +72,7 @@ export function SettingsPage() {
 
       <form
         id="bucket-settings-form"
-        className="border-border-default bg-surface-default mb-4 grid gap-6 rounded-xl border p-6"
+        className="border-border-default bg-surface-default mb-4 grid gap-6 rounded-xl border p-4 sm:p-6"
         onSubmit={(event) => {
           event.preventDefault()
           updateSettings.mutate({
@@ -152,7 +152,7 @@ export function SettingsPage() {
           </Field>
         </div>
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-text-tertiary text-xs">
             Size inputs are entered as GB/MB and converted to bytes on save.
           </p>

@@ -49,7 +49,7 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
   if (!isOpen && !hasItems) return null
 
   return (
-    <div className="border-border-default bg-bg-primary fixed right-4 bottom-4 z-50 w-80 rounded-xl border shadow-lg">
+    <div className="border-border-default bg-bg-primary fixed right-4 bottom-4 left-4 z-50 rounded-xl border shadow-lg sm:left-auto sm:w-80">
       <div className="border-border-muted flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-text-primary text-sm font-medium">Uploads</span>

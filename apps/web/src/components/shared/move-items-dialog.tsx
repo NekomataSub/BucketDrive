@@ -284,7 +284,7 @@ export function MoveItemsDialog({
             {error && <p className="text-error text-sm">{error}</p>}
           </div>
 
-          <div className="border-border-muted flex justify-end gap-3 border-t p-5">
+          <div className="border-border-muted flex flex-col-reverse gap-3 border-t p-5 sm:flex-row sm:justify-end">
             <Dialog.Close
               disabled={isBusy}
               className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"

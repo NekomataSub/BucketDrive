@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-import { Search, Moon, Sun, Monitor, Check, LogOut } from "lucide-react"
+import { Search, Moon, Sun, Monitor, Check, LogOut, Menu } from "lucide-react"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 import { useRouterState } from "@tanstack/react-router"
 import { useSession, useSignOut } from "@/lib/auth"
@@ -10,7 +10,11 @@ import { useCommandPaletteStore } from "@/stores/command-palette-store"
 import { NotificationBell } from "@/components/features/notification-bell"
 import { BrandMark, useBranding } from "@/lib/branding"
 
-export function Topbar() {
+interface TopbarProps {
+  onOpenSidebar: () => void
+}
+
+export function Topbar({ onOpenSidebar }: TopbarProps) {
   const { data: session, isLoading } = useSession()
   const signOut = useSignOut()
   const theme = useAppStore((s) => s.theme)
@@ -33,15 +37,24 @@ export function Topbar() {
   const ActiveIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor
 
   return (
-    <header className="h-topbar border-border-muted bg-bg-primary flex items-center gap-4 border-b px-4">
-      <div className="flex items-center gap-2">
+    <header className="h-topbar border-border-muted bg-bg-primary flex shrink-0 items-center gap-2 border-b px-3 sm:gap-4 sm:px-4">
+      <button
+        type="button"
+        onClick={onOpenSidebar}
+        className="text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg p-2 transition-colors lg:hidden"
+        aria-label="Open navigation"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      <div className="flex min-w-0 items-center gap-2">
         <BrandMark className="h-6 w-6" />
-        <span className="text-text-primary text-lg font-semibold tracking-tight">
+        <span className="text-text-primary hidden truncate text-lg font-semibold tracking-tight sm:block">
           {branding.name}
         </span>
       </div>
 
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex min-w-0 flex-1 items-center justify-center">
         <div className="border-border-default bg-bg-tertiary flex w-full max-w-lg items-center gap-2 rounded-xl border px-3 py-2">
           <Search className="text-text-tertiary h-4 w-4" />
           <input
@@ -54,12 +67,12 @@ export function Topbar() {
             }}
             placeholder={searchContext.placeholder}
             disabled={!searchContext.enabled}
-            className="text-text-primary placeholder:text-text-tertiary disabled:text-text-tertiary flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
+            className="text-text-primary placeholder:text-text-tertiary disabled:text-text-tertiary min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
           />
           <button
             type="button"
             onClick={() => useCommandPaletteStore.getState().open()}
-            className="border-border-default bg-surface-default text-text-tertiary hover:bg-surface-hover hover:text-text-secondary rounded-md border px-1.5 py-0.5 text-xs transition-colors"
+            className="border-border-default bg-surface-default text-text-tertiary hover:bg-surface-hover hover:text-text-secondary hidden rounded-md border px-1.5 py-0.5 text-xs transition-colors sm:block"
             aria-label="Open command palette"
           >
             ⌘K
@@ -67,7 +80,7 @@ export function Topbar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <button
@@ -105,7 +118,7 @@ export function Topbar() {
         {isLoading ? (
           <div className="bg-surface-hover h-8 w-8 animate-pulse rounded-full" />
         ) : session?.user ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {session.user.image ? (
               <img
                 src={session.user.image}

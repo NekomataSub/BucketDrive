@@ -163,7 +163,7 @@ export function ShareManagementPage() {
   }
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full min-w-0 flex-col p-4 sm:p-6">
       <SelectionMarquee rect={selection.selectionRect} />
       <PageHeader
         title="Share Links"
@@ -209,11 +209,11 @@ export function ShareManagementPage() {
       </div>
 
       {selection.selectedCount > 0 && (
-        <div className="border-accent bg-accent/10 mb-3 flex items-center gap-2 rounded-lg border px-4 py-2">
+        <div className="border-accent bg-accent/10 mb-3 flex flex-col gap-2 rounded-lg border px-4 py-2 sm:flex-row sm:items-center">
           <span className="text-text-primary text-sm font-medium">
             {selection.selectedCount} share{selection.selectedCount === 1 ? "" : "s"} selected
           </span>
-          <div className="flex-1" />
+          <div className="hidden flex-1 sm:block" />
           <button
             type="button"
             onClick={() => void handleCopySelectedLinks()}
@@ -337,9 +337,27 @@ export function ShareManagementPage() {
           onPointerMove={selection.handleContainerPointerMove}
           onPointerUp={selection.handleContainerPointerUp}
           onPointerCancel={selection.handleContainerPointerCancel}
-          className="border-border-default min-h-[calc(100vh-520px)] overflow-hidden rounded-xl border"
+          className="border-border-default min-h-48 overflow-hidden rounded-xl border md:min-h-[calc(100dvh-520px)]"
         >
-          <table className="w-full">
+          <div className="divide-border-muted divide-y md:hidden">
+            {shares.map((share, index) => (
+              <ShareCard
+                key={share.id}
+                share={share}
+                index={index}
+                copied={copiedShareId === share.id}
+                showCreator={activeTab === "bucket"}
+                isSelected={selection.isSelected({ id: share.id, type: "share" })}
+                onCardClick={(event) =>
+                  selection.handleItemClick({ id: share.id, type: "share" }, index, event)
+                }
+                onCopyLink={handleCopyLink}
+                onEdit={() => setEditingShare(share)}
+              />
+            ))}
+          </div>
+
+          <table className="hidden w-full md:table">
             <thead data-selection-ignore>
               <tr className="border-border-muted bg-surface-default border-b">
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
@@ -455,6 +473,105 @@ function EmptyState({ tab, workspace }: { tab: ShareTab; workspace: WorkspaceDat
           ? `${workspace.name} does not have any active or historical links in this scope yet.`
           : "Create a share from the explorer context menu to manage it here."}
       </p>
+    </div>
+  )
+}
+
+function ShareCard({
+  share,
+  index: _index,
+  copied,
+  showCreator,
+  isSelected,
+  onCardClick,
+  onCopyLink,
+  onEdit,
+}: {
+  share: ShareDashboardItem
+  index: number
+  copied: boolean
+  showCreator: boolean
+  isSelected: boolean
+  onCardClick: (event: MouseEvent<HTMLDivElement>) => void
+  onCopyLink: (share: ShareDashboardItem) => Promise<void>
+  onEdit: () => void
+}) {
+  const isExpired = share.expiresAt ? new Date(share.expiresAt) < new Date() : false
+  const canCopy = share.shareType !== "internal"
+
+  return (
+    <div
+      data-selectable-item
+      data-item-id={share.id}
+      data-item-type="share"
+      onClick={onCardClick}
+      className={`space-y-3 p-4 transition-colors ${isSelected ? "bg-accent/10" : ""}`}
+    >
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 text-lg">
+          {share.resourceType === "folder" ? "\uD83D\uDCC2" : "\uD83D\uDCC4"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-text-primary truncate text-sm font-medium">{share.resourceName}</p>
+          <div className="text-text-tertiary mt-1 flex flex-wrap items-center gap-2 text-xs">
+            <ShareTypeBadge shareType={share.shareType} />
+            <span className="capitalize">{share.resourceType}</span>
+            {showCreator && <span>by {share.createdByName}</span>}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <p className="text-text-tertiary">Created</p>
+          <p className="text-text-secondary mt-1">
+            {new Date(share.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+        <div>
+          <p className="text-text-tertiary">Activity</p>
+          <p className="text-text-secondary mt-1">
+            {share.accessCount} accesses · {share.downloadCount} downloads
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {!share.isActive && <StatusBadge tone="muted" label="Revoked" />}
+        {share.isActive && !isExpired && <StatusBadge tone="success" label="Active" />}
+        {isExpired && <StatusBadge tone="warning" label="Expired" />}
+        {share.hasPassword && <StatusBadge tone="default" label="Password" />}
+        {share.isLocked && <StatusBadge tone="warning" label="Locked" />}
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row" data-selection-ignore>
+        {canCopy && (
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              void onCopyLink(share)
+            }}
+            className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-medium transition-colors"
+          >
+            {copied ? (
+              <Check className="text-success h-3.5 w-3.5" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+            {copied ? "Copied" : "Copy"}
+          </button>
+        )}
+        <button
+          onClick={(event) => {
+            event.stopPropagation()
+            onEdit()
+          }}
+          className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-medium transition-colors"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          Edit
+        </button>
+      </div>
     </div>
   )
 }
@@ -693,7 +810,7 @@ function ShareSettingsDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="border-border-default bg-surface-default fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border p-6 shadow-xl">
+        <Dialog.Content className="border-border-default bg-surface-default fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border p-5 shadow-xl sm:p-6">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <Dialog.Title className="text-text-primary text-lg font-semibold">
