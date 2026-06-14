@@ -313,12 +313,18 @@ function pushDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
         {
           cwd: ROOT_DIR,
           input: vars[key],
-          stdio: ["pipe", "inherit", "inherit"],
+          stdio: ["pipe", "inherit", "pipe"],
+          encoding: "utf8",
           shell: process.platform === "win32",
         },
       )
 
       if (result.status !== 0) {
+        const errorOutput = result.stderr || ""
+        if (errorOutput.includes("already in use") || errorOutput.includes("10053")) {
+          console.log(`Skipping ${key} - already exists as a var or secret.`)
+          continue
+        }
         throw new Error(`Failed to push ${key} to ${target.packageName} ${environment}.`)
       }
     }
