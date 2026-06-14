@@ -141,9 +141,29 @@ This project deploys to **Cloudflare** (Workers + D1 + R2 + Pages). You can depl
 
 > **Security tip**: scope one token for CI/CD (`CLOUDFLARE_API_TOKEN`) and another one for local development if you want to limit exposure. The production token is the most sensitive secret in the entire project.
 
-### 3. Create D1 Databases
+### 3. Automated Infrastructure Setup (Recommended)
 
-Create one database per environment:
+You can create the D1 database and R2 bucket automatically via GitHub Actions, and have the D1 database ID saved directly as a GitHub Environment Variable.
+
+**Requirements:**
+
+- Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as **Repository Secrets** in your GitHub repository
+- The `wrangler.toml` already contains the correct database and bucket names
+
+**Steps:**
+
+1. Go to your repository → **Actions** → **Workflows** → **Setup Cloudflare Infrastructure**
+2. Click **Run workflow** and select the environment (`staging` or `production`)
+3. The workflow will:
+   - Create the D1 database if it doesn't exist
+   - Create the R2 bucket if it doesn't exist
+   - Save the D1 `database_id` as a GitHub Environment Variable (`STAGING_D1_DATABASE_ID` or `PRODUCTION_D1_DATABASE_ID`)
+
+> **Note**: The workflow only creates infrastructure. You still need to manually set up OAuth apps, R2 API tokens, CORS rules, and remaining secrets/variables (see steps below).
+
+### 4. Manual: Create D1 Databases
+
+If you prefer not to use the automated setup, create the databases manually:
 
 ```bash
 # Staging
@@ -155,9 +175,9 @@ npx wrangler d1 create bucketdrive-db
 
 Each command prints a `database_id`. **Save both IDs** — they will be used as `STAGING_D1_DATABASE_ID` and `PRODUCTION_D1_DATABASE_ID`.
 
-### 4. Create R2 Buckets
+### 5. Manual: Create R2 Buckets
 
-Create one bucket per environment:
+If not created automatically:
 
 ```bash
 # Staging
@@ -167,7 +187,7 @@ npx wrangler r2 bucket create bucketdrive-staging
 npx wrangler r2 bucket create bucketdrive-files
 ```
 
-### 5. Configure R2 CORS
+### 6. Configure R2 CORS
 
 Browser uploads send requests directly to `*.r2.cloudflarestorage.com`, so R2 needs its own CORS rules (separate from API CORS):
 
@@ -193,14 +213,14 @@ pnpm r2:cors:dev
 ]
 ```
 
-### 6. Create a Cloudflare Pages Project
+### 7. Create a Cloudflare Pages Project
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → Pages
 2. Click **Create a project** → **Connect to Git** (or upload manually)
 3. Name the project `bucketdrive` (or your preferred name)
 4. Save the project name as `PAGES_PROJECT_NAME` in your environment variables
 
-### 7. Set up OAuth Providers
+### 8. Set up OAuth Providers
 
 For each environment, create a separate OAuth app (or use the same one if all share a public domain). The callback URL must match the environment's `APP_URL`.
 
@@ -223,7 +243,7 @@ For each environment, create a separate OAuth app (or use the same one if all sh
    - `https://drive.nekomata.moe/api/auth/callback/google` (production)
 4. Copy the **Client ID** and **Client Secret**
 
-### 8. Fill in Environment Variables
+### 9. Fill in Environment Variables
 
 Copy the example file and fill it with your credentials:
 
@@ -262,7 +282,7 @@ For staging and production, create `.env.staging` and `.env.production` at the r
 
 > **Important**: `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI credentials** — they authenticate the Wrangler CLI. They are **never** pushed to the Workers as secrets. The `pnpm env:push:*` command explicitly skips these keys.
 
-### 9. Manual Deploy (One-time Setup)
+### 10. Manual Deploy (One-time Setup)
 
 Use these steps to deploy from your local machine. In production, prefer the GitHub Actions workflow instead.
 
@@ -298,7 +318,7 @@ npx wrangler pages deploy apps/web/dist --project-name=bucketdrive --branch=stag
 
 Replace `staging` with `production` in all commands above. Use `PRODUCTION_D1_DATABASE_ID` and the production URLs.
 
-### 10. GitHub Actions CI/CD
+### 11. GitHub Actions CI/CD
 
 The repository includes three workflows that run automatically:
 

@@ -199,9 +199,36 @@ they are scoped to the correct environment:
 > Worker runtime vars. `pnpm env:push:*` explicitly skips these keys and never uploads them to
 > Cloudflare's secret store.
 
-## Setting up D1
+## Automated Infrastructure Setup
 
-Create the databases and capture the IDs:
+The `setup-infrastructure.yml` workflow creates Cloudflare resources (D1 databases and R2 buckets)
+automatically via GitHub Actions and stores the D1 database IDs as GitHub Environment Variables.
+
+**Trigger**: `workflow_dispatch` (manual) — Actions tab → **Setup Cloudflare Infrastructure** →
+**Run workflow**.
+
+**Required inputs**:
+
+- `environment`: `staging` or `production`
+- `CLOUDFLARE_API_TOKEN` (repository secret)
+- `CLOUDFLARE_ACCOUNT_ID` (repository secret)
+
+**What it does**:
+
+1. Reads the target database name and bucket name from `wrangler.toml`
+2. Checks if the D1 database exists via `wrangler d1 info`
+3. Creates it if missing (`wrangler d1 create`)
+4. Checks if the R2 bucket exists via `wrangler r2 bucket list`
+5. Creates it if missing (`wrangler r2 bucket create`)
+6. Stores the D1 `database_id` as a GitHub Environment Variable (`STAGING_D1_DATABASE_ID` or
+   `PRODUCTION_D1_DATABASE_ID`)
+
+> **What it does NOT do**: create OAuth apps, R2 API tokens, CORS rules, or remaining secrets. These
+> must still be configured manually (see steps below).
+
+## Setting up D1 (Manual)
+
+If you prefer not to use the automated workflow, create the databases manually:
 
 ```bash
 npx wrangler d1 create bucketdrive-db-staging
