@@ -66,6 +66,9 @@ importers:
       uuid:
         specifier: ^14.0.0
         version: 14.0.0
+      wrangler:
+        specifier: ^4.99.0
+        version: 4.99.0(@cloudflare/workers-types@4.20260609.1)
 
   apps/api:
     dependencies:
