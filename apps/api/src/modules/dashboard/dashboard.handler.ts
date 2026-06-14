@@ -66,6 +66,7 @@ dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
     db
       .select({
         id: fileObject.id,
+        folderId: fileObject.folderId,
         name: fileObject.originalName,
         sizeBytes: fileObject.sizeBytes,
         mimeType: fileObject.mimeType,

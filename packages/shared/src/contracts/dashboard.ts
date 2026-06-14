@@ -18,6 +18,7 @@ export const StorageTrendPointSchema = z.object({
 
 export const LargestFileSchema = z.object({
   id: z.uuid(),
+  folderId: z.uuid().nullable(),
   name: z.string(),
   sizeBytes: z.number().int().min(0),
   mimeType: z.string(),

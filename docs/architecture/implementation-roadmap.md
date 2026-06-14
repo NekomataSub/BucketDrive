@@ -9,6 +9,12 @@ verifiable result.
 
 ## Status Overview
 
+> **Admin overview file navigation pass — 2026-06-14:**
+>
+> - Added folder IDs to dashboard largest-file contract responses.
+> - Made largest-file rows in Admin Overview navigate to the containing folder.
+> - Added contract coverage for nested largest-file folder metadata.
+
 > **Platform name root sync pass — 2026-06-14:**
 >
 > - Synced the generated root bucket name with the platform service name when platform settings change.

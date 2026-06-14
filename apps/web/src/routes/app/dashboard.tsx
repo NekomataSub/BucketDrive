@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/restrict-template-expressions */
 import { useEffect } from "react"
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { BarChart3, Files, FolderTree, HardDrive, Link2, Users } from "lucide-react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDashboardOverview } from "@/lib/api"
@@ -12,6 +12,7 @@ const numberFormatter = new Intl.NumberFormat("en-US")
 export function DashboardPage() {
   const { workspace, workspaceId, role, isLoading: workspacesLoading } = useCurrentWorkspace()
   const isAdmin = can(role ?? "viewer", "analytics.read")
+  const navigate = useNavigate()
 
   const overviewQuery = useDashboardOverview(workspaceId)
 
@@ -54,6 +55,13 @@ export function DashboardPage() {
   const overview = overviewQuery.data
   if (!overview) {
     return null
+  }
+
+  const handleLargestFileClick = (folderId: string | null) => {
+    void navigate({
+      to: "/dashboard/files",
+      search: { folderId: folderId ?? undefined, previewFileId: undefined },
+    })
   }
 
   return (
@@ -152,9 +160,13 @@ export function DashboardPage() {
               </p>
             ) : (
               overview.largestFiles.map((file) => (
-                <div
+                <button
                   key={file.id}
-                  className="border-border-muted bg-bg-tertiary rounded-xl border px-4 py-3"
+                  type="button"
+                  className="border-border-muted bg-bg-tertiary hover:border-accent/60 focus-visible:ring-accent w-full rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus-visible:ring-2"
+                  onClick={() => {
+                    handleLargestFileClick(file.folderId)
+                  }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -165,7 +177,7 @@ export function DashboardPage() {
                       {formatBytes(file.sizeBytes)}
                     </span>
                   </div>
-                </div>
+                </button>
               ))
             )}
           </div>

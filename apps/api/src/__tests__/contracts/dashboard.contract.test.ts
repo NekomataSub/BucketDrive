@@ -9,11 +9,13 @@ import { createContractTestContext, expectApiError } from "./test-harness"
 describe("dashboard contracts", () => {
   it("returns overview, audit, and settings responses", async () => {
     const ctx = createContractTestContext()
-    ctx.seedFile({ originalName: "Large.bin", sizeBytes: 100 })
+    const folder = ctx.seedFolder({ name: "Reports", path: "/Reports" })
+    ctx.seedFile({ folderId: folder.id, originalName: "Large.bin", sizeBytes: 100 })
 
     const overview = await ctx.request(`/api/workspaces/${ctx.workspaceId}/dashboard/overview`)
     expect(overview.status).toBe(200)
-    DashboardOverviewResponse.parse(await ctx.json(overview))
+    const overviewBody = DashboardOverviewResponse.parse(await ctx.json(overview))
+    expect(overviewBody.largestFiles[0]?.folderId).toBe(folder.id)
 
     const audit = await ctx.request(`/api/workspaces/${ctx.workspaceId}/dashboard/audit`)
     expect(audit.status).toBe(200)
