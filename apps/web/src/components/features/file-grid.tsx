@@ -69,7 +69,25 @@ function renderTagPreview(file: FileObject) {
 }
 
 const gridClass =
-  "group flex h-full min-h-36 cursor-pointer flex-col items-center rounded-xl border bg-surface-default p-4 text-center transition-colors hover:border-border-default hover:bg-surface-hover focus:outline-none"
+  "group flex h-full min-h-36 cursor-pointer flex-col items-center rounded-xl border bg-surface-default p-4 text-center transition-colors focus:outline-none"
+
+function getGridCardStateClass({
+  isDragging,
+  isOver = false,
+  isSelected,
+  isFocused,
+}: {
+  isDragging: boolean
+  isOver?: boolean
+  isSelected: boolean
+  isFocused: boolean
+}) {
+  if (isDragging) return "border-border-muted opacity-50"
+  if (isOver) return "border-accent bg-accent/10"
+  if (isSelected) return "border-accent bg-accent/10"
+  if (isFocused) return "border-border-default bg-surface-default"
+  return "border-border-muted hover:border-border-default hover:bg-surface-hover"
+}
 
 interface FolderGridCardProps {
   folder: FolderType
@@ -161,17 +179,12 @@ function FolderGridCard({
           }
           onFolderClick(folder.id)
         }}
-        className={`relative ${gridClass} ${
-          isDragging
-            ? "opacity-50"
-            : isOver
-              ? "border-accent bg-accent/10"
-              : isSelected
-                ? "border-accent bg-accent/10 ring-accent ring-1"
-                : isFocused
-                  ? "border-border-default ring-border-muted ring-1"
-                  : "border-border-muted"
-        }`}
+        className={`relative ${gridClass} ${getGridCardStateClass({
+          isDragging,
+          isOver,
+          isSelected,
+          isFocused,
+        })}`}
       >
         {dndEnabled && (
           <button
@@ -285,15 +298,11 @@ function FileGridCard({
           }
           onContextPreview?.(file.id)
         }}
-        className={`relative ${gridClass} ${
-          isDragging
-            ? "opacity-50"
-            : isSelected
-              ? "border-accent bg-accent/10 ring-accent ring-1"
-              : isFocused
-                ? "border-border-default ring-border-muted ring-1"
-                : "border-border-muted"
-        }`}
+        className={`relative ${gridClass} ${getGridCardStateClass({
+          isDragging,
+          isSelected,
+          isFocused,
+        })}`}
       >
         {dndEnabled && (
           <button
