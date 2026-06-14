@@ -131,8 +131,14 @@ jobs:
       - name: Build frontend
         run: pnpm build
 
+      - name: Create Cloudflare Pages project
+        run: |
+          pnpm exec wrangler pages project create ${{ vars.PAGES_PROJECT_NAME }} --production-branch=${{ vars.PAGES_BRANCH }} || true
+          echo "✅ Pages project ${{ vars.PAGES_PROJECT_NAME }} ensured"
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
+        continue-on-error: true
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
