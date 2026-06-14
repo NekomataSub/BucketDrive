@@ -56,7 +56,7 @@ jobs:
           check "${{ secrets.PLATFORM_OWNER_EMAIL }}" "secrets.PLATFORM_OWNER_EMAIL"
           check "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" "secrets.CLOUDFLARE_ACCOUNT_ID"
           check "${{ secrets.CLOUDFLARE_API_TOKEN }}" "secrets.CLOUDFLARE_API_TOKEN"
-          check "${{ vars.PRODUCTION_D1_DATABASE_ID }}" "vars.PRODUCTION_D1_DATABASE_ID"
+          # Note: PRODUCTION_D1_DATABASE_ID will be auto-provisioned if not configured
           check "${{ vars.PLAYWRIGHT_BASE_URL }}" "vars.PLAYWRIGHT_BASE_URL"
           check "${{ vars.PAGES_PROJECT_NAME }}" "vars.PAGES_PROJECT_NAME"
           check "${{ vars.PAGES_BRANCH }}" "vars.PAGES_BRANCH"
