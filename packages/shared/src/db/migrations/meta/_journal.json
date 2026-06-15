@@ -78,6 +78,20 @@
       "when": 1778629000000,
       "tag": "0010_r2_sync_state",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1778630000000,
+      "tag": "0011_single_bucket",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1778631000000,
+      "tag": "0012_branding_assets",
+      "breakpoints": true
     }
   ]
 }
