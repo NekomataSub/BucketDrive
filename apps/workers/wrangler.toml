@@ -47,5 +47,5 @@ APP_URL = "https://drive.nekomata.moe"
 API_URL = "https://drive.nekomata.moe/api"
 
 # Cron triggers only on production — staging workers run via manual fetch
-[[env.production.triggers.crons]]
-cron = "0 3 * * *"
+[env.production.triggers]
+crons = ["0 3 * * *"]

@@ -139,22 +139,33 @@ jobs:
           echo "🔍 Validating Cloudflare API token permissions for cron triggers..."
           TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
           ACCOUNT="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          SCRIPT_NAME="bucketdrive-workers-production"
 
-          # Try to list workers to verify the token has Workers Scripts:Edit
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/workers/scripts" \
+            "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/workers/scripts/${SCRIPT_NAME}/schedules" \
             -H "Authorization: Bearer ${TOKEN}")
 
-          if [ "$STATUS" != "200" ]; then
-            echo "❌ The CLOUDFLARE_API_TOKEN cannot list Workers scripts (HTTP $STATUS)."
-            echo "   To deploy cron triggers, the token needs:"
-            echo "   - Account: Workers Scripts: Edit"
-            echo "   - Zone: None required for this check"
-            echo "   Create/update your token at: https://dash.cloudflare.com/profile/api-tokens"
-            exit 1
-          fi
+          case "$STATUS" in
+            200)
+              echo "✅ Token can read cron schedules for ${SCRIPT_NAME}."
+              ;;
+            404)
+              echo "ℹ️ ${SCRIPT_NAME} does not exist yet; Wrangler will create it during deploy."
+              ;;
+            401|403)
+              echo "❌ The CLOUDFLARE_API_TOKEN cannot access cron schedules for ${SCRIPT_NAME} (HTTP $STATUS)."
+              echo "   To deploy cron triggers, the token needs permission to edit Workers scripts and schedules."
+              echo "   Update the production CLOUDFLARE_API_TOKEN at: https://dash.cloudflare.com/profile/api-tokens"
+              exit 1
+              ;;
+            *)
+              echo "❌ Unexpected response while validating cron schedule permissions (HTTP $STATUS)."
+              echo "   Endpoint: /accounts/<account_id>/workers/scripts/${SCRIPT_NAME}/schedules"
+              exit 1
+              ;;
+          esac
 
-          echo "✅ Token has Workers Scripts access."
+          echo "✅ Cron trigger permission check completed."
 
       - name: Deploy background Workers
         uses: cloudflare/wrangler-action@v3

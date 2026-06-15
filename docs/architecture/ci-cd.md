@@ -225,6 +225,9 @@ deploy.
 The Cloudflare API token used by the deploy workflows must include the existing Wrangler/D1/R2/
 Workers permissions plus `Pages Write`, `Zone Read`, and `DNS Write`. Custom-domain automation
 assumes the DNS zone for `CUSTOM_DOMAIN` lives in the same Cloudflare account as the Pages project.
+For production, the same token must be able to update cron schedules for
+`bucketdrive-workers-production`; the workflow validates the `/schedules` endpoint before deploying
+the background Worker.
 
 ## Automated Infrastructure Setup
 

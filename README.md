@@ -135,6 +135,9 @@ This project deploys to **Cloudflare** (Workers + D1 + R2 + Pages). You can depl
 | Account > D1                         | `D1`                 | `Edit` |
 | Account > Workers R2 Storage         | `Workers R2 Storage` | `Edit` |
 
+The `Workers Scripts: Edit` permission must cover both normal Worker deploys and cron schedule
+updates for the production background Worker.
+
 5. **Account Resources**: Include only your target account (do not select "All accounts")
 6. Click **Continue to summary** → **Create Token**
 7. **Copy the token immediately** — it is shown only once
@@ -413,6 +416,7 @@ The Cloudflare API token used by GitHub Actions must include the permissions req
 plus `Pages Write`, `Zone Read`, and `DNS Write` so the deploy can attach the Pages custom domain
 and create or update the matching CNAME record. Full DNS automation assumes the domain's DNS zone is
 in the same Cloudflare account as the Pages project.
+The same token must also be able to update cron schedules for `bucketdrive-workers-production`.
 
 ### Rollback
 

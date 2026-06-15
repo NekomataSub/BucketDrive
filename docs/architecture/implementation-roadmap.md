@@ -9,6 +9,12 @@ verifiable result.
 
 ## Status Overview
 
+> **Production worker cron deploy pass — 2026-06-15:**
+>
+> - Switched the production background Worker cron config to Wrangler's `[env.production.triggers] crons = [...]` format.
+> - Changed the production workflow permission check to validate the Cloudflare schedules endpoint used by Wrangler.
+> - Documented that the production deploy token must be able to update cron schedules for `bucketdrive-workers-production`.
+
 > **Production deploy env simplification pass — 2026-06-15:**
 >
 > - Allowed production deploys to read `PLATFORM_OWNER_EMAIL` from a GitHub Environment variable with secret fallback.
