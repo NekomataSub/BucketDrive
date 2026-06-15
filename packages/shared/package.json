@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./schemas/*": "./src/schemas/*",
     "./contracts/*": "./src/contracts/*",
+    "./constants": "./src/constants.ts",
     "./db/*": "./src/db/*"
   },
   "scripts": {

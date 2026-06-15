@@ -159,8 +159,9 @@ export function NotificationBell() {
                   } focus-visible:ring-accent cursor-pointer focus-visible:ring-1 focus-visible:outline-none`}
                 >
                   <div
-                    className="bg-accent mt-0.5 flex h-2 w-2 shrink-0 rounded-full opacity-0"
-                    style={{ opacity: n.isRead ? 0 : 1 }}
+                    className={`bg-accent mt-0.5 flex h-2 w-2 shrink-0 rounded-full ${
+                      n.isRead ? "opacity-0" : "opacity-100"
+                    }`}
                   />
                   <div className="flex-1">
                     <p className="text-text-primary text-sm font-medium">{n.title}</p>

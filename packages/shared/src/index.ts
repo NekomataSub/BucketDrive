@@ -21,6 +21,7 @@ export * from "./contracts/platform"
 export * as ShareContracts from "./contracts/shares"
 export * as SearchContracts from "./contracts/search"
 
+export * from "./constants"
 export * from "./rbac"
 
 export * from "./db/schema"

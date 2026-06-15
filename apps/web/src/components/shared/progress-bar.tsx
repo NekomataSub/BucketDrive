@@ -11,11 +11,39 @@ export function ProgressBar({ value, className = "", size = "sm" }: ProgressBarP
   return (
     <div className={`bg-surface-hover w-full overflow-hidden rounded-full ${height} ${className}`}>
       <div
-        className={`bg-accent h-full rounded-full transition-all duration-300 ease-out ${clamped < 100 ? "animate-pulse" : ""}`}
-        style={{ width: `${String(clamped)}%` }}
+        className={`bg-accent h-full rounded-full transition-all duration-300 ease-out ${getWidthClass(clamped)} ${clamped < 100 ? "animate-pulse" : ""}`}
       />
     </div>
   )
+}
+
+function getWidthClass(value: number): string {
+  const bucket = Math.round(value / 5) * 5
+  const widths: Record<number, string> = {
+    0: "w-0",
+    5: "w-[5%]",
+    10: "w-[10%]",
+    15: "w-[15%]",
+    20: "w-[20%]",
+    25: "w-1/4",
+    30: "w-[30%]",
+    35: "w-[35%]",
+    40: "w-[40%]",
+    45: "w-[45%]",
+    50: "w-1/2",
+    55: "w-[55%]",
+    60: "w-[60%]",
+    65: "w-[65%]",
+    70: "w-[70%]",
+    75: "w-3/4",
+    80: "w-4/5",
+    85: "w-[85%]",
+    90: "w-[90%]",
+    95: "w-[95%]",
+    100: "w-full",
+  }
+
+  return widths[bucket] ?? "w-0"
 }
 
 export function ProgressCircle({ value, size = 24 }: { value: number; size?: number }) {

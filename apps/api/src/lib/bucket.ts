@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm"
+import { DEFAULT_BRAND_NAME } from "@bucketdrive/shared/constants"
 import { bucket, bucketSettings, platformSettings } from "@bucketdrive/shared/db/schema"
 import type { getDB } from "./db"
 
 type DB = ReturnType<typeof getDB>
 
-const FALLBACK_BUCKET_NAME = "BucketDrive"
 const PLATFORM_SETTINGS_ID = "default"
 
 export async function getOrCreateDefaultBucket(db: DB) {
@@ -82,5 +82,5 @@ async function getDefaultBucketName(db: DB) {
     .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
     .get()
 
-  return settings?.name ?? FALLBACK_BUCKET_NAME
+  return settings?.name ?? DEFAULT_BRAND_NAME
 }

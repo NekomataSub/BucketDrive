@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+import { useState } from "react"
 import { Link, useSearch } from "@tanstack/react-router"
 import { BrandMark, useBranding } from "@/lib/branding"
 
@@ -20,6 +21,9 @@ async function signIn(provider: string, redirectPath: string) {
   } else if (res.ok) {
     const data = (await res.json()) as { url?: string }
     if (data.url) window.location.href = data.url
+  } else {
+    const data = (await res.json().catch(() => null)) as { message?: string } | null
+    throw new Error(data?.message ?? `Unable to start ${provider} sign in`)
   }
 }
 
@@ -27,6 +31,20 @@ export function LoginPage() {
   const search: { redirect?: string } = useSearch({ strict: false })
   const redirectPath = search.redirect?.startsWith("/") ? search.redirect : "/dashboard"
   const branding = useBranding()
+  const [error, setError] = useState<string | null>(null)
+  const [pendingProvider, setPendingProvider] = useState<string | null>(null)
+
+  const handleSignIn = (provider: "github" | "google") => {
+    setError(null)
+    setPendingProvider(provider)
+    signIn(provider, redirectPath)
+      .catch((signInError: unknown) => {
+        setError(signInError instanceof Error ? signInError.message : "Unable to start sign in")
+      })
+      .finally(() => {
+        setPendingProvider(null)
+      })
+  }
 
   return (
     <main className="bg-bg-primary flex min-h-screen flex-col items-center justify-center gap-6">
@@ -41,20 +59,22 @@ export function LoginPage() {
         type="button"
         data-testid="github-login"
         onClick={() => {
-          void signIn("github", redirectPath)
+          handleSignIn("github")
         }}
+        disabled={pendingProvider !== null}
         className="bg-accent inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90"
       >
         <GitHubIcon />
-        Sign in with GitHub
+        {pendingProvider === "github" ? "Opening GitHub..." : "Sign in with GitHub"}
       </button>
       <button
         type="button"
         data-testid="google-login"
         onClick={() => {
-          void signIn("google", redirectPath)
+          handleSignIn("google")
         }}
-        className="border-border-default bg-surface-default text-text-primary hover:bg-surface-hover inline-flex items-center gap-2 rounded-xl border px-6 py-3 text-sm font-medium transition-colors"
+        disabled={pendingProvider !== null}
+        className="border-border-default bg-surface-default text-text-primary hover:bg-surface-hover inline-flex items-center gap-2 rounded-xl border px-6 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">
           <path
@@ -74,8 +94,13 @@ export function LoginPage() {
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
           />
         </svg>
-        Sign in with Google
+        {pendingProvider === "google" ? "Opening Google..." : "Sign in with Google"}
       </button>
+      {error && (
+        <p className="border-error/40 bg-error/10 text-error max-w-sm rounded-lg border px-4 py-3 text-center text-sm">
+          {error}
+        </p>
+      )}
       <p className="text-text-tertiary text-xs">
         <Link to="/" className="text-text-link hover:underline">
           &larr; Back to home

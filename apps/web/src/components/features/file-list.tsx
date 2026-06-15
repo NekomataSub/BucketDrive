@@ -6,39 +6,9 @@ import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 import { FileContextMenu } from "./file-context-menu"
 import { FileThumbnail } from "./file-thumbnail"
 import { getTagColorClasses } from "@/lib/tag-colors"
+import { formatBytes, formatRelativeDate, getFileIcon } from "@/lib/format"
 import { useExplorerStore } from "@/stores/explorer-store"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
-
-function formatSize(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  const units = ["B", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  const unit = units[i] ?? "GB"
-  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${unit}`
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-  if (days === 0) return "Today"
-  if (days === 1) return "Yesterday"
-  if (days < 7) return `${String(days)} days ago`
-  return date.toLocaleDateString()
-}
-
-function getFileIcon(mimeType: string) {
-  if (mimeType.startsWith("image/")) return "\uD83D\uDDBC"
-  if (mimeType.startsWith("video/")) return "\uD83C\uDFAC"
-  if (mimeType.startsWith("audio/")) return "\uD83C\uDFB5"
-  if (mimeType.includes("pdf")) return "\uD83D\uDCC4"
-  if (mimeType.includes("spreadsheet") || mimeType.includes("excel")) return "\uD83D\uDCCA"
-  if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "\uD83D\uDCBD"
-  if (mimeType.startsWith("text/")) return "\uD83D\uDCDD"
-  return "\uD83D\uDCC1"
-}
 
 function renderTagPreview(file: FileObject) {
   const tags = file.tags ?? []
@@ -341,7 +311,7 @@ function FolderListRow({
         <div className="text-text-tertiary hidden w-24 px-4 py-2.5 text-sm md:block">—</div>
         <div className="text-text-tertiary hidden w-40 px-4 py-2.5 text-sm lg:block">—</div>
         <div className="text-text-tertiary hidden w-32 px-4 py-2.5 text-sm sm:block">
-          {formatDate(folder.updatedAt)}
+          {formatRelativeDate(folder.updatedAt)}
         </div>
         <div className="w-10 px-4 py-2.5">
           <DropdownMenu.Root>
@@ -628,7 +598,7 @@ function FileListRow({
           </div>
         </div>
         <div className="text-text-tertiary hidden w-24 px-4 py-2.5 text-sm md:block">
-          {formatSize(file.sizeBytes)}
+          {formatBytes(file.sizeBytes)}
         </div>
         <div className="hidden w-40 px-4 py-2.5 lg:block">
           {file.tags && file.tags.length > 0 ? (
@@ -655,7 +625,7 @@ function FileListRow({
           )}
         </div>
         <div className="text-text-tertiary hidden w-32 px-4 py-2.5 text-sm sm:block">
-          {formatDate(file.updatedAt)}
+          {formatRelativeDate(file.updatedAt)}
         </div>
         <div className="w-10 px-4 py-2.5">
           <DropdownMenu.Root>
@@ -802,6 +772,8 @@ interface FileListProps {
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
   selectionContextActions?: SelectionContextActions
+  emptyTitle?: string
+  emptyDescription?: string
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
   onSelectionPointerDown?: (event: PointerEvent<HTMLDivElement>) => void
   onSelectionPointerMove?: (event: PointerEvent<HTMLDivElement>) => void
@@ -825,6 +797,8 @@ export function FileList({
   onContextMove,
   onContextShare,
   selectionContextActions,
+  emptyTitle = "No files yet",
+  emptyDescription = "Drag files here to upload",
   onItemDrop,
   onSelectionPointerDown,
   onSelectionPointerMove,
@@ -864,7 +838,8 @@ export function FileList({
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-16">
         <Folder className="text-text-tertiary h-12 w-12" />
-        <p className="text-text-tertiary text-sm">No files yet — drag files here to upload</p>
+        <p className="text-text-primary text-sm font-medium">{emptyTitle}</p>
+        <p className="text-text-tertiary text-sm">{emptyDescription}</p>
       </div>
     )
   }

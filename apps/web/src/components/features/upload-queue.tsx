@@ -15,14 +15,7 @@ import { useUploadStore } from "@/stores/upload-store"
 import { useUploadProcessor } from "@/hooks/use-upload"
 import { ProgressBar } from "@/components/shared/progress-bar"
 import type { UploadItem } from "@/stores/upload-store"
-
-function formatSize(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  const units = ["B", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  const unit = units[i] ?? "GB"
-  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${unit}`
-}
+import { formatBytes } from "@/lib/format"
 
 export function UploadQueue({ workspaceId }: { workspaceId: string }) {
   const { items, isOpen, setOpen, removeItem, clearCompleted } = useUploadStore()
@@ -151,7 +144,9 @@ function UploadQueueItem({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="text-text-primary truncate text-sm">{item.fileName}</p>
-            <span className="text-text-tertiary shrink-0 text-xs">{formatSize(item.fileSize)}</span>
+            <span className="text-text-tertiary shrink-0 text-xs">
+              {formatBytes(item.fileSize)}
+            </span>
           </div>
 
           {(item.status === "uploading" ||

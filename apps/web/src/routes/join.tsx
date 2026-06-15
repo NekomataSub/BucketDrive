@@ -16,6 +16,14 @@ export function JoinPage() {
   const acceptInvitation = useAcceptInvitation()
   const branding = useBranding()
 
+  const signOutAndSwitchAccount = async () => {
+    await fetch("/api/auth/sign-out", {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => null)
+    window.location.href = `/login?redirect=/join?token=${encodeURIComponent(token ?? "")}`
+  }
+
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -146,12 +154,15 @@ export function JoinPage() {
               You are signed in as <strong>{userEmail}</strong>, but this invitation is for{" "}
               <strong>{invite.email}</strong>.
             </p>
-            <a
-              href={`/login?redirect=/join?token=${token}`}
-              className="text-accent mt-3 inline-block text-sm font-medium hover:underline"
+            <button
+              type="button"
+              onClick={() => {
+                void signOutAndSwitchAccount()
+              }}
+              className="text-accent mt-3 text-sm font-medium hover:underline"
             >
               Switch account
-            </a>
+            </button>
           </div>
         )}
 

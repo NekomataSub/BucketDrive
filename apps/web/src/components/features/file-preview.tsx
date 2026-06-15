@@ -3,19 +3,7 @@ import { useCallback, useEffect, useState } from "react"
 import { X, ChevronLeft, ChevronRight, FileText, Download } from "lucide-react"
 import type { FileObject } from "@bucketdrive/shared"
 import { usePreviewUrl } from "@/lib/api"
-
-function formatSize(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  const units = ["B", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  const unit = units[i] ?? "GB"
-  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${unit}`
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleString()
-}
+import { formatBytes, formatRelativeDate } from "@/lib/format"
 
 function getPreviewType(
   mimeType: string,
@@ -187,15 +175,15 @@ function UnknownPreview({ file }: { file: FileObject }) {
       <div className="border-border-default bg-surface-default w-full max-w-xs space-y-2 rounded-lg border p-4">
         <div className="flex justify-between text-xs">
           <span className="text-text-tertiary">Size</span>
-          <span className="text-text-primary">{formatSize(file.sizeBytes)}</span>
+          <span className="text-text-primary">{formatBytes(file.sizeBytes)}</span>
         </div>
         <div className="flex justify-between text-xs">
           <span className="text-text-tertiary">Created</span>
-          <span className="text-text-primary">{formatDate(file.createdAt)}</span>
+          <span className="text-text-primary">{formatRelativeDate(file.createdAt)}</span>
         </div>
         <div className="flex justify-between text-xs">
           <span className="text-text-tertiary">Modified</span>
-          <span className="text-text-primary">{formatDate(file.updatedAt)}</span>
+          <span className="text-text-primary">{formatRelativeDate(file.updatedAt)}</span>
         </div>
         {file.checksum && (
           <div className="flex justify-between text-xs">
@@ -305,7 +293,7 @@ export function FilePreview({
           <div className="min-w-0 flex-1">
             <p className="text-text-primary truncate text-sm font-medium">{file.originalName}</p>
             <p className="text-text-tertiary text-[11px]">
-              {file.mimeType} &middot; {formatSize(file.sizeBytes)}
+              {file.mimeType} &middot; {formatBytes(file.sizeBytes)}
             </p>
           </div>
           <div className="flex items-center gap-1">

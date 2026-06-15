@@ -1,8 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Link } from "@tanstack/react-router"
 import { Files, Trash2, Settings, Link2, Shield, ScrollText, Users, Globe } from "lucide-react"
 import { FolderTree } from "@/components/features/folder-tree"
+import { ProgressBar } from "@/components/shared/progress-bar"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
+import { formatBytes } from "@/lib/format"
 import { usePlatformMe, useDashboardOverview } from "@/lib/api"
 import { can } from "@bucketdrive/shared"
 
@@ -89,17 +91,10 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 {formatBytes(overview.summary.usedStorageBytes)} of{" "}
                 {formatBytes(overview.summary.quotaBytes)} used
               </div>
-              <div className="bg-border-default mt-1 h-1.5 rounded-full">
-                <div
-                  className="bg-accent h-full rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      (overview.summary.usedStorageBytes / overview.summary.quotaBytes) * 100,
-                      100,
-                    )}%`,
-                  }}
-                />
-              </div>
+              <ProgressBar
+                className="bg-border-default mt-1"
+                value={(overview.summary.usedStorageBytes / overview.summary.quotaBytes) * 100}
+              />
             </>
           )}
         </div>
@@ -128,11 +123,4 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       )}
     </>
   )
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }

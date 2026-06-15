@@ -1,8 +1,8 @@
 import { useEffect } from "react"
 import { FolderOpen } from "lucide-react"
 import { usePlatformSettings } from "./api"
-
-export const DEFAULT_BRAND_NAME = "BucketDrive"
+import { DEFAULT_BRAND_NAME } from "@bucketdrive/shared/constants"
+export { DEFAULT_BRAND_NAME } from "@bucketdrive/shared/constants"
 
 interface BrandingState {
   name: string

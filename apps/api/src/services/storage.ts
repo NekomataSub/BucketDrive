@@ -1,4 +1,5 @@
 import { AwsClient } from "aws4fetch"
+import { DEFAULT_R2_BUCKET_NAME } from "@bucketdrive/shared/constants"
 
 export class StorageProviderError extends Error {
   constructor(
@@ -69,7 +70,7 @@ export class R2StorageProvider implements StorageProvider {
     bucketName?: string
   }) {
     this.binding = config.binding
-    this.bucketName = config.bucketName ?? "bucketdrive-files"
+    this.bucketName = config.bucketName ?? DEFAULT_R2_BUCKET_NAME
     this.endpoint = config.endpoint.replace(/\/$/, "")
     this.s3 = new AwsClient({
       accessKeyId: config.accessKeyId,

@@ -67,9 +67,9 @@ import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 import { useNavigate, useRouterState } from "@tanstack/react-router"
-import type { WorkspaceRole } from "@bucketdrive/shared"
 import { downloadZip } from "client-zip"
 import { DEFAULT_BRAND_NAME } from "@/lib/branding"
+import { getWorkspaceCapabilities, normalizeWorkspaceRole } from "@/lib/workspace-permissions"
 
 interface WindowWithFilePicker extends Window {
   showSaveFilePicker?: (options?: {
@@ -94,15 +94,6 @@ const defaultDashboardSortOptions: Array<{ value: SearchSort; label: string }> =
   { value: "created_at", label: "Date" },
   { value: "size", label: "Size" },
   { value: "type", label: "Type" },
-]
-
-const workspaceRoles: readonly WorkspaceRole[] = [
-  "owner",
-  "admin",
-  "manager",
-  "editor",
-  "viewer",
-  "guest",
 ]
 
 interface DeleteSelectionConfirm {
@@ -131,13 +122,6 @@ type BatchDownloadUrlFile = {
   fileName?: string
   path: string
   sizeBytes?: number
-}
-
-function normalizeWorkspaceRole(role: unknown): WorkspaceRole {
-  const normalized = typeof role === "string" ? role.split(",")[0]?.trim().toLowerCase() : "viewer"
-  return workspaceRoles.includes(normalized as WorkspaceRole)
-    ? (normalized as WorkspaceRole)
-    : "viewer"
 }
 
 export function FilesPage() {
@@ -210,25 +194,21 @@ export function FilesPage() {
   const workspaceId = workspace?.id ?? null
   const bucketName = workspace?.name ?? DEFAULT_BRAND_NAME
   const workspaceRole = normalizeWorkspaceRole(workspace?.role)
-  const canEditContent =
-    workspaceRole === "owner" ||
-    workspaceRole === "admin" ||
-    workspaceRole === "manager" ||
-    workspaceRole === "editor"
-  const canManageContent =
-    workspaceRole === "owner" || workspaceRole === "admin" || workspaceRole === "manager"
-  const canUpload = Boolean(workspace) && canEditContent
-  const canCreateFolder = Boolean(workspace) && canEditContent
-  const canRenameFile = Boolean(workspace) && canEditContent
-  const canRenameFolder = Boolean(workspace) && canEditContent
-  const canMoveFile = Boolean(workspace) && canEditContent
-  const canMoveFolder = Boolean(workspace) && canEditContent
-  const canDeleteFile = Boolean(workspace) && canManageContent
-  const canDeleteFolder = Boolean(workspace) && canManageContent
-  const canShareFile = Boolean(workspace) && canEditContent
-  const canShareFolder = Boolean(workspace) && canEditContent
-  const canFavorite = Boolean(workspace) && canEditContent
-  const canTag = Boolean(workspace) && canEditContent
+  const {
+    canUpload,
+    canCreateFolder,
+    canRenameFile,
+    canRenameFolder,
+    canMoveFile,
+    canMoveFolder,
+    canDeleteFile,
+    canDeleteFolder,
+    canShareFile,
+    canShareFolder,
+    canFavorite,
+    canTag,
+  } = getWorkspaceCapabilities(workspaceRole, Boolean(workspace))
+  const isReadOnly = Boolean(workspace) && !canUpload && !canCreateFolder
 
   const { data: filesData, isLoading: filesLoading } = useFiles(workspaceId, {
     folderId: currentFolderId,
@@ -853,6 +833,7 @@ export function FilesPage() {
 
   const handleFilesDrop = useCallback(
     async (entries: Array<{ file: File; relativePath: string }>, emptyFolders: string[]) => {
+      if (!canUpload) return
       const hasStructure =
         entries.some((e) => e.relativePath.includes("/")) || emptyFolders.length > 0
       if (!hasStructure) {
@@ -929,7 +910,7 @@ export function FilesPage() {
         }
       }
     },
-    [addFiles, currentFolderId, batchUpload],
+    [addFiles, currentFolderId, batchUpload, canUpload],
   )
 
   const handleFolderFilesChosen = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1010,6 +991,12 @@ export function FilesPage() {
     totalSelected > 0 &&
     (selectedFileIds.length === 0 || canShareFile) &&
     (selectedFolderIds.length === 0 || canShareFolder)
+  const emptyTitle = isSearchActive ? "No matching files" : "This folder is empty"
+  const emptyDescription = isSearchActive
+    ? "Adjust the search, filters, favorites, or selected tags to broaden the results."
+    : canUpload
+      ? "Drop files here or use Upload to add content to this folder."
+      : "You can browse other folders, but your role cannot upload content here."
   const selectionContextActions = {
     downloadLabel: isSingleFileSelection ? "Download" : "Download ZIP",
     onCopy: handleCopySelected,
@@ -1229,6 +1216,13 @@ export function FilesPage() {
         {downloadError && (
           <div className="border-error/40 bg-error/10 text-error mb-4 rounded-lg border px-4 py-3 text-sm">
             {downloadError}
+          </div>
+        )}
+
+        {isReadOnly && (
+          <div className="border-border-default bg-surface-secondary text-text-secondary mb-4 rounded-lg border px-4 py-3 text-sm">
+            Your role is read-only in this bucket. You can browse, search, preview, copy, and
+            download files, but upload and management actions are unavailable.
           </div>
         )}
 
@@ -1515,7 +1509,8 @@ export function FilesPage() {
         <div className="relative flex-1 space-y-4" ref={containerRef}>
           <UploadDropZone
             onFilesDrop={handleFilesDrop}
-            onClickUpload={handleFileSelect}
+            onClickUpload={canUpload ? handleFileSelect : undefined}
+            disabled={!canUpload}
             className="bg-surface-default"
           />
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -1568,6 +1563,8 @@ export function FilesPage() {
                 onContextMove={canMoveFile || canMoveFolder ? handleContextMove : undefined}
                 onContextShare={canShareFile || canShareFolder ? handleContextShare : undefined}
                 selectionContextActions={selectionContextActions}
+                emptyTitle={emptyTitle}
+                emptyDescription={emptyDescription}
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
                 onSelectionPointerDown={handleSelectionPointerDown}
                 onSelectionPointerMove={handleSelectionPointerMove}
@@ -1623,6 +1620,8 @@ export function FilesPage() {
                 onContextMove={canMoveFile || canMoveFolder ? handleContextMove : undefined}
                 onContextShare={canShareFile || canShareFolder ? handleContextShare : undefined}
                 selectionContextActions={selectionContextActions}
+                emptyTitle={emptyTitle}
+                emptyDescription={emptyDescription}
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
                 onSelectionPointerDown={handleSelectionPointerDown}
                 onSelectionPointerMove={handleSelectionPointerMove}

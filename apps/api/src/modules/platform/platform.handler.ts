@@ -1,5 +1,6 @@
 import { Hono } from "hono"
 import { and, eq, gte } from "drizzle-orm"
+import { DEFAULT_BRAND_NAME } from "@bucketdrive/shared/constants"
 import {
   AcceptPlatformInvitationResponse,
   CreatePlatformInvitationRequest,
@@ -287,7 +288,7 @@ async function ensurePlatformSettings() {
   const now = new Date().toISOString()
   const created = {
     id: PLATFORM_SETTINGS_ID,
-    platformName: "BucketDrive",
+    platformName: DEFAULT_BRAND_NAME,
     enablePublicSignup: true,
     logoKey: null,
     faviconKey: null,

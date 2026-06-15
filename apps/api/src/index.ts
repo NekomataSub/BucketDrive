@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { ZodError } from "zod"
+import { DEFAULT_R2_BUCKET_NAME } from "@bucketdrive/shared/constants"
 import { securityHeaders } from "./middleware/security-headers"
 import { createAuth } from "./lib/auth"
 import { createD1DB } from "./lib/db"
@@ -18,6 +19,7 @@ import { platformHandler } from "./modules/platform/platform.handler"
 import { batchHandler } from "./modules/batch/batch.handler"
 import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 import { authMiddleware } from "./middleware/auth"
+import { getAllowedOrigins } from "./lib/origins"
 import {
   e2eCreateFile,
   e2eCreateFilesBulk,
@@ -45,18 +47,6 @@ interface Env {
 }
 
 const app = new Hono<{ Bindings: Env }>()
-
-function getAllowedOrigins(env: Env): string[] {
-  return [
-    env.APP_URL,
-    env.API_URL,
-    env.BETTER_AUTH_URL,
-    "http://localhost:5173",
-    "http://localhost:8787",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:8787",
-  ].filter((origin): origin is string => Boolean(origin))
-}
 
 app.use("*", securityHeaders)
 app.use(
@@ -106,7 +96,7 @@ app.get("/api/storage/status", authMiddleware, (c) => {
   const hasSecretKey = Boolean(c.env.R2_SECRET_ACCESS_KEY)
   const endpointConfigured = Boolean(c.env.R2_ENDPOINT)
   const presignedUrls = hasAccessKey && hasSecretKey && endpointConfigured
-  const bucketName = c.env.R2_BUCKET_NAME ?? "bucketdrive-files"
+  const bucketName = c.env.R2_BUCKET_NAME ?? DEFAULT_R2_BUCKET_NAME
 
   return c.json({
     provider: presignedUrls ? "r2-s3" : "r2-binding",

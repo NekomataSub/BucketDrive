@@ -1,10 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { useEffect } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { BarChart3, Files, FolderTree, HardDrive, Link2, Users } from "lucide-react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDashboardOverview } from "@/lib/api"
 import { PageHeader } from "@/components/shared/page-layout"
+import { formatBytes, formatPercent, formatShortDate } from "@/lib/format"
 import { can } from "@bucketdrive/shared"
 
 const numberFormatter = new Intl.NumberFormat("en-US")
@@ -249,22 +250,6 @@ function StatCard({
       <p className="text-text-primary mt-2 text-3xl font-semibold tracking-tight">{value}</p>
     </div>
   )
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-}
-
-function formatPercent(value: number, total: number) {
-  if (total <= 0) return "0%"
-  return `${Math.round((value / total) * 100)}%`
-}
-
-function formatShortDate(value: string) {
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
 function getBarHeightClass(ratio: number) {

@@ -8,6 +8,7 @@ interface UploadDropZoneProps {
   ) => void
   onClickUpload?: () => void
   className?: string
+  disabled?: boolean
 }
 
 async function readEntriesAsync(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
@@ -53,14 +54,19 @@ export function UploadDropZone({
   onFilesDrop,
   onClickUpload,
   className = "",
+  disabled = false,
 }: UploadDropZoneProps) {
   const [isDragging, setIsDragging] = useState(false)
 
-  const handleDragOver = useCallback((e: DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(true)
-  }, [])
+  const handleDragOver = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (disabled) return
+      setIsDragging(true)
+    },
+    [disabled],
+  )
 
   const handleDragLeave = useCallback((e: DragEvent) => {
     e.preventDefault()
@@ -73,6 +79,7 @@ export function UploadDropZone({
       e.preventDefault()
       e.stopPropagation()
       setIsDragging(false)
+      if (disabled) return
 
       const dtItems = e.dataTransfer.items
       if (dtItems.length === 0) {
@@ -106,18 +113,19 @@ export function UploadDropZone({
         onFilesDrop(entries, emptyFolders)
       }
     },
-    [onFilesDrop],
+    [disabled, onFilesDrop],
   )
 
   return (
     <button
       type="button"
-      onClick={onClickUpload}
+      onClick={disabled ? undefined : onClickUpload}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       aria-label="Upload files"
-      className={`focus-visible:ring-accent focus-visible:ring-offset-surface-default group hover:bg-accent/5 relative block w-full rounded-xl border-2 border-dashed text-left transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${onClickUpload ? "cursor-pointer" : "cursor-default"} ${isDragging ? "border-accent bg-accent/10 scale-[1.02]" : "border-border-default hover:border-accent"} ${className}`}
+      disabled={disabled}
+      className={`focus-visible:ring-accent focus-visible:ring-offset-surface-default group relative block w-full rounded-lg border-2 border-dashed text-left transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-70 ${onClickUpload && !disabled ? "hover:bg-accent/5 cursor-pointer" : "cursor-default"} ${isDragging ? "border-accent bg-accent/10 scale-[1.02]" : "border-border-default hover:border-accent"} ${className}`}
     >
       <div className="pointer-events-none flex flex-col items-center justify-center gap-3 py-12">
         <div
@@ -129,12 +137,16 @@ export function UploadDropZone({
           <p className="text-text-primary text-sm font-medium">
             {isDragging
               ? "Drop files to upload"
-              : onClickUpload
-                ? "Click or drag files or folders here to upload"
-                : "Drag files or folders here to upload"}
+              : disabled
+                ? "Uploads are not available for your role"
+                : onClickUpload
+                  ? "Click or drag files or folders here to upload"
+                  : "Drag files or folders here to upload"}
           </p>
           <p className="text-text-tertiary mt-1 text-xs">
-            Uses the current folder selected in the explorer
+            {disabled
+              ? "You can still browse and preview files in this bucket"
+              : "Uses the current folder selected in the explorer"}
           </p>
         </div>
       </div>

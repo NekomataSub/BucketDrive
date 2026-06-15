@@ -21,6 +21,7 @@ import { SelectionMarquee } from "@/components/features/selection-marquee"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ActionButton, PageHeader, PageToolbar } from "@/components/shared/page-layout"
 import { StyledSelect } from "@/components/shared/styled-select"
+import { formatBytes } from "@/lib/format"
 import { can } from "@bucketdrive/shared"
 
 type TrashSort = "deleted_at" | "name" | "location" | "size"
@@ -539,11 +540,4 @@ export function TrashPage() {
       )}
     </div>
   )
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }

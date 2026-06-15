@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import * as schema from "@bucketdrive/shared/db/schema"
 import { createD1DB } from "./db"
+import { getAllowedOrigins } from "./origins"
 
 interface AuthEnv {
   BETTER_AUTH_SECRET?: string
@@ -17,14 +18,7 @@ interface AuthEnv {
 
 export function createAuth(env: AuthEnv, requestOrigin?: string) {
   const baseURL = env.BETTER_AUTH_URL ?? env.API_URL
-  const configuredOrigins = [
-    env.APP_URL,
-    baseURL,
-    "http://localhost:5173",
-    "http://localhost:8787",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:8787",
-  ].filter((origin): origin is string => Boolean(origin))
+  const configuredOrigins = getAllowedOrigins({ ...env, BETTER_AUTH_URL: baseURL })
   const trustedRequestOrigin =
     requestOrigin && configuredOrigins.includes(requestOrigin) ? requestOrigin : undefined
   const callbackOrigin = trustedRequestOrigin ?? env.APP_URL ?? baseURL

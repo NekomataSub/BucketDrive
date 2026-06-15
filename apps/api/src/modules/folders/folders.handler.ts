@@ -1,5 +1,6 @@
 import { Hono } from "hono"
 import { and, eq, isNull } from "drizzle-orm"
+import { DEFAULT_BRAND_NAME } from "@bucketdrive/shared/constants"
 import { auditLog, folder, platformSettings } from "@bucketdrive/shared/db/schema"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
@@ -68,7 +69,7 @@ folders.get("/:folderId/breadcrumbs", requirePermission("folders.read"), async (
     .select({ name: platformSettings.platformName })
     .from(platformSettings)
     .get()
-  segments.unshift({ id: null, name: settings?.name ?? "BucketDrive" })
+  segments.unshift({ id: null, name: settings?.name ?? DEFAULT_BRAND_NAME })
   return c.json(segments.map((item) => BreadcrumbItemSchema.parse(item)))
 })
 

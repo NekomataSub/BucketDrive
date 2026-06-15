@@ -1,13 +1,20 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useState } from "react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDashboardSettings, useUpdateDashboardSettings } from "@/lib/api"
 import { ActionButton, PageHeader } from "@/components/shared/page-layout"
+import { Field, Panel, TextAreaField, TextField } from "@/components/shared/ui-primitives"
+import { getWorkspaceCapabilities, normalizeWorkspaceRole } from "@/lib/workspace-permissions"
 
 export function SettingsPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const settingsQuery = useDashboardSettings(workspaceId)
   const updateSettings = useUpdateDashboardSettings(workspaceId)
+  const capabilities = getWorkspaceCapabilities(
+    normalizeWorkspaceRole(workspace?.role),
+    Boolean(workspace),
+  )
+  const canUpdateSettings = capabilities.canUpdateSettings
 
   const [quotaGb, setQuotaGb] = useState("10")
   const [maxFileSizeMb, setMaxFileSizeMb] = useState("5120")
@@ -61,7 +68,7 @@ export function SettingsPage() {
             type="submit"
             form="bucket-settings-form"
             variant="primary"
-            disabled={updateSettings.isPending}
+            disabled={updateSettings.isPending || !canUpdateSettings}
             loading={updateSettings.isPending}
             loadingLabel="Saving..."
           >
@@ -72,9 +79,10 @@ export function SettingsPage() {
 
       <form
         id="bucket-settings-form"
-        className="border-border-default bg-surface-default mb-4 grid gap-6 rounded-xl border p-4 sm:p-6"
+        className="mb-4 grid gap-4"
         onSubmit={(event) => {
           event.preventDefault()
+          if (!canUpdateSettings) return
           updateSettings.mutate({
             ...settings,
             storageQuotaBytes: Math.max(Number(quotaGb) || 0, 1) * 1024 * 1024 * 1024,
@@ -93,70 +101,129 @@ export function SettingsPage() {
           })
         }}
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Storage quota (GB)">
-            <input
-              value={quotaGb}
-              onChange={(event) => setQuotaGb(event.target.value)}
-              className={inputClasses}
-            />
-          </Field>
-          <Field label="Max file size (MB)">
-            <input
-              value={maxFileSizeMb}
-              onChange={(event) => setMaxFileSizeMb(event.target.value)}
-              className={inputClasses}
-            />
-          </Field>
-          <Field label="Upload chunk size (MB)">
-            <input
-              value={chunkSizeMb}
-              onChange={(event) => setChunkSizeMb(event.target.value)}
-              className={inputClasses}
-            />
-          </Field>
-          <Field label="Default share expiration (days)">
-            <input
-              value={defaultShareExpirationDays}
-              onChange={(event) => setDefaultShareExpirationDays(event.target.value)}
-              className={inputClasses}
-            />
-          </Field>
-          <Field label="Trash retention (days)">
-            <input
-              value={trashRetentionDays}
-              onChange={(event) => setTrashRetentionDays(event.target.value)}
-              className={inputClasses}
-            />
-          </Field>
-        </div>
+        {!canUpdateSettings && (
+          <div className="border-border-default bg-surface-secondary text-text-secondary rounded-lg border px-4 py-3 text-sm">
+            Your role can view bucket settings but cannot change them.
+          </div>
+        )}
 
-        <Field label="Allowed MIME types">
-          <textarea
-            value={allowedMimeTypes}
-            onChange={(event) => setAllowedMimeTypes(event.target.value)}
-            rows={4}
-            placeholder="image/png, application/pdf"
-            className={`${inputClasses} resize-none`}
-          />
-        </Field>
+        <Panel>
+          <h2 className="text-text-primary text-base font-semibold">Storage and uploads</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <Field label="Storage quota" description="GB, minimum 1">
+              <TextField
+                type="number"
+                min={1}
+                step={1}
+                value={quotaGb}
+                disabled={!canUpdateSettings}
+                onChange={(event) => setQuotaGb(event.target.value)}
+              />
+            </Field>
+            <Field label="Max file size" description="MB, minimum 1">
+              <TextField
+                type="number"
+                min={1}
+                step={1}
+                value={maxFileSizeMb}
+                disabled={!canUpdateSettings}
+                onChange={(event) => setMaxFileSizeMb(event.target.value)}
+              />
+            </Field>
+            <Field label="Upload chunk size" description="MB, minimum 1">
+              <TextField
+                type="number"
+                min={1}
+                step={1}
+                value={chunkSizeMb}
+                disabled={!canUpdateSettings}
+                onChange={(event) => setChunkSizeMb(event.target.value)}
+              />
+            </Field>
+          </div>
+        </Panel>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="R2 public domain">
-            <input
-              value={r2PublicBaseUrl}
-              onChange={(event) => setR2PublicBaseUrl(event.target.value)}
-              placeholder="https://files.example.com"
-              className={inputClasses}
-            />
-          </Field>
-        </div>
+        <Panel>
+          <h2 className="text-text-primary text-base font-semibold">Sharing and retention</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <Field label="Default share expiration" description="Days, minimum 1">
+              <TextField
+                type="number"
+                min={1}
+                step={1}
+                value={defaultShareExpirationDays}
+                disabled={!canUpdateSettings}
+                onChange={(event) => setDefaultShareExpirationDays(event.target.value)}
+              />
+            </Field>
+            <Field label="Trash retention" description="Days, minimum 1">
+              <TextField
+                type="number"
+                min={1}
+                step={1}
+                value={trashRetentionDays}
+                disabled={!canUpdateSettings}
+                onChange={(event) => setTrashRetentionDays(event.target.value)}
+              />
+            </Field>
+          </div>
+        </Panel>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-text-tertiary text-xs">
-            Size inputs are entered as GB/MB and converted to bytes on save.
-          </p>
-        </div>
+        <Panel>
+          <h2 className="text-text-primary text-base font-semibold">File policy</h2>
+          <div className="mt-4 grid gap-4">
+            <Field
+              label="Allowed MIME types"
+              description="Comma-separated. Leave empty to allow every supported file type."
+            >
+              <TextAreaField
+                value={allowedMimeTypes}
+                disabled={!canUpdateSettings}
+                onChange={(event) => setAllowedMimeTypes(event.target.value)}
+                rows={4}
+                placeholder="image/png, application/pdf"
+                className="resize-none"
+              />
+            </Field>
+            {allowedMimeTypes
+              .split(",")
+              .map((entry) => entry.trim())
+              .filter(Boolean).length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {allowedMimeTypes
+                  .split(",")
+                  .map((entry) => entry.trim())
+                  .filter(Boolean)
+                  .map((entry) => (
+                    <span
+                      key={entry}
+                      className="bg-surface-secondary text-text-secondary rounded-full px-3 py-1 text-xs font-medium"
+                    >
+                      {entry}
+                    </span>
+                  ))}
+              </div>
+            )}
+          </div>
+        </Panel>
+
+        <Panel>
+          <h2 className="text-text-primary text-base font-semibold">Public object delivery</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <Field
+              label="R2 public domain"
+              description="Optional. Used for direct public object URLs when configured."
+            >
+              <TextField
+                type="url"
+                value={r2PublicBaseUrl}
+                disabled={!canUpdateSettings}
+                onChange={(event) => setR2PublicBaseUrl(event.target.value)}
+                placeholder="https://files.example.com"
+              />
+            </Field>
+          </div>
+        </Panel>
       </form>
 
       {(settingsQuery.isError || updateSettings.isError) && (
@@ -167,15 +234,3 @@ export function SettingsPage() {
     </div>
   )
 }
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="grid gap-2">
-      <span className="text-text-primary text-sm font-medium">{label}</span>
-      {children}
-    </label>
-  )
-}
-
-const inputClasses =
-  "rounded-xl border border-border-default bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-tertiary focus:border-accent focus:ring-1 focus:ring-accent"
