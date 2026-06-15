@@ -10,6 +10,7 @@ import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
 import { LoginPage } from "./login"
 import { JoinPage } from "./join"
+import { SignupDeniedPage } from "./signup-denied"
 
 const DashboardPage = lazy(() =>
   import("./app/dashboard").then((module) => ({ default: module.DashboardPage })),
@@ -85,6 +86,12 @@ const joinRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/join",
   component: JoinPage,
+})
+
+const signupDeniedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/signup-denied",
+  component: SignupDeniedPage,
 })
 
 const appRoute = createRoute({
@@ -177,6 +184,7 @@ const shareAccessRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   joinRoute,
+  signupDeniedRoute,
   shareAccessRoute,
   appRoute.addChildren([
     homeRoute,

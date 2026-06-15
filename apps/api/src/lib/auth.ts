@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
+import { and, eq, gte } from "drizzle-orm"
 import * as schema from "@bucketdrive/shared/db/schema"
 import { createD1DB } from "./db"
 import { getAllowedOrigins } from "./origins"
@@ -13,6 +14,7 @@ interface AuthEnv {
   GITHUB_CLIENT_SECRET?: string
   GOOGLE_CLIENT_ID?: string
   GOOGLE_CLIENT_SECRET?: string
+  PLATFORM_OWNER_EMAIL?: string
   DB: D1Database
 }
 
@@ -43,8 +45,10 @@ function getAllowedHosts(env: AuthEnv): string[] {
       // Extract the account-level wildcard pattern: *.account-id.workers.dev
       const parts = workerDomain.split(".")
       if (parts.length >= 3 && parts[parts.length - 1] === "dev" && parts[parts.length - 2] === "workers") {
-        const accountId = parts[parts.length - 3]
-        hosts.add(`*.${accountId}.workers.dev`)
+        const accountId = parts[parts.length - 3] ?? ""
+        if (accountId) {
+          hosts.add(`*.${accountId}.workers.dev`)
+        }
       }
     }
   }
@@ -101,6 +105,45 @@ export function createAuth(env: AuthEnv, requestOrigin?: string) {
         clientSecret: env.GOOGLE_CLIENT_SECRET ?? "",
         redirectURI: callbackOrigin ? `${callbackOrigin}/api/auth/callback/google` : undefined,
       },
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) => {
+            const db = createD1DB(env.DB)
+            const settings = await db
+              .select()
+              .from(schema.platformSettings)
+              .where(eq(schema.platformSettings.id, "default"))
+              .get()
+
+            if (settings?.enablePublicSignup) return { data: user }
+
+            const ownerEmail = env.PLATFORM_OWNER_EMAIL?.trim().toLowerCase()
+            if (ownerEmail && user.email.toLowerCase() === ownerEmail) return { data: user }
+
+            const now = new Date().toISOString()
+            const invite = await db
+              .select()
+              .from(schema.bucketInvitation)
+              .where(
+                and(
+                  eq(schema.bucketInvitation.email, user.email.toLowerCase()),
+                  eq(schema.bucketInvitation.status, "pending"),
+                  gte(schema.bucketInvitation.expiresAt, now),
+                ),
+              )
+              .get()
+
+            if (invite) return { data: user }
+
+            return false
+          },
+        },
+      },
+    },
+    onAPIError: {
+      errorURL: env.APP_URL ? `${env.APP_URL.replace(/\/$/, "")}/signup-denied` : undefined,
     },
     advanced: {
       defaultCookieAttributes: {
