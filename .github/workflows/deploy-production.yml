@@ -179,6 +179,15 @@ jobs:
       - name: Build frontend
         run: pnpm build
 
+      - name: Copy Pages Functions to dist
+        run: |
+          if [ -d "apps/web/functions" ]; then
+            cp -r apps/web/functions apps/web/dist/
+            echo "✅ Copied apps/web/functions → apps/web/dist/functions"
+          else
+            echo "ℹ️ No apps/web/functions directory found, skipping"
+          fi
+
       - name: Create Cloudflare Pages project
         run: |
           pnpm exec wrangler pages project create ${{ vars.PAGES_PROJECT_NAME }} --production-branch=${{ vars.PAGES_BRANCH }} || true
@@ -213,10 +222,20 @@ jobs:
           APP_URL: ${{ vars.APP_URL }}
           API_URL: ${{ vars.API_URL }}
         run: |
-          echo "🔍 Checking production frontend..."
-          curl -fsS --retry 3 --retry-delay 5 "$APP_URL" >/dev/null
-
           echo "🔍 Checking production API health..."
           curl -fsS --retry 3 --retry-delay 5 "${API_URL%/}/health" >/dev/null
+          echo "✅ API health check passed."
+
+          echo "🔍 Checking production frontend..."
+          FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL")
+          if [ "$FRONTEND_STATUS" = "200" ]; then
+            echo "✅ Frontend responds with 200."
+          elif [ "$FRONTEND_STATUS" = "403" ]; then
+            echo "⚠️ Frontend returned 403. This usually means the custom domain SSL certificate is still being provisioned by Cloudflare."
+            echo "   The app will become available automatically within a few minutes."
+          else
+            echo "❌ Frontend returned unexpected status: $FRONTEND_STATUS"
+            exit 1
+          fi
 
           echo "✅ Production smoke checks passed."

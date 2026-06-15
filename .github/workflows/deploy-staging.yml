@@ -149,6 +149,15 @@ jobs:
       - name: Build frontend
         run: pnpm build
 
+      - name: Copy Pages Functions to dist
+        run: |
+          if [ -d "apps/web/functions" ]; then
+            cp -r apps/web/functions apps/web/dist/
+            echo "✅ Copied apps/web/functions → apps/web/dist/functions"
+          else
+            echo "ℹ️ No apps/web/functions directory found, skipping"
+          fi
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
