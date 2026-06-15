@@ -283,6 +283,7 @@ For staging and production, create `.env.staging` and `.env.production` at the r
 > | `PLAYWRIGHT_BASE_URL` | staging | Same as `APP_URL` | No |
 > | `PAGES_PROJECT_NAME` | staging, production | Cloudflare Pages project name (e.g., `bucketdrive`) | No |
 > | `PAGES_BRANCH` | staging, production | Pages branch name (e.g., `staging`) | No |
+> | `CUSTOM_DOMAIN` | staging, production | Custom domain attached to the Pages project (e.g., `staging.bucketdrive.dev`) | No |
 > | `PLATFORM_OWNER_EMAIL` | local, staging, production | Your admin email | No |
 
 > **Important**: `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI credentials** — they authenticate the Wrangler CLI. They are **never** pushed to the Workers as secrets. The `pnpm env:push:*` command explicitly skips these keys.
@@ -379,10 +380,16 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **New repos
 | `PLAYWRIGHT_BASE_URL`    | `https://staging.bucketdrive.dev`     |
 | `PAGES_PROJECT_NAME`     | `bucketdrive`                         |
 | `PAGES_BRANCH`           | `staging`                             |
+| `CUSTOM_DOMAIN`          | `staging.bucketdrive.dev`             |
 
 **Production Environment Secrets and Variables** — same pattern, but use the production URLs and `PRODUCTION_D1_DATABASE_ID`.
 
 > **Note**: GitHub Actions creates the `.env.staging` / `.env.production` files dynamically from these secrets/variables before running the deploy commands. The `pnpm env:push:*` command reads the file and runs `wrangler secret put` for each key.
+
+The Cloudflare API token used by GitHub Actions must include the permissions required by Wrangler
+plus `Pages Write`, `Zone Read`, and `DNS Write` so the deploy can attach the Pages custom domain
+and create or update the matching CNAME record. Full DNS automation assumes the domain's DNS zone is
+in the same Cloudflare account as the Pages project.
 
 ### Rollback
 

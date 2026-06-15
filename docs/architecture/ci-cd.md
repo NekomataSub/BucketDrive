@@ -88,6 +88,7 @@ Uses the `staging` GitHub Environment and requires the following secrets/variabl
 | Environment variable | `PLAYWRIGHT_BASE_URL`    | E2E target URL                                         |
 | Environment variable | `PAGES_PROJECT_NAME`     | Cloudflare Pages project name                          |
 | Environment variable | `PAGES_BRANCH`           | Pages branch name                                      |
+| Environment variable | `CUSTOM_DOMAIN`          | Optional Pages custom domain to auto-provision         |
 | Environment secret   | `BETTER_AUTH_SECRET`     | Better Auth session key                                |
 | Environment secret   | `BETTER_AUTH_URL`        | Same as `API_URL`                                      |
 | Environment secret   | `GH_CLIENT_ID`           | GitHub OAuth Client ID (GitHub prefix is reserved)     |
@@ -109,9 +110,11 @@ The workflow runs:
 5. `wrangler deploy --env staging` (Workers) — deploys the background Workers
 6. `pnpm build` — builds the frontend
 7. `wrangler pages deploy` — deploys the built frontend to Cloudflare Pages
-8. `pnpm env:push:staging` — pushes runtime secrets to Cloudflare Workers secret store
-9. `pnpm test:e2e` — runs Playwright E2E tests against the staging URL
-10. `pnpm test:a11y` — runs accessibility checks
+8. `pnpm tsx scripts/setup-custom-domain.ts` — associates `CUSTOM_DOMAIN` with Pages and ensures
+   the Cloudflare DNS CNAME exists, when `CUSTOM_DOMAIN` is configured
+9. `pnpm env:push:staging` — pushes runtime secrets to Cloudflare Workers secret store
+10. `pnpm test:e2e` — runs Playwright E2E tests against the staging URL
+11. `pnpm test:a11y` — runs accessibility checks
 
 ## `deploy-production.yml` — Production Deploy
 
@@ -175,6 +178,7 @@ GitHub repository settings.
 | `PLAYWRIGHT_BASE_URL`       | Same as `APP_URL`                               | Same as `APP_URL`                       |
 | `PAGES_PROJECT_NAME`        | `bucketdrive`                                   | `bucketdrive`                           |
 | `PAGES_BRANCH`              | `staging`                                       | `production`                            |
+| `CUSTOM_DOMAIN`             | `staging.bucketdrive.dev`                       | `drive.nekomata.moe`                    |
 
 ### Required Environment Secrets
 
@@ -202,6 +206,10 @@ they are scoped to the correct environment:
 > `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI deploy credentials**, not
 > Worker runtime vars. `pnpm env:push:*` explicitly skips these keys and never uploads them to
 > Cloudflare's secret store.
+
+The Cloudflare API token used by the deploy workflows must include the existing Wrangler/D1/R2/
+Workers permissions plus `Pages Write`, `Zone Read`, and `DNS Write`. Custom-domain automation
+assumes the DNS zone for `CUSTOM_DOMAIN` lives in the same Cloudflare account as the Pages project.
 
 ## Automated Infrastructure Setup
 

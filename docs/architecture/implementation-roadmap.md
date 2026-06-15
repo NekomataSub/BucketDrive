@@ -9,6 +9,12 @@ verifiable result.
 
 ## Status Overview
 
+> **Cloudflare custom-domain provisioning pass — 2026-06-15:**
+>
+> - Made the GitHub Actions custom-domain step provision both Cloudflare Pages association and DNS CNAME records.
+> - Added idempotent conflict handling, domain status logging, and unit coverage for the provisioning script.
+> - Documented `CUSTOM_DOMAIN` and the required `Pages Write`, `Zone Read`, and `DNS Write` token permissions.
+
 > **Admin overview file navigation pass — 2026-06-14:**
 >
 > - Added folder IDs to dashboard largest-file contract responses.
