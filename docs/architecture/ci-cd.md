@@ -195,17 +195,36 @@ they are scoped to the correct environment:
 > The app expects `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` as env variables. The workflow
 > maps `secrets.GH_CLIENT_ID` to `GITHUB_CLIENT_ID` when creating the `.env.staging` /
 > `.env.production` files.
-> | `GOOGLE_CLIENT_ID` | Google Cloud Console → OAuth 2.0 Client ID |
-> | `GOOGLE_CLIENT_SECRET` | Google Cloud Console → Client Secret |
-> | `R2_ACCESS_KEY_ID` | Cloudflare R2 Dashboard → Manage R2 API Tokens → Token ID |
-> | `R2_SECRET_ACCESS_KEY` | Cloudflare R2 Dashboard → Token Secret |
-> | `R2_BUCKET_NAME` | Your bucket name |
-> | `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
-> | `PLATFORM_OWNER_EMAIL` | Admin email address |
+
+| Secret                 | How to obtain                                               |
+| ---------------------- | ----------------------------------------------------------- |
+| `GOOGLE_CLIENT_ID`     | Google Cloud Console -> OAuth 2.0 Client ID                 |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud Console -> Client Secret                       |
+| `R2_ACCESS_KEY_ID`     | Cloudflare R2 Dashboard -> Manage R2 API Tokens -> Token ID |
+| `R2_SECRET_ACCESS_KEY` | Cloudflare R2 Dashboard -> Token Secret                     |
+| `R2_BUCKET_NAME`       | Your bucket name                                            |
+| `R2_ENDPOINT`          | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`             |
+| `PLATFORM_OWNER_EMAIL` | Admin email address                                         |
 
 > `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI deploy credentials**, not
 > Worker runtime vars. `pnpm env:push:*` explicitly skips these keys and never uploads them to
 > Cloudflare's secret store.
+
+### Custom Domain Provisioning Source
+
+The `Setup custom domain` step reads configuration directly from the active GitHub Environment:
+
+| GitHub Actions value            | Configure as                                          | Purpose                                |
+| ------------------------------- | ----------------------------------------------------- | -------------------------------------- |
+| `vars.CUSTOM_DOMAIN`            | Environment variable in `staging` / `production`      | Custom hostname to attach to Pages     |
+| `vars.PAGES_PROJECT_NAME`       | Environment variable in `staging` / `production`      | Pages project and `*.pages.dev` target |
+| `secrets.CLOUDFLARE_ACCOUNT_ID` | Repository secret, or environment secret in both envs | Cloudflare account scope               |
+| `secrets.CLOUDFLARE_API_TOKEN`  | Repository secret, or environment secret in both envs | Cloudflare API authentication          |
+
+These values are deploy-time configuration. They are not read from Cloudflare Worker runtime
+secrets, Cloudflare Pages environment variables, or the app/API runtime environment. Runtime secrets
+pushed by `pnpm env:push:*` are only available to Workers after deployment, so GitHub Actions cannot
+use them to create DNS records or attach Pages custom domains.
 
 The Cloudflare API token used by the deploy workflows must include the existing Wrangler/D1/R2/
 Workers permissions plus `Pages Write`, `Zone Read`, and `DNS Write`. Custom-domain automation

@@ -270,23 +270,43 @@ For staging and production, create `.env.staging` and `.env.production` at the r
 > because the `GITHUB_` prefix is reserved. The `.env` variable names remain `GITHUB_CLIENT_ID` and
 > `GITHUB_CLIENT_SECRET` (the app expects these). The workflow maps `secrets.GH_CLIENT_ID` →
 > `GITHUB_CLIENT_ID` when creating the `.env.staging` / `.env.production` files.
-> | `GOOGLE_CLIENT_ID` | local, staging, production | Google Cloud Console | **Yes** |
-> | `GOOGLE_CLIENT_SECRET` | local, staging, production | Google Cloud Console | **Yes** |
-> | `CLOUDFLARE_ACCOUNT_ID` | local, staging, production | Cloudflare Dashboard sidebar | **Yes** |
-> | `CLOUDFLARE_API_TOKEN` | local, staging, production | Cloudflare Dashboard → API Tokens | **Yes** |
-> | `STAGING_D1_DATABASE_ID` | staging | Output of `wrangler d1 create bucketdrive-db-staging` | No |
-> | `PRODUCTION_D1_DATABASE_ID` | production | Output of `wrangler d1 create bucketdrive-db` | No |
-> | `R2_ACCESS_KEY_ID` | local, staging, production | R2 Dashboard → Manage R2 API Tokens | **Yes** |
-> | `R2_SECRET_ACCESS_KEY` | local, staging, production | R2 Dashboard → Manage R2 API Tokens | **Yes** |
-> | `R2_BUCKET_NAME` | local, staging, production | Your bucket name (e.g., `bucketdrive-staging`) | No |
-> | `R2_ENDPOINT` | local, staging, production | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` | No |
-> | `PLAYWRIGHT_BASE_URL` | staging | Same as `APP_URL` | No |
-> | `PAGES_PROJECT_NAME` | staging, production | Cloudflare Pages project name (e.g., `bucketdrive`) | No |
-> | `PAGES_BRANCH` | staging, production | Pages branch name (e.g., `staging`) | No |
-> | `CUSTOM_DOMAIN` | staging, production | Custom domain attached to the Pages project (e.g., `staging.bucketdrive.dev`) | No |
-> | `PLATFORM_OWNER_EMAIL` | local, staging, production | Your admin email | No |
+
+| Variable                    | Required for               | Where to get it                                                               | Sensitive? |
+| --------------------------- | -------------------------- | ----------------------------------------------------------------------------- | ---------- |
+| `GOOGLE_CLIENT_ID`          | local, staging, production | Google Cloud Console                                                          | **Yes**    |
+| `GOOGLE_CLIENT_SECRET`      | local, staging, production | Google Cloud Console                                                          | **Yes**    |
+| `CLOUDFLARE_ACCOUNT_ID`     | local, staging, production | Cloudflare Dashboard sidebar                                                  | **Yes**    |
+| `CLOUDFLARE_API_TOKEN`      | local, staging, production | Cloudflare Dashboard -> API Tokens                                            | **Yes**    |
+| `STAGING_D1_DATABASE_ID`    | staging                    | Output of `wrangler d1 create bucketdrive-db-staging`                         | No         |
+| `PRODUCTION_D1_DATABASE_ID` | production                 | Output of `wrangler d1 create bucketdrive-db`                                 | No         |
+| `R2_ACCESS_KEY_ID`          | local, staging, production | R2 Dashboard -> Manage R2 API Tokens                                          | **Yes**    |
+| `R2_SECRET_ACCESS_KEY`      | local, staging, production | R2 Dashboard -> Manage R2 API Tokens                                          | **Yes**    |
+| `R2_BUCKET_NAME`            | local, staging, production | Your bucket name (e.g., `bucketdrive-staging`)                                | No         |
+| `R2_ENDPOINT`               | local, staging, production | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`                               | No         |
+| `PLAYWRIGHT_BASE_URL`       | staging                    | Same as `APP_URL`                                                             | No         |
+| `PAGES_PROJECT_NAME`        | staging, production        | Cloudflare Pages project name (e.g., `bucketdrive`)                           | No         |
+| `PAGES_BRANCH`              | staging, production        | Pages branch name (e.g., `staging`)                                           | No         |
+| `CUSTOM_DOMAIN`             | staging, production        | Custom domain attached to the Pages project (e.g., `staging.bucketdrive.dev`) | No         |
+| `PLATFORM_OWNER_EMAIL`      | local, staging, production | Your admin email                                                              | No         |
 
 > **Important**: `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI credentials** — they authenticate the Wrangler CLI. They are **never** pushed to the Workers as secrets. The `pnpm env:push:*` command explicitly skips these keys.
+
+#### Custom domain provisioning source
+
+The `Setup custom domain` step in GitHub Actions reads its values directly from the selected
+GitHub Environment, because the workflow needs them before it can call the Cloudflare API:
+
+| GitHub Actions value            | Configure as                                          | Used for                                      |
+| ------------------------------- | ----------------------------------------------------- | --------------------------------------------- |
+| `vars.CUSTOM_DOMAIN`            | Environment variable in `staging` / `production`      | Hostname to attach to Cloudflare Pages        |
+| `vars.PAGES_PROJECT_NAME`       | Environment variable in `staging` / `production`      | Pages project whose `*.pages.dev` target wins |
+| `secrets.CLOUDFLARE_ACCOUNT_ID` | Repository secret, or environment secret in both envs | Cloudflare account scope                      |
+| `secrets.CLOUDFLARE_API_TOKEN`  | Repository secret, or environment secret in both envs | Cloudflare API authentication                 |
+
+These are **deploy-time** values. They are not read from Cloudflare Worker runtime secrets,
+Cloudflare Pages environment variables, or the already deployed app/API environment. The runtime
+secrets pushed by `pnpm env:push:*` are only available to Workers after deployment and cannot be
+used by GitHub Actions to provision DNS or Pages domains.
 
 ### 10. Manual Deploy (One-time Setup)
 
