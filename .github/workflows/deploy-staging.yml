@@ -149,21 +149,13 @@ jobs:
       - name: Build frontend
         run: pnpm build
 
-      - name: Copy Pages Functions to dist
-        run: |
-          if [ -d "apps/web/functions" ]; then
-            cp -r apps/web/functions apps/web/dist/
-            echo "✅ Copied apps/web/functions → apps/web/dist/functions"
-          else
-            echo "ℹ️ No apps/web/functions directory found, skipping"
-          fi
-
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy apps/web/dist --project-name=${{ vars.PAGES_PROJECT_NAME }} --branch=${{ vars.PAGES_BRANCH }}
+          workingDirectory: apps/web
+          command: pages deploy --project-name=${{ vars.PAGES_PROJECT_NAME }} --branch=${{ vars.PAGES_BRANCH }}
 
       - name: Setup custom domain
         env:
