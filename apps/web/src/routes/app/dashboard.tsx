@@ -7,13 +7,13 @@ import { useDashboardOverview } from "@/lib/api"
 import { PageHeader } from "@/components/shared/page-layout"
 import { formatBytes, formatPercent, formatShortDate } from "@/lib/format"
 import { can } from "@bucketdrive/shared"
-
-const numberFormatter = new Intl.NumberFormat("en-US")
+import { useI18n } from "@/lib/i18n"
 
 export function DashboardPage() {
   const { workspace, workspaceId, role, isLoading: workspacesLoading } = useCurrentWorkspace()
   const isAdmin = can(role ?? "viewer", "analytics.read")
   const navigate = useNavigate()
+  const { t, formatNumber, formatDate } = useI18n()
 
   const overviewQuery = useDashboardOverview(workspaceId)
 
@@ -34,7 +34,7 @@ export function DashboardPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No bucket found</p>
+        <p className="text-text-tertiary text-sm">{t("settings.noBucket")}</p>
       </div>
     )
   }
@@ -68,45 +68,45 @@ export function DashboardPage() {
   return (
     <div className="flex h-full min-w-0 flex-col gap-6 p-4 sm:p-6">
       <PageHeader
-        eyebrow="Admin Overview"
+        eyebrow={t("dashboard.title")}
         title={workspace.name}
-        description="Monitor storage, shares, member growth, and recent activity from one place."
+        description={t("dashboard.description")}
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <StatCard
           icon={Files}
-          label="Files"
-          value={numberFormatter.format(overview.summary.totalFiles)}
+          label={t("dashboard.totalFiles")}
+          value={formatNumber(overview.summary.totalFiles)}
           accent="bg-sky-500/10 text-sky-300"
         />
         <StatCard
           icon={FolderTree}
-          label="Folders"
-          value={numberFormatter.format(overview.summary.totalFolders)}
+          label={t("dashboard.totalFolders")}
+          value={formatNumber(overview.summary.totalFolders)}
           accent="bg-emerald-500/10 text-emerald-300"
         />
         <StatCard
           icon={Users}
-          label="Members"
-          value={numberFormatter.format(overview.summary.memberCount)}
+          label={t("dashboard.members")}
+          value={formatNumber(overview.summary.memberCount)}
           accent="bg-amber-500/10 text-amber-300"
         />
         <StatCard
           icon={Link2}
-          label="Active Shares"
-          value={numberFormatter.format(overview.summary.activeShares)}
+          label={t("dashboard.activeShares")}
+          value={formatNumber(overview.summary.activeShares)}
           accent="bg-rose-500/10 text-rose-300"
         />
         <StatCard
           icon={HardDrive}
-          label="Used Storage"
+          label={t("dashboard.usedStorage")}
           value={formatBytes(overview.summary.usedStorageBytes)}
           accent="bg-indigo-500/10 text-indigo-300"
         />
         <StatCard
           icon={BarChart3}
-          label="Quota"
+          label={t("dashboard.quota")}
           value={formatBytes(overview.summary.quotaBytes)}
           accent="bg-fuchsia-500/10 text-fuchsia-300"
         />
@@ -116,12 +116,18 @@ export function DashboardPage() {
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-text-primary text-base font-semibold">Storage Trend</h2>
-              <p className="text-text-tertiary text-xs">Cumulative usage over the last 7 days</p>
+              <h2 className="text-text-primary text-base font-semibold">
+                {t("dashboard.storageTrend")}
+              </h2>
+              <p className="text-text-tertiary text-xs">{t("dashboard.storageTrendDescription")}</p>
             </div>
             <span className="text-text-secondary text-xs">
-              {formatPercent(overview.summary.usedStorageBytes, overview.summary.quotaBytes)} of
-              quota
+              {t("dashboard.ofQuota", {
+                percent: formatPercent(
+                  overview.summary.usedStorageBytes,
+                  overview.summary.quotaBytes,
+                ),
+              })}
             </span>
           </div>
 
@@ -152,12 +158,16 @@ export function DashboardPage() {
         </div>
 
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
-          <h2 className="text-text-primary text-base font-semibold">Largest Files</h2>
-          <p className="text-text-tertiary mt-1 text-xs">Top 5 non-deleted files by size</p>
+          <h2 className="text-text-primary text-base font-semibold">
+            {t("dashboard.largestFiles")}
+          </h2>
+          <p className="text-text-tertiary mt-1 text-xs">
+            {t("dashboard.largestFilesDescription")}
+          </p>
           <div className="mt-5 space-y-3">
             {overview.largestFiles.length === 0 ? (
               <p className="border-border-default bg-bg-tertiary text-text-tertiary rounded-xl border border-dashed px-4 py-6 text-sm">
-                No file data yet.
+                {t("dashboard.noFileData")}
               </p>
             ) : (
               overview.largestFiles.map((file) => (
@@ -189,21 +199,25 @@ export function DashboardPage() {
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-text-primary text-base font-semibold">Recent Activity</h2>
-              <p className="text-text-tertiary text-xs">Latest 10 audit events</p>
+              <h2 className="text-text-primary text-base font-semibold">
+                {t("dashboard.recentActivity")}
+              </h2>
+              <p className="text-text-tertiary text-xs">
+                {t("dashboard.recentActivityDescription")}
+              </p>
             </div>
             <Link
               to="/dashboard/audit"
               className="text-accent text-xs font-medium transition-opacity hover:opacity-80"
             >
-              View all
+              {t("dashboard.viewAll")}
             </Link>
           </div>
 
           <div className="mt-5 space-y-3">
             {overview.recentActivity.length === 0 ? (
               <p className="border-border-default bg-bg-tertiary text-text-tertiary rounded-xl border border-dashed px-4 py-6 text-sm">
-                No audit activity yet.
+                {t("dashboard.noAuditActivity")}
               </p>
             ) : (
               overview.recentActivity.map((item) => (
@@ -214,11 +228,12 @@ export function DashboardPage() {
                   <div>
                     <p className="text-text-primary text-sm font-medium">{item.action}</p>
                     <p className="text-text-tertiary mt-1 text-xs">
-                      {(item.actorName ?? item.actorId) || "Unknown actor"} • {item.resourceType}
+                      {(item.actorName ?? item.actorId) || t("dashboard.unknownActor")} •{" "}
+                      {item.resourceType}
                     </p>
                   </div>
                   <span className="text-text-secondary shrink-0 text-xs">
-                    {new Date(item.createdAt).toLocaleString()}
+                    {formatDate(item.createdAt, { dateStyle: "short", timeStyle: "short" })}
                   </span>
                 </div>
               ))

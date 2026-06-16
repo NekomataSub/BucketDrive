@@ -96,6 +96,7 @@ platform.patch("/settings", authMiddleware, requirePlatformAdmin, async (c) => {
     .set({
       platformName: nextPlatformName,
       enablePublicSignup: body.enablePublicSignup ?? settings.enablePublicSignup,
+      defaultLanguage: body.defaultLanguage ?? settings.defaultLanguage,
       updatedAt: now,
     })
     .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
@@ -214,6 +215,7 @@ async function ensurePlatformSettings() {
     id: PLATFORM_SETTINGS_ID,
     platformName: DEFAULT_BRAND_NAME,
     enablePublicSignup: true,
+    defaultLanguage: "en-US",
     logoKey: null,
     faviconKey: null,
     createdAt: now,
@@ -227,6 +229,7 @@ function toPlatformSettingsResponse(settings: Awaited<ReturnType<typeof ensurePl
   return {
     platformName: settings.platformName,
     enablePublicSignup: settings.enablePublicSignup,
+    defaultLanguage: settings.defaultLanguage,
     platformLogoUrl: settings.logoKey ? `/api/platform/assets/logo?v=${settings.updatedAt}` : null,
     faviconUrl: settings.faviconKey ? `/api/platform/assets/favicon?v=${settings.updatedAt}` : null,
   }

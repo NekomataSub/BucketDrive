@@ -7,6 +7,7 @@ import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { formatBytes } from "@/lib/format"
 import { usePlatformMe, useDashboardOverview } from "@/lib/api"
 import { can } from "@bucketdrive/shared"
+import { useI18n } from "@/lib/i18n"
 
 interface SidebarProps {
   mobileOpen?: boolean
@@ -17,39 +18,40 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const { workspace, workspaceId, role } = useCurrentWorkspace()
   const { data: me } = usePlatformMe()
   const { data: overview } = useDashboardOverview(workspaceId)
+  const { t } = useI18n()
 
   const navItems = [
-    { to: "/dashboard/files", icon: Files, label: "Files", visible: true },
-    { to: "/dashboard/shares", icon: Link2, label: "Share Links", visible: true },
-    { to: "/dashboard/trash", icon: Trash2, label: "Trash", visible: true },
+    { to: "/dashboard/files", icon: Files, label: t("nav.files"), visible: true },
+    { to: "/dashboard/shares", icon: Link2, label: t("nav.shareLinks"), visible: true },
+    { to: "/dashboard/trash", icon: Trash2, label: t("nav.trash"), visible: true },
     {
       to: "/dashboard",
       icon: Shield,
-      label: "Admin Overview",
+      label: t("nav.adminOverview"),
       visible: can(role ?? "viewer", "analytics.read"),
     },
     {
       to: "/dashboard/members",
       icon: Users,
-      label: "Members",
+      label: t("nav.members"),
       visible: can(role ?? "viewer", "users.read"),
     },
     {
       to: "/dashboard/audit",
       icon: ScrollText,
-      label: "Audit",
+      label: t("nav.audit"),
       visible: can(role ?? "viewer", "audit.read"),
     },
     {
       to: "/dashboard/settings",
       icon: Settings,
-      label: "Settings",
+      label: t("nav.settings"),
       visible: can(role ?? "viewer", "bucket.settings.read"),
     },
     {
       to: "/dashboard/platform",
       icon: Globe,
-      label: "Platform",
+      label: t("nav.platform"),
       visible: me?.isPlatformAdmin ?? false,
     },
   ]
@@ -84,12 +86,14 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       </div>
       <div className="border-border-muted border-t p-3">
         <div className="bg-surface-hover text-text-secondary rounded-lg p-3 text-xs">
-          <div className="text-text-primary font-medium">Free Plan</div>
+          <div className="text-text-primary font-medium">{t("plan.free")}</div>
           {overview && (
             <>
               <div className="mt-1">
-                {formatBytes(overview.summary.usedStorageBytes)} of{" "}
-                {formatBytes(overview.summary.quotaBytes)} used
+                {t("plan.storageUsed", {
+                  used: formatBytes(overview.summary.usedStorageBytes),
+                  quota: formatBytes(overview.summary.quotaBytes),
+                })}
               </div>
               <ProgressBar
                 className="bg-border-default mt-1"
@@ -113,7 +117,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
-            aria-label="Close navigation"
+            aria-label={t("nav.closeNavigation")}
             onClick={onClose}
           />
           <aside className="bg-bg-secondary border-border-muted relative flex h-full w-[min(320px,calc(100vw-3rem))] flex-col border-r shadow-xl">

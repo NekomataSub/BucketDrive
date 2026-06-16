@@ -50,6 +50,7 @@ export const platformSettings = sqliteTable("platform_settings", {
   id: text("id").primaryKey(),
   platformName: text("platform_name").notNull().default("BucketDrive"),
   enablePublicSignup: integer("enable_public_signup", { mode: "boolean" }).notNull().default(true),
+  defaultLanguage: text("default_language").notNull().default("en-US"),
   logoKey: text("logo_key"),
   faviconKey: text("favicon_key"),
   createdAt: text("created_at")

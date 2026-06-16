@@ -1973,6 +1973,7 @@ export function useMarkAllRead(): UseMutationResult<
 export interface PlatformSettingsData {
   platformName: string
   enablePublicSignup: boolean
+  defaultLanguage: "en-US" | "pt-BR"
   platformLogoUrl: string | null
   faviconUrl: string | null
 }

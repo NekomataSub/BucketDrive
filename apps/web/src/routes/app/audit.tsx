@@ -1,22 +1,24 @@
-/* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions */
 import { useState } from "react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDashboardAudit } from "@/lib/api"
 import { PageHeader, PageToolbar } from "@/components/shared/page-layout"
 import { StyledSelect } from "@/components/shared/styled-select"
-
-const resourceTypeOptions = [
-  { value: "", label: "All resources" },
-  { value: "file", label: "file" },
-  { value: "folder", label: "folder" },
-  { value: "member", label: "member" },
-  { value: "bucket", label: "bucket" },
-]
+import { useI18n } from "@/lib/i18n"
 
 export function AuditPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const [action, setAction] = useState("")
   const [resourceType, setResourceType] = useState("")
+  const { t, formatDate } = useI18n()
+
+  const resourceTypeOptions = [
+    { value: "", label: t("audit.allResources") },
+    { value: "file", label: "file" },
+    { value: "folder", label: "folder" },
+    { value: "member", label: "member" },
+    { value: "bucket", label: "bucket" },
+  ]
 
   const auditQuery = useDashboardAudit(workspaceId, {
     action: action.trim() || undefined,
@@ -36,7 +38,7 @@ export function AuditPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No bucket found</p>
+        <p className="text-text-tertiary text-sm">{t("settings.noBucket")}</p>
       </div>
     )
   }
@@ -45,16 +47,13 @@ export function AuditPage() {
 
   return (
     <div className="flex h-full min-w-0 flex-col p-4 sm:p-6">
-      <PageHeader
-        title="Audit Log"
-        description="Filter activity by action and resource type. Results are newest first."
-      />
+      <PageHeader title={t("audit.logTitle")} description={t("audit.description")} />
 
       <PageToolbar className="flex-col md:flex-row">
         <input
           value={action}
           onChange={(event) => setAction(event.target.value)}
-          placeholder="Filter by action, e.g. member.removed"
+          placeholder={t("audit.filterAction")}
           className="border-border-default bg-bg-tertiary text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
         />
         <StyledSelect
@@ -76,7 +75,7 @@ export function AuditPage() {
                 {item.resourceId ? ` • ${item.resourceId}` : ""}
               </p>
               <p className="text-text-tertiary text-xs">
-                {new Date(item.createdAt).toLocaleString()}
+                {formatDate(item.createdAt, { dateStyle: "short", timeStyle: "short" })}
               </p>
             </div>
           ))}
@@ -85,13 +84,17 @@ export function AuditPage() {
         <table className="hidden w-full md:table">
           <thead>
             <tr className="border-border-muted bg-bg-tertiary border-b">
-              <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Action</th>
-              <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Actor</th>
               <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                Resource
+                {t("audit.action")}
               </th>
               <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                Timestamp
+                {t("audit.actor")}
+              </th>
+              <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                {t("audit.resource")}
+              </th>
+              <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                {t("audit.timestamp")}
               </th>
             </tr>
           </thead>
@@ -110,7 +113,7 @@ export function AuditPage() {
                   {item.resourceId ? ` • ${item.resourceId}` : ""}
                 </td>
                 <td className="text-text-secondary px-4 py-3 text-sm">
-                  {new Date(item.createdAt).toLocaleString()}
+                  {formatDate(item.createdAt, { dateStyle: "short", timeStyle: "short" })}
                 </td>
               </tr>
             ))}
@@ -118,9 +121,7 @@ export function AuditPage() {
         </table>
 
         {items.length === 0 && (
-          <div className="text-text-tertiary px-4 py-8 text-center text-sm">
-            No audit entries match the current filters.
-          </div>
+          <div className="text-text-tertiary px-4 py-8 text-center text-sm">{t("audit.empty")}</div>
         )}
       </div>
 

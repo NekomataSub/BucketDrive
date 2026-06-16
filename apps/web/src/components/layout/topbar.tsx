@@ -9,6 +9,7 @@ import { useSearchStore } from "@/stores/search-store"
 import { useCommandPaletteStore } from "@/stores/command-palette-store"
 import { NotificationBell } from "@/components/features/notification-bell"
 import { BrandMark, useBranding } from "@/lib/branding"
+import { useI18n } from "@/lib/i18n"
 
 interface TopbarProps {
   onOpenSidebar: () => void
@@ -27,12 +28,21 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
   const query = useSearchStore((state) => (routeKey ? state[routeKey].query : ""))
   const setRouteQuery = useSearchStore((state) => state.setRouteQuery)
   const branding = useBranding()
+  const { t } = useI18n()
 
   const themeOptions = [
-    { value: "light" as const, label: "Light", icon: Sun },
-    { value: "dark" as const, label: "Dark", icon: Moon },
-    { value: "system" as const, label: "System", icon: Monitor },
+    { value: "light" as const, label: t("topbar.theme.light"), icon: Sun },
+    { value: "dark" as const, label: t("topbar.theme.dark"), icon: Moon },
+    { value: "system" as const, label: t("topbar.theme.system"), icon: Monitor },
   ]
+  const searchPlaceholder =
+    routeKey === "dashboard"
+      ? t("search.files")
+      : routeKey === "trash"
+        ? t("search.trash")
+        : routeKey === "shares"
+          ? t("search.shares")
+          : t("search.disabled")
 
   const ActiveIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor
 
@@ -42,7 +52,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
         type="button"
         onClick={onOpenSidebar}
         className="text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg p-2 transition-colors lg:hidden"
-        aria-label="Open navigation"
+        aria-label={t("nav.openNavigation")}
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -65,7 +75,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
                 setRouteQuery(routeKey, event.target.value)
               }
             }}
-            placeholder={searchContext.placeholder}
+            placeholder={searchPlaceholder}
             disabled={!searchContext.enabled}
             className="text-text-primary placeholder:text-text-tertiary disabled:text-text-tertiary min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
           />
@@ -73,7 +83,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
             type="button"
             onClick={() => useCommandPaletteStore.getState().open()}
             className="border-border-default bg-surface-default text-text-tertiary hover:bg-surface-hover hover:text-text-secondary hidden rounded-md border px-1.5 py-0.5 text-xs transition-colors sm:block"
-            aria-label="Open command palette"
+            aria-label={t("topbar.commandPalette")}
           >
             ⌘K
           </button>
@@ -85,7 +95,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
           <DropdownMenu.Trigger asChild>
             <button
               className="text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg p-2 transition-colors"
-              aria-label="Change theme"
+              aria-label={t("topbar.theme.change")}
             >
               <ActiveIcon className="h-5 w-5" />
             </button>
@@ -136,7 +146,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
             <button
               onClick={signOut}
               className="text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg p-1.5 transition-colors"
-              aria-label="Sign out"
+              aria-label={t("topbar.signOut")}
               data-testid="sign-out"
             >
               <LogOut className="h-4 w-4" />

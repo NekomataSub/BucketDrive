@@ -70,6 +70,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router"
 import { downloadZip } from "client-zip"
 import { DEFAULT_BRAND_NAME } from "@/lib/branding"
 import { getWorkspaceCapabilities, normalizeWorkspaceRole } from "@/lib/workspace-permissions"
+import { useI18n } from "@/lib/i18n"
 
 interface WindowWithFilePicker extends Window {
   showSaveFilePicker?: (options?: {
@@ -125,6 +126,7 @@ type BatchDownloadUrlFile = {
 }
 
 export function FilesPage() {
+  const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1123,8 +1125,8 @@ export function FilesPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="text-center">
-          <p className="text-text-primary text-sm font-medium">No bucket found</p>
-          <p className="text-text-tertiary mt-1 text-xs">Sign in to start uploading files.</p>
+          <p className="text-text-primary text-sm font-medium">{t("settings.noBucket")}</p>
+          <p className="text-text-tertiary mt-1 text-xs">{t("files.signInUpload")}</p>
         </div>
       </div>
     )
@@ -1149,11 +1151,16 @@ export function FilesPage() {
         )}
 
         <PageHeader
-          title={isSearchActive ? "Search results" : "Files"}
+          title={isSearchActive ? t("files.searchResults") : t("files.title")}
           description={
             isSearchActive
-              ? `${totalFiles} results across ${bucketName}`
-              : `${totalFiles} files${foldersData?.data?.length ? ` · ${foldersData.data.length} folders` : ""}`
+              ? t("files.resultsDescription", { count: totalFiles, bucket: bucketName })
+              : foldersData?.data?.length
+                ? t("files.countWithFoldersDescription", {
+                    files: totalFiles,
+                    folders: foldersData.data.length,
+                  })
+                : t("files.countDescription", { files: totalFiles })
           }
           actions={
             <>
@@ -1163,14 +1170,14 @@ export function FilesPage() {
                   icon={<FolderPlus className="h-4 w-4" />}
                   onClick={handleCreateFolder}
                 >
-                  New Folder
+                  {t("files.newFolder")}
                 </ActionButton>
               )}
               {canUpload && (
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger asChild>
                     <ActionButton variant="primary" icon={<Upload className="h-4 w-4" />}>
-                      Upload
+                      {t("app.upload")}
                     </ActionButton>
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Portal>
@@ -1182,13 +1189,13 @@ export function FilesPage() {
                         onSelect={handleFileSelect}
                         className="text-text-primary hover:bg-surface-hover focus:bg-surface-hover cursor-pointer rounded-md px-3 py-2 text-sm outline-none"
                       >
-                        Files
+                        {t("files.uploadFiles")}
                       </DropdownMenu.Item>
                       <DropdownMenu.Item
                         onSelect={handleFolderSelect}
                         className="text-text-primary hover:bg-surface-hover focus:bg-surface-hover cursor-pointer rounded-md px-3 py-2 text-sm outline-none"
                       >
-                        Folder
+                        {t("files.uploadFolder")}
                       </DropdownMenu.Item>
                     </DropdownMenu.Content>
                   </DropdownMenu.Portal>

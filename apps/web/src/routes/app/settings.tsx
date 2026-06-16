@@ -5,6 +5,7 @@ import { useDashboardSettings, useUpdateDashboardSettings } from "@/lib/api"
 import { ActionButton, PageHeader } from "@/components/shared/page-layout"
 import { Field, Panel, TextAreaField, TextField } from "@/components/shared/ui-primitives"
 import { getWorkspaceCapabilities, normalizeWorkspaceRole } from "@/lib/workspace-permissions"
+import { useI18n } from "@/lib/i18n"
 
 export function SettingsPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -15,6 +16,7 @@ export function SettingsPage() {
     Boolean(workspace),
   )
   const canUpdateSettings = capabilities.canUpdateSettings
+  const { t } = useI18n()
 
   const [quotaGb, setQuotaGb] = useState("10")
   const [maxFileSizeMb, setMaxFileSizeMb] = useState("5120")
@@ -48,7 +50,7 @@ export function SettingsPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No bucket found</p>
+        <p className="text-text-tertiary text-sm">{t("settings.noBucket")}</p>
       </div>
     )
   }
@@ -61,8 +63,8 @@ export function SettingsPage() {
   return (
     <div className="flex h-full min-w-0 flex-col p-4 sm:p-6">
       <PageHeader
-        title="Bucket Settings"
-        description="Update quota, upload policy, retention, MIME rules, and public object delivery."
+        title={t("settings.title")}
+        description={t("settings.description")}
         actions={
           <ActionButton
             type="submit"
@@ -70,9 +72,9 @@ export function SettingsPage() {
             variant="primary"
             disabled={updateSettings.isPending || !canUpdateSettings}
             loading={updateSettings.isPending}
-            loadingLabel="Saving..."
+            loadingLabel={t("app.saving")}
           >
-            Save bucket settings
+            {t("settings.save")}
           </ActionButton>
         }
       />
@@ -103,14 +105,16 @@ export function SettingsPage() {
       >
         {!canUpdateSettings && (
           <div className="border-border-default bg-surface-secondary text-text-secondary rounded-lg border px-4 py-3 text-sm">
-            Your role can view bucket settings but cannot change them.
+            {t("settings.readOnly")}
           </div>
         )}
 
         <Panel>
-          <h2 className="text-text-primary text-base font-semibold">Storage and uploads</h2>
+          <h2 className="text-text-primary text-base font-semibold">
+            {t("settings.storageUploads")}
+          </h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <Field label="Storage quota" description="GB, minimum 1">
+            <Field label={t("settings.storageQuota")} description={t("settings.gbMinimum")}>
               <TextField
                 type="number"
                 min={1}
@@ -120,7 +124,7 @@ export function SettingsPage() {
                 onChange={(event) => setQuotaGb(event.target.value)}
               />
             </Field>
-            <Field label="Max file size" description="MB, minimum 1">
+            <Field label={t("settings.maxFileSize")} description={t("settings.mbMinimum")}>
               <TextField
                 type="number"
                 min={1}
@@ -130,7 +134,7 @@ export function SettingsPage() {
                 onChange={(event) => setMaxFileSizeMb(event.target.value)}
               />
             </Field>
-            <Field label="Upload chunk size" description="MB, minimum 1">
+            <Field label={t("settings.uploadChunkSize")} description={t("settings.mbMinimum")}>
               <TextField
                 type="number"
                 min={1}
@@ -144,9 +148,14 @@ export function SettingsPage() {
         </Panel>
 
         <Panel>
-          <h2 className="text-text-primary text-base font-semibold">Sharing and retention</h2>
+          <h2 className="text-text-primary text-base font-semibold">
+            {t("settings.sharingRetention")}
+          </h2>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <Field label="Default share expiration" description="Days, minimum 1">
+            <Field
+              label={t("settings.defaultShareExpiration")}
+              description={t("settings.daysMinimum")}
+            >
               <TextField
                 type="number"
                 min={1}
@@ -156,7 +165,7 @@ export function SettingsPage() {
                 onChange={(event) => setDefaultShareExpirationDays(event.target.value)}
               />
             </Field>
-            <Field label="Trash retention" description="Days, minimum 1">
+            <Field label={t("settings.trashRetention")} description={t("settings.daysMinimum")}>
               <TextField
                 type="number"
                 min={1}
@@ -170,11 +179,11 @@ export function SettingsPage() {
         </Panel>
 
         <Panel>
-          <h2 className="text-text-primary text-base font-semibold">File policy</h2>
+          <h2 className="text-text-primary text-base font-semibold">{t("settings.filePolicy")}</h2>
           <div className="mt-4 grid gap-4">
             <Field
-              label="Allowed MIME types"
-              description="Comma-separated. Leave empty to allow every supported file type."
+              label={t("settings.allowedMimeTypes")}
+              description={t("settings.allowedMimeTypesDescription")}
             >
               <TextAreaField
                 value={allowedMimeTypes}
@@ -208,11 +217,13 @@ export function SettingsPage() {
         </Panel>
 
         <Panel>
-          <h2 className="text-text-primary text-base font-semibold">Public object delivery</h2>
+          <h2 className="text-text-primary text-base font-semibold">
+            {t("settings.publicObjectDelivery")}
+          </h2>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <Field
-              label="R2 public domain"
-              description="Optional. Used for direct public object URLs when configured."
+              label={t("settings.r2PublicDomain")}
+              description={t("settings.r2PublicDomainDescription")}
             >
               <TextField
                 type="url"

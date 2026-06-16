@@ -423,6 +423,7 @@ function applyMigrations(sqlite: Database.Database) {
     "r2_sync_state",
     "single_bucket",
     "branding_assets",
+    "default_language",
   ]
 
   for (const [index, name] of migrationNames.entries()) {

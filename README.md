@@ -2,6 +2,8 @@
 
 Modern cloud storage platform — a beautiful frontend for Cloudflare R2, inspired by Google Drive.
 
+[Português (Brasil)](README.pt-BR.md)
+
 ## Features
 
 - **File explorer** — grid and list views, drag & drop, keyboard shortcuts, context menus
@@ -260,14 +262,14 @@ For staging and production, create `.env.staging` and `.env.production` at the r
 
 **Variable reference (all files follow the same `.env.example` format):**
 
-| Variable               | Required for               | Where to get it                                                                   | Sensitive? |
-| ---------------------- | -------------------------- | --------------------------------------------------------------------------------- | ---------- |
-| `APP_URL`              | local, staging, production | Your public frontend URL                                                          | No         |
-| `API_URL`              | local, staging, production | Your public API/worker URL                                                        | No         |
-| `BETTER_AUTH_SECRET`   | local, staging, production | Run `openssl rand -base64 64`                                                     | **Yes**    |
-| `BETTER_AUTH_URL`      | local, staging, production | Same as `API_URL`                                                                 | No         |
-| `GITHUB_CLIENT_ID`     | local, staging, production | GitHub OAuth App settings                                                         | **Yes**    |
-| `GITHUB_CLIENT_SECRET` | local, staging, production | GitHub OAuth App settings                                                         | **Yes**    |
+| Variable               | Required for               | Where to get it               | Sensitive? |
+| ---------------------- | -------------------------- | ----------------------------- | ---------- |
+| `APP_URL`              | local, staging, production | Your public frontend URL      | No         |
+| `API_URL`              | local, staging, production | Your public API/worker URL    | No         |
+| `BETTER_AUTH_SECRET`   | local, staging, production | Run `openssl rand -base64 64` | **Yes**    |
+| `BETTER_AUTH_URL`      | local, staging, production | Same as `API_URL`             | No         |
+| `GITHUB_CLIENT_ID`     | local, staging, production | GitHub OAuth App settings     | **Yes**    |
+| `GITHUB_CLIENT_SECRET` | local, staging, production | GitHub OAuth App settings     | **Yes**    |
 
 > **Note**: In GitHub Actions, these secrets must be named `GH_CLIENT_ID` and `GH_CLIENT_SECRET`
 > because the `GITHUB_` prefix is reserved. The `.env` variable names remain `GITHUB_CLIENT_ID` and
@@ -397,17 +399,17 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **New repos
 
 **Staging Environment Variables** (go to Environment → `staging` → **Add variable**):
 
-| Variable                   | Value                                          |
-| -------------------------- | ---------------------------------------------- |
-| `STAGING_D1_DATABASE_ID`   | D1 staging database ID                         |
-| `STAGING_D1_DATABASE_NAME` | D1 staging database name                       |
-| `APP_URL`                  | Staging frontend URL                           |
-| `API_URL`                  | Staging API URL                                |
-| `PLAYWRIGHT_BASE_URL`      | Staging frontend URL                           |
-| `PAGES_PROJECT_NAME`       | Cloudflare Pages project name                  |
-| `PAGES_BRANCH`             | `staging`                                      |
-| `CUSTOM_DOMAIN`            | Optional staging custom domain                 |
-| `PLATFORM_OWNER_EMAIL`     | `admin@example.com`                            |
+| Variable                   | Value                          |
+| -------------------------- | ------------------------------ |
+| `STAGING_D1_DATABASE_ID`   | D1 staging database ID         |
+| `STAGING_D1_DATABASE_NAME` | D1 staging database name       |
+| `APP_URL`                  | Staging frontend URL           |
+| `API_URL`                  | Staging API URL                |
+| `PLAYWRIGHT_BASE_URL`      | Staging frontend URL           |
+| `PAGES_PROJECT_NAME`       | Cloudflare Pages project name  |
+| `PAGES_BRANCH`             | `staging`                      |
+| `CUSTOM_DOMAIN`            | Optional staging custom domain |
+| `PLATFORM_OWNER_EMAIL`     | `admin@example.com`            |
 
 **Production Environment Secrets and Variables** — same pattern, but use the production URLs and `PRODUCTION_D1_DATABASE_ID`.
 For production, `PLATFORM_OWNER_EMAIL` should be an Environment Variable; the workflow also accepts

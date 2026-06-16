@@ -2135,6 +2135,13 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - Replaced the Pages `/api/*` proxy's external HTTP fetch with a Cloudflare Service Binding (`API_SERVICE`) to the API Worker, eliminating the need for `API_WORKER_URL` entirely.
 > - Removed the operational `DEFAULT_R2_BUCKET_NAME` fallback so signed R2 URLs require explicit `R2_BUCKET_NAME`.
 
+## Implementation Notes - pt-BR Localization
+
+> - Added a platform-wide `defaultLanguage` setting with `en-US` and `pt-BR` support, persisted in `platform_settings.default_language`.
+> - Introduced frontend i18n dictionaries with English fallback and locale-aware number/date helpers.
+> - Added a language selector to Platform Settings and localized the primary app shell, settings, dashboard, trash, audit, files, members, shares, login, and platform administration entrypoints.
+> - Added essential pt-BR documentation under `docs/pt-BR/architecture/` plus `README.pt-BR.md`.
+
 ---
 
 # Quick Reference

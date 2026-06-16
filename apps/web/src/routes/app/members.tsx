@@ -25,6 +25,7 @@ import {
   canManageWorkspaceRole,
   type WorkspaceRole,
 } from "@bucketdrive/shared"
+import { useI18n } from "@/lib/i18n"
 
 const editableRoles: Array<Exclude<WorkspaceRole, "owner">> = [
   "admin",
@@ -49,6 +50,7 @@ type MemberConfirmAction =
   | { type: "transfer"; id: string; name: string }
 
 export function MembersPage() {
+  const { t } = useI18n()
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const currentUserRole = workspace?.role ?? "viewer"
   const canInviteMembers = can(currentUserRole, "users.invite")
@@ -83,7 +85,7 @@ export function MembersPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No bucket found</p>
+        <p className="text-text-tertiary text-sm">{t("settings.noBucket")}</p>
       </div>
     )
   }
@@ -151,18 +153,12 @@ export function MembersPage() {
 
   return (
     <div className="flex h-full min-w-0 flex-col p-4 sm:p-6">
-      <PageHeader
-        title="Members"
-        description="Invite bucket members by email and manage global bucket roles."
-      />
+      <PageHeader title={t("members.title")} description={t("members.description")} />
 
       {canInviteMembers && (
         <div className="border-border-default bg-surface-default mb-4 rounded-xl border p-5">
-          <h2 className="text-text-primary text-base font-semibold">Invite Member</h2>
-          <p className="text-text-tertiary mt-1 text-xs">
-            Send an invitation link by email. The recipient can join by signing in with the invited
-            email.
-          </p>
+          <h2 className="text-text-primary text-base font-semibold">{t("members.invite")}</h2>
+          <p className="text-text-tertiary mt-1 text-xs">{t("members.inviteDescription")}</p>
 
           <form
             className="mt-4 flex flex-col gap-3 md:flex-row"

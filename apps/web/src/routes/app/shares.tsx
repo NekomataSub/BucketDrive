@@ -38,10 +38,12 @@ import {
   SegmentedControl,
 } from "@/components/shared/page-layout"
 import { can, type ShareDashboardItem } from "@bucketdrive/shared"
+import { useI18n } from "@/lib/i18n"
 
 type ShareTab = "mine" | "bucket"
 
 export function ShareManagementPage() {
+  const { t } = useI18n()
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const tableRef = useRef<HTMLDivElement>(null)
   const canManageAll = can(workspace?.role ?? "viewer", "shares.manage_all")
@@ -157,7 +159,7 @@ export function ShareManagementPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No bucket found</p>
+        <p className="text-text-tertiary text-sm">{t("settings.noBucket")}</p>
       </div>
     )
   }
@@ -165,27 +167,24 @@ export function ShareManagementPage() {
   return (
     <div className="flex h-full min-w-0 flex-col p-4 sm:p-6">
       <SelectionMarquee rect={selection.selectionRect} />
-      <PageHeader
-        title="Share Links"
-        description="Manage your active links, expirations, passwords, and revocations."
-      />
+      <PageHeader title={t("shares.title")} description={t("shares.description")} />
 
       <PageToolbar>
         <SegmentedControl
           value={activeTab}
           onChange={setActiveTab}
-          ariaLabel="Share link scope"
+          ariaLabel={t("shares.scope")}
           options={[
-            { value: "mine", label: "My Shares" },
-            ...(canManageAll ? [{ value: "bucket" as const, label: "All Bucket Shares" }] : []),
+            { value: "mine", label: t("shares.mine") },
+            ...(canManageAll ? [{ value: "bucket" as const, label: t("shares.allBucket") }] : []),
           ]}
         />
       </PageToolbar>
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">
-        <StatsCard label="Visible Links" value={String(shares.length)} />
+        <StatsCard label={t("shares.visibleLinks")} value={String(shares.length)} />
         <StatsCard
-          label="Locked Links"
+          label={t("shares.lockedLinks")}
           value={String(shares.filter((share) => share.isLocked).length)}
           tone={shares.some((share) => share.isLocked) ? "warning" : "default"}
         />

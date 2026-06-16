@@ -10,13 +10,8 @@ import {
 import { Users, Settings, Copy, Check, Upload, Image } from "lucide-react"
 import { ActionButton, PageHeader } from "@/components/shared/page-layout"
 import { StyledSelect } from "@/components/shared/styled-select"
-
-const platformInviteRoleOptions = [
-  { value: "viewer", label: "Viewer" },
-  { value: "editor", label: "Editor" },
-  { value: "manager", label: "Manager" },
-  { value: "admin", label: "Admin" },
-]
+import { Field } from "@/components/shared/ui-primitives"
+import { useI18n, type LanguageCode } from "@/lib/i18n"
 
 export function PlatformAdminPage() {
   const { data: settings, isLoading } = usePlatformSettings()
@@ -27,6 +22,19 @@ export function PlatformAdminPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("viewer")
+  const { t } = useI18n()
+
+  const platformInviteRoleOptions = [
+    { value: "viewer", label: t("role.viewer") },
+    { value: "editor", label: t("role.editor") },
+    { value: "manager", label: t("role.manager") },
+    { value: "admin", label: t("role.admin") },
+  ]
+
+  const languageOptions = [
+    { value: "en-US", label: t("language.en-US") },
+    { value: "pt-BR", label: t("language.pt-BR") },
+  ]
 
   if (isLoading) {
     return (
@@ -39,20 +47,22 @@ export function PlatformAdminPage() {
   return (
     <div className="flex h-full min-w-0 flex-col gap-6 p-4 sm:p-6">
       <PageHeader
-        eyebrow="Platform Administration"
-        title="Platform Settings"
-        description="Manage platform-wide branding, signup behavior, and platform invitations."
+        eyebrow={t("platform.eyebrow")}
+        title={t("platform.title")}
+        description={t("platform.description")}
       />
 
       <section className="grid gap-6 md:grid-cols-2">
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center gap-2">
             <Settings className="text-text-secondary h-5 w-5" />
-            <h2 className="text-text-primary text-base font-semibold">General</h2>
+            <h2 className="text-text-primary text-base font-semibold">{t("platform.general")}</h2>
           </div>
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-text-secondary block text-sm font-medium">Platform name</label>
+              <label className="text-text-secondary block text-sm font-medium">
+                {t("platform.name")}
+              </label>
               <input
                 type="text"
                 defaultValue={settings?.platformName}
@@ -66,7 +76,7 @@ export function PlatformAdminPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <AssetUpload
-                label="Platform logo"
+                label={t("platform.logo")}
                 previewUrl={settings?.platformLogoUrl}
                 disabled={uploadAsset.isPending}
                 onSelect={(file) => {
@@ -74,7 +84,7 @@ export function PlatformAdminPage() {
                 }}
               />
               <AssetUpload
-                label="Platform favicon"
+                label={t("platform.favicon")}
                 previewUrl={settings?.faviconUrl}
                 disabled={uploadAsset.isPending}
                 onSelect={(file) => {
@@ -84,8 +94,12 @@ export function PlatformAdminPage() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-text-primary text-sm font-medium">Platform public signup</p>
-                <p className="text-text-tertiary text-xs">Allow users to join without invitation</p>
+                <p className="text-text-primary text-sm font-medium">
+                  {t("platform.publicSignup")}
+                </p>
+                <p className="text-text-tertiary text-xs">
+                  {t("platform.publicSignupDescription")}
+                </p>
               </div>
               <button
                 type="button"
@@ -101,13 +115,25 @@ export function PlatformAdminPage() {
                 />
               </button>
             </div>
+            <Field label={t("platform.language")} description={t("platform.languageDescription")}>
+              <StyledSelect
+                value={settings?.defaultLanguage ?? "en-US"}
+                onValueChange={(value) => {
+                  void updateSettings.mutate({ defaultLanguage: value as LanguageCode })
+                }}
+                options={languageOptions}
+                triggerClassName="bg-bg-primary"
+              />
+            </Field>
           </div>
         </div>
 
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center gap-2">
             <Users className="text-text-secondary h-5 w-5" />
-            <h2 className="text-text-primary text-base font-semibold">Platform Invitations</h2>
+            <h2 className="text-text-primary text-base font-semibold">
+              {t("platform.invitations")}
+            </h2>
           </div>
           <form
             onSubmit={(e) => {
@@ -154,20 +180,22 @@ export function PlatformAdminPage() {
               variant="primary"
               disabled={createInvitation.isPending}
               loading={createInvitation.isPending}
-              loadingLabel="Creating..."
+              loadingLabel={t("platform.creating")}
               className="w-full"
             >
-              Generate platform invite link
+              {t("platform.generateInvite")}
             </ActionButton>
           </form>
         </div>
       </section>
 
       <section className="border-border-default bg-surface-default rounded-2xl border p-5">
-        <h2 className="text-text-primary text-base font-semibold">Pending Invitations</h2>
+        <h2 className="text-text-primary text-base font-semibold">
+          {t("platform.pendingInvitations")}
+        </h2>
         <div className="mt-4 space-y-2">
           {(invitationsData?.data?.length ?? 0) === 0 ? (
-            <p className="text-text-tertiary text-sm">No pending invitations.</p>
+            <p className="text-text-tertiary text-sm">{t("platform.noPendingInvitations")}</p>
           ) : (
             (invitationsData?.data ?? []).map(
               (inv: { id: string; email: string; role: string; inviteLink?: string }) => (
@@ -177,7 +205,9 @@ export function PlatformAdminPage() {
                 >
                   <div>
                     <p className="text-text-primary text-sm font-medium">{inv.email}</p>
-                    <p className="text-text-tertiary text-xs">Role: {inv.role}</p>
+                    <p className="text-text-tertiary text-xs">
+                      {t("platform.role", { role: inv.role })}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -196,7 +226,7 @@ export function PlatformAdminPage() {
                     ) : (
                       <Copy className="h-4 w-4" />
                     )}
-                    {copiedId === inv.id ? "Copied" : "Copy link"}
+                    {copiedId === inv.id ? t("app.copied") : t("platform.copyLink")}
                   </button>
                 </div>
               ),
@@ -219,6 +249,8 @@ function AssetUpload({
   disabled: boolean
   onSelect: (file: File) => void
 }) {
+  const { t } = useI18n()
+
   return (
     <label className="border-border-muted bg-bg-tertiary hover:bg-surface-hover grid cursor-pointer gap-2 rounded-xl border p-3 transition-colors">
       <span className="text-text-secondary flex items-center gap-2 text-sm font-medium">
@@ -235,7 +267,7 @@ function AssetUpload({
         </span>
         <span className="text-accent inline-flex items-center gap-1 text-xs font-medium">
           <Upload className="h-3.5 w-3.5" />
-          Upload
+          {t("app.upload")}
         </span>
       </span>
       <input

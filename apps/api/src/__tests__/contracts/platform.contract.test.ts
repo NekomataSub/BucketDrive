@@ -20,16 +20,17 @@ describe("platform contracts", () => {
 
     const settings = await ctx.request("/api/platform/settings", {
       method: "PATCH",
-      body: JSON.stringify({ platformName: "BucketDrive Test" }),
+      body: JSON.stringify({ platformName: "BucketDrive Test", defaultLanguage: "pt-BR" }),
     })
     expect(settings.status).toBe(200)
-    UpdatePlatformSettingsResponse.parse(await ctx.json(settings))
+    const updatedSettings = UpdatePlatformSettingsResponse.parse(await ctx.json(settings))
+    expect(updatedSettings.settings.defaultLanguage).toBe("pt-BR")
 
     const readSettings = await ctx.request("/api/platform/settings", { userId: null })
     expect(readSettings.status).toBe(200)
-    expect(PlatformSettingsResponse.parse(await ctx.json(readSettings)).platformName).toBe(
-      "BucketDrive Test",
-    )
+    const parsedReadSettings = PlatformSettingsResponse.parse(await ctx.json(readSettings))
+    expect(parsedReadSettings.platformName).toBe("BucketDrive Test")
+    expect(parsedReadSettings.defaultLanguage).toBe("pt-BR")
 
     const workspaces = await ctx.request("/api/workspaces")
     expect(workspaces.status).toBe(200)
@@ -123,6 +124,13 @@ describe("platform contracts", () => {
     })
     expect(invalid.status).toBe(400)
     expectApiError(await ctx.json(invalid))
+
+    const invalidLanguage = await ctx.request("/api/platform/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ defaultLanguage: "es-ES" }),
+    })
+    expect(invalidLanguage.status).toBe(400)
+    expectApiError(await ctx.json(invalidLanguage))
 
     const invalidInvitation = await ctx.request("/api/platform/invitations", {
       method: "POST",

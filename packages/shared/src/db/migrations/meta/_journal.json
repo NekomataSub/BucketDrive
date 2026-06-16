@@ -92,6 +92,13 @@
       "when": 1778631000000,
       "tag": "0012_branding_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1781568000000,
+      "tag": "0013_default_language",
+      "breakpoints": true
     }
   ]
 }

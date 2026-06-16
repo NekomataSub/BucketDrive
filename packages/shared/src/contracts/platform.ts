@@ -1,9 +1,12 @@
 import { z } from "zod"
 import { WorkspaceRole } from "../schemas/common"
 
+export const LanguageCode = z.enum(["en-US", "pt-BR"])
+
 export const PlatformSettingsResponse = z.object({
   platformName: z.string(),
   enablePublicSignup: z.boolean(),
+  defaultLanguage: LanguageCode,
   platformLogoUrl: z.url().or(z.string().startsWith("/")).nullable(),
   faviconUrl: z.url().or(z.string().startsWith("/")).nullable(),
 })
@@ -11,6 +14,7 @@ export const PlatformSettingsResponse = z.object({
 export const UpdatePlatformSettingsRequest = z.object({
   platformName: z.string().min(1).max(100).optional(),
   enablePublicSignup: z.boolean().optional(),
+  defaultLanguage: LanguageCode.optional(),
 })
 
 export const UpdatePlatformSettingsResponse = z.object({
@@ -72,3 +76,4 @@ export const AcceptPlatformInvitationResponse = z.object({
 
 export type PlatformSettings = z.infer<typeof PlatformSettingsResponse>
 export type BucketResponseType = z.infer<typeof BucketResponse>
+export type LanguageCodeType = z.infer<typeof LanguageCode>
