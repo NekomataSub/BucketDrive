@@ -3,10 +3,12 @@ packages:
   - "packages/*"
   - "tooling/*"
 overrides:
+  "@cloudflare/workers-types": 4.20260609.1
   esbuild: ^0.28.0
   shell-quote: ^1.8.4
   tmp: ^0.2.6
   uuid: ^14.0.0
+  wrangler: 4.99.0
   ws: ^8.20.1
 allowBuilds:
   better-sqlite3: true

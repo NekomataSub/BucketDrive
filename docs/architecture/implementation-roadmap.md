@@ -2149,6 +2149,13 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - Added a remote schema verification for `platform_settings.default_language` before Worker deploys continue.
 > - Changed the production smoke check to hit the public Pages API route at `${APP_URL}/api/health`.
 
+## Implementation Notes - Production Deploy Warning Cleanup
+
+> - Removed the invalid API Wrangler `env.production.workers` section; background workers remain deployed from `apps/workers/wrangler.toml`.
+> - Updated the production workflow to use Node 24 actions, deploy Pages with `--commit-dirty=true`, and rely on the existing infrastructure provisioning step for Pages project creation.
+> - Changed the production API smoke check to prefer the API Worker deployment URL, avoiding transient custom-domain Pages 403s immediately after deploy.
+> - Hid Wrangler's update banner in CI and updated Turbo worker build outputs to reduce deploy/build warning noise.
+
 ---
 
 # Quick Reference
