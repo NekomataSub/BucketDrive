@@ -2104,14 +2104,21 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - **Problem:** Client-side ZIP generation (`client-zip`, `fflate.zipSync`) crashed browser with SIGILL at ~350MB due to buffering entire archive in memory.
 > - **Solution:** Reverted to server-side streaming via `POST /api/batch/download` with `fflate`'s `Zip()` async streaming. Backend reads each file from R2 via `getObject()` (binding), pushes chunks into `ZipDeflate`, and streams output back to client.
 > - **Frontend:** Chrome/Edge use `showSaveFilePicker()` + `Response.body.pipeTo(writable)` for true streaming to disk without buffering. Safari/Firefox fall back to `res.blob()` (memory-limited but standard).
-> - **Dev mode:** `--remote` now works with real D1 and R2:
->   - D1: `bucketdrive-db` (4d32efe1-77cc-4963-a6e9-89187f97e2f7) - real database with migrations and seed
->   - R2: `nekomatadrive` - real bucket via binding
+> - **Dev mode:** `--remote` can be pointed at real D1 and R2 resources through environment values:
+>   - D1: set `D1_DATABASE_NAME` plus the matching D1 database ID env value before preparing Wrangler config
+>   - R2: set `R2_BUCKET_NAME` and R2 credentials for the target service
 >   - Upload: via presigned URLs (S3) → goes to real R2
 >   - Batch download: `getObject()` via binding → reads from real R2
 > - **D1 Setup:** Migration 0011 failed due to FOREIGN KEY constraints. Manually applied remaining migrations and created missing tables (`bucket_settings`). Inserted `platform_settings` default record. Login now works.
 > - **Token management:** `CLOUDFLARE_API_TOKEN` (Workers token for `wrangler`), `CLOUDFLARE_API_TOKEN_S3` (S3 token for `aws4fetch`)
-> - **Files changed:** `apps/api/src/modules/batch/batch.handler.ts` (server-side `streamZipFiles()`), `apps/web/src/routes/app/files.tsx` (frontend streaming), `apps/api/src/modules/files/files.handler.ts` (`POST /upload/direct`), `apps/api/src/services/upload.service.ts` (direct upload fallback), `apps/web/src/hooks/use-upload.ts` (direct upload handler), `wrangler.toml` (real database_id), `apps/api/package.json` (`--remote`).
+> - **Files changed:** `apps/api/src/modules/batch/batch.handler.ts` (server-side `streamZipFiles()`), `apps/web/src/routes/app/files.tsx` (frontend streaming), `apps/api/src/modules/files/files.handler.ts` (`POST /upload/direct`), `apps/api/src/services/upload.service.ts` (direct upload fallback), `apps/web/src/hooks/use-upload.ts` (direct upload handler), `wrangler.toml` (environment-prepared D1/R2 bindings), `apps/api/package.json` (`--remote`).
+
+## Implementation Notes - Service Configuration Hardcodes
+
+> - Removed the committed real D1 database ID and personal R2 bucket from Wrangler config; local Wrangler uses placeholders/defaults and deploy values are prepared from env.
+> - Added configurable D1 database names, R2 bucket propagation, and Pages API proxy settings through `.env.*`, GitHub Actions env files, and `pnpm env:prepare:*`.
+> - Replaced the Pages `/api/*` proxy's fixed Workers URL with `API_WORKER_URL`, falling back to `API_URL` only when it points to a different origin than the Pages app.
+> - Removed the operational `DEFAULT_R2_BUCKET_NAME` fallback so signed R2 URLs require explicit `R2_BUCKET_NAME`.
 
 ---
 

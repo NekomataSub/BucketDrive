@@ -66,6 +66,7 @@ R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
 # App
 APP_URL=http://localhost:5173
 API_URL=http://localhost:8787
+API_WORKER_URL=http://localhost:8787
 PLATFORM_OWNER_EMAIL=you@example.com
 ```
 

@@ -1,7 +1,6 @@
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { ZodError } from "zod"
-import { DEFAULT_R2_BUCKET_NAME } from "@bucketdrive/shared/constants"
 import { securityHeaders } from "./middleware/security-headers"
 import { createAuth } from "./lib/auth"
 import { createD1DB } from "./lib/db"
@@ -99,14 +98,15 @@ app.get("/api/storage/status", authMiddleware, (c) => {
   const hasAccessKey = Boolean(c.env.R2_ACCESS_KEY_ID)
   const hasSecretKey = Boolean(c.env.R2_SECRET_ACCESS_KEY)
   const endpointConfigured = Boolean(c.env.R2_ENDPOINT)
-  const presignedUrls = hasAccessKey && hasSecretKey && endpointConfigured
-  const bucketName = c.env.R2_BUCKET_NAME ?? DEFAULT_R2_BUCKET_NAME
+  const bucketConfigured = Boolean(c.env.R2_BUCKET_NAME)
+  const presignedUrls = hasAccessKey && hasSecretKey && endpointConfigured && bucketConfigured
 
   return c.json({
     provider: presignedUrls ? "r2-s3" : "r2-binding",
-    bucketName,
+    bucketName: c.env.R2_BUCKET_NAME ?? null,
     bucketBinding: Boolean(c.env.STORAGE),
     s3Credentials: hasAccessKey && hasSecretKey,
+    bucketConfigured,
     presignedUrls,
     endpointConfigured,
     expectedCorsOrigin: c.env.APP_URL ?? "http://localhost:5173",

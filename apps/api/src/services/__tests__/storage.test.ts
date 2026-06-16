@@ -333,4 +333,15 @@ describe("createStorageProvider", () => {
 
     expect(url).toContain("https://test.r2.cloudflarestorage.com/custom-bucket/key")
   })
+
+  it("does not infer a bucket name for signed URL providers", async () => {
+    const provider = createStorageProvider({
+      STORAGE: createMockR2Bucket(),
+      R2_ACCESS_KEY_ID: "test-key",
+      R2_SECRET_ACCESS_KEY: "test-secret",
+      R2_ENDPOINT: "https://test.r2.cloudflarestorage.com",
+    })
+
+    await expect(provider.generateSignedUploadUrl("key")).rejects.toThrow("R2_BUCKET_NAME")
+  })
 })

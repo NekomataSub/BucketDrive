@@ -12,7 +12,8 @@ invocation_logs = true
 [[d1_databases]]
 binding = "DB"
 database_name = "bucketdrive-db"
-database_id = "4d32efe1-77cc-4963-a6e9-89187f97e2f7"
+# Local-only placeholder so Wrangler can apply migrations to D1 local state.
+database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "packages/shared/src/db/migrations"
 
 [[env.staging.d1_databases]]
@@ -24,13 +25,13 @@ migrations_dir = "packages/shared/src/db/migrations"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "bucketdrive-db"
-database_id = "4d32efe1-77cc-4963-a6e9-89187f97e2f7"
+database_id = ""
 migrations_dir = "packages/shared/src/db/migrations"
 
 # R2 Buckets
 [[r2_buckets]]
 binding = "STORAGE"
-bucket_name = "nekomatadrive"
+bucket_name = "bucketdrive-dev"
 
 [[env.staging.r2_buckets]]
 binding = "STORAGE"

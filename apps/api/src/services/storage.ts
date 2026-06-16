@@ -1,5 +1,4 @@
 import { AwsClient } from "aws4fetch"
-import { DEFAULT_R2_BUCKET_NAME } from "@bucketdrive/shared/constants"
 
 export class StorageProviderError extends Error {
   constructor(
@@ -67,10 +66,10 @@ export class R2StorageProvider implements StorageProvider {
     accessKeyId: string
     secretAccessKey: string
     endpoint: string
-    bucketName?: string
+    bucketName: string
   }) {
     this.binding = config.binding
-    this.bucketName = config.bucketName ?? DEFAULT_R2_BUCKET_NAME
+    this.bucketName = config.bucketName
     this.endpoint = config.endpoint.replace(/\/$/, "")
     this.s3 = new AwsClient({
       accessKeyId: config.accessKeyId,
@@ -292,7 +291,7 @@ export function createStorageProvider(env: {
   R2_ENDPOINT?: string
   R2_BUCKET_NAME?: string
 }): StorageProvider {
-  if (env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_ENDPOINT) {
+  if (env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_ENDPOINT && env.R2_BUCKET_NAME) {
     return new R2StorageProvider({
       binding: env.STORAGE,
       accessKeyId: env.R2_ACCESS_KEY_ID,
@@ -339,7 +338,7 @@ class R2BindingProvider implements StorageProvider {
   generateSignedUploadUrl(_key: string, _expiresIn?: number): Promise<string> {
     return Promise.reject(
       new Error(
-        "Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ENDPOINT in .dev.vars.",
+        "Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT, and R2_BUCKET_NAME in .dev.vars.",
       ),
     )
   }
@@ -351,7 +350,7 @@ class R2BindingProvider implements StorageProvider {
   ): Promise<string> {
     return Promise.reject(
       new Error(
-        "Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ENDPOINT in .dev.vars.",
+        "Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT, and R2_BUCKET_NAME in .dev.vars.",
       ),
     )
   }
@@ -410,7 +409,7 @@ class R2BindingProvider implements StorageProvider {
   generateSignedUploadPartUrl(): Promise<string> {
     return Promise.reject(
       new Error(
-        "Presigned part URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ENDPOINT in .dev.vars.",
+        "Presigned part URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT, and R2_BUCKET_NAME in .dev.vars.",
       ),
     )
   }

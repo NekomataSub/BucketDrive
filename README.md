@@ -170,10 +170,10 @@ If you prefer not to use the automated setup, create the databases manually:
 
 ```bash
 # Staging
-npx wrangler d1 create bucketdrive-db-staging
+npx wrangler d1 create "$STAGING_D1_DATABASE_NAME"
 
 # Production
-npx wrangler d1 create bucketdrive-db
+npx wrangler d1 create "$PRODUCTION_D1_DATABASE_NAME"
 ```
 
 Each command prints a `database_id`. **Save both IDs** — they will be used as `STAGING_D1_DATABASE_ID` and `PRODUCTION_D1_DATABASE_ID`.
@@ -184,10 +184,10 @@ If not created automatically:
 
 ```bash
 # Staging
-npx wrangler r2 bucket create bucketdrive-staging
+npx wrangler r2 bucket create "<staging-r2-bucket-name>"
 
 # Production
-npx wrangler r2 bucket create bucketdrive-files
+npx wrangler r2 bucket create "<production-r2-bucket-name>"
 ```
 
 ### 6. Configure R2 CORS
@@ -209,7 +209,7 @@ pnpm r2:cors:dev
 ```json
 [
   {
-    "AllowedOrigins": ["https://staging.bucketdrive.dev", "https://drive.nekomata.moe"],
+    "AllowedOrigins": ["https://<staging-app-domain>", "https://<production-app-domain>"],
     "AllowedMethods": ["GET", "PUT", "DELETE", "HEAD"],
     "AllowedHeaders": ["*"]
   }
@@ -232,8 +232,8 @@ For each environment, create a separate OAuth app (or use the same one if all sh
 1. Go to GitHub → Settings → Developer settings → [OAuth Apps](https://github.com/settings/developers)
 2. Click **New OAuth App**
 3. Fill in:
-   - Homepage URL: `http://localhost:5173` (dev), `https://staging.bucketdrive.dev` (staging), `https://drive.nekomata.moe` (production)
-   - Authorization callback URL: `http://localhost:5173/api/auth/callback/github` (dev), `https://staging.bucketdrive.dev/api/auth/callback/github` (staging), `https://drive.nekomata.moe/api/auth/callback/github` (production)
+   - Homepage URL: `http://localhost:5173` (dev), your staging `APP_URL`, and your production `APP_URL`
+   - Authorization callback URL: `http://localhost:5173/api/auth/callback/github` (dev), plus `<APP_URL>/api/auth/callback/github` for staging and production
 4. Copy the **Client ID** and generate a **Client Secret**
 
 **Google OAuth Client (per environment):**
@@ -242,8 +242,8 @@ For each environment, create a separate OAuth app (or use the same one if all sh
 2. Click **Create Credentials** → **OAuth 2.0 Client ID**
 3. Add the authorized redirect URI matching your environment:
    - `http://localhost:5173/api/auth/callback/google` (dev)
-   - `https://staging.bucketdrive.dev/api/auth/callback/google` (staging)
-   - `https://drive.nekomata.moe/api/auth/callback/google` (production)
+   - `<staging APP_URL>/api/auth/callback/google` (staging)
+   - `<production APP_URL>/api/auth/callback/google` (production)
 4. Copy the **Client ID** and **Client Secret**
 
 ### 9. Fill in Environment Variables
@@ -260,37 +260,41 @@ For staging and production, create `.env.staging` and `.env.production` at the r
 
 **Variable reference (all files follow the same `.env.example` format):**
 
-| Variable               | Required for               | Where to get it               | Sensitive? |
-| ---------------------- | -------------------------- | ----------------------------- | ---------- |
-| `APP_URL`              | local, staging, production | Your public frontend URL      | No         |
-| `API_URL`              | local, staging, production | Your public API/worker URL    | No         |
-| `BETTER_AUTH_SECRET`   | local, staging, production | Run `openssl rand -base64 64` | **Yes**    |
-| `BETTER_AUTH_URL`      | local, staging, production | Same as `API_URL`             | No         |
-| `GITHUB_CLIENT_ID`     | local, staging, production | GitHub OAuth App settings     | **Yes**    |
-| `GITHUB_CLIENT_SECRET` | local, staging, production | GitHub OAuth App settings     | **Yes**    |
+| Variable               | Required for               | Where to get it                                                                   | Sensitive? |
+| ---------------------- | -------------------------- | --------------------------------------------------------------------------------- | ---------- |
+| `APP_URL`              | local, staging, production | Your public frontend URL                                                          | No         |
+| `API_URL`              | local, staging, production | Your public API/worker URL                                                        | No         |
+| `API_WORKER_URL`       | local, staging, production | Origin for the Pages `/api/*` proxy; use the Worker origin, not the Pages app URL | No         |
+| `BETTER_AUTH_SECRET`   | local, staging, production | Run `openssl rand -base64 64`                                                     | **Yes**    |
+| `BETTER_AUTH_URL`      | local, staging, production | Same as `API_URL`                                                                 | No         |
+| `GITHUB_CLIENT_ID`     | local, staging, production | GitHub OAuth App settings                                                         | **Yes**    |
+| `GITHUB_CLIENT_SECRET` | local, staging, production | GitHub OAuth App settings                                                         | **Yes**    |
 
 > **Note**: In GitHub Actions, these secrets must be named `GH_CLIENT_ID` and `GH_CLIENT_SECRET`
 > because the `GITHUB_` prefix is reserved. The `.env` variable names remain `GITHUB_CLIENT_ID` and
 > `GITHUB_CLIENT_SECRET` (the app expects these). The workflow maps `secrets.GH_CLIENT_ID` →
 > `GITHUB_CLIENT_ID` when creating the `.env.staging` / `.env.production` files.
 
-| Variable                    | Required for               | Where to get it                                                               | Sensitive? |
-| --------------------------- | -------------------------- | ----------------------------------------------------------------------------- | ---------- |
-| `GOOGLE_CLIENT_ID`          | local, staging, production | Google Cloud Console                                                          | **Yes**    |
-| `GOOGLE_CLIENT_SECRET`      | local, staging, production | Google Cloud Console                                                          | **Yes**    |
-| `CLOUDFLARE_ACCOUNT_ID`     | local, staging, production | Cloudflare Dashboard sidebar                                                  | **Yes**    |
-| `CLOUDFLARE_API_TOKEN`      | local, staging, production | Cloudflare Dashboard -> API Tokens                                            | **Yes**    |
-| `STAGING_D1_DATABASE_ID`    | staging                    | Output of `wrangler d1 create bucketdrive-db-staging`                         | No         |
-| `PRODUCTION_D1_DATABASE_ID` | production                 | Output of `wrangler d1 create bucketdrive-db`                                 | No         |
-| `R2_ACCESS_KEY_ID`          | local, staging, production | R2 Dashboard -> Manage R2 API Tokens                                          | **Yes**    |
-| `R2_SECRET_ACCESS_KEY`      | local, staging, production | R2 Dashboard -> Manage R2 API Tokens                                          | **Yes**    |
-| `R2_BUCKET_NAME`            | local, staging, production | Your bucket name (e.g., `bucketdrive-staging`)                                | No         |
-| `R2_ENDPOINT`               | local, staging, production | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`                               | No         |
-| `PLAYWRIGHT_BASE_URL`       | staging                    | Same as `APP_URL`                                                             | No         |
-| `PAGES_PROJECT_NAME`        | staging, production        | Cloudflare Pages project name (e.g., `bucketdrive`)                           | No         |
-| `PAGES_BRANCH`              | staging, production        | Pages branch name (e.g., `staging`)                                           | No         |
-| `CUSTOM_DOMAIN`             | staging, production        | Custom domain attached to the Pages project (e.g., `staging.bucketdrive.dev`) | No         |
-| `PLATFORM_OWNER_EMAIL`      | local, staging, production | Your admin email                                                              | No         |
+| Variable                      | Required for               | Where to get it                                           | Sensitive? |
+| ----------------------------- | -------------------------- | --------------------------------------------------------- | ---------- |
+| `GOOGLE_CLIENT_ID`            | local, staging, production | Google Cloud Console                                      | **Yes**    |
+| `GOOGLE_CLIENT_SECRET`        | local, staging, production | Google Cloud Console                                      | **Yes**    |
+| `CLOUDFLARE_ACCOUNT_ID`       | local, staging, production | Cloudflare Dashboard sidebar                              | **Yes**    |
+| `CLOUDFLARE_API_TOKEN`        | local, staging, production | Cloudflare Dashboard -> API Tokens                        | **Yes**    |
+| `D1_DATABASE_NAME`            | local, staging, production | Default D1 database name for scripts                      | No         |
+| `STAGING_D1_DATABASE_NAME`    | staging                    | Staging D1 database name                                  | No         |
+| `PRODUCTION_D1_DATABASE_NAME` | production                 | Production D1 database name                               | No         |
+| `STAGING_D1_DATABASE_ID`      | staging                    | Output of `wrangler d1 create <staging database name>`    | No         |
+| `PRODUCTION_D1_DATABASE_ID`   | production                 | Output of `wrangler d1 create <production database name>` | No         |
+| `R2_ACCESS_KEY_ID`            | local, staging, production | R2 Dashboard -> Manage R2 API Tokens                      | **Yes**    |
+| `R2_SECRET_ACCESS_KEY`        | local, staging, production | R2 Dashboard -> Manage R2 API Tokens                      | **Yes**    |
+| `R2_BUCKET_NAME`              | local, staging, production | Your bucket name                                          | No         |
+| `R2_ENDPOINT`                 | local, staging, production | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`           | No         |
+| `PLAYWRIGHT_BASE_URL`         | staging                    | Same as `APP_URL`                                         | No         |
+| `PAGES_PROJECT_NAME`          | staging, production        | Cloudflare Pages project name (e.g., `bucketdrive`)       | No         |
+| `PAGES_BRANCH`                | staging, production        | Pages branch name (e.g., `staging`)                       | No         |
+| `CUSTOM_DOMAIN`               | staging, production        | Custom domain attached to the Pages project               | No         |
+| `PLATFORM_OWNER_EMAIL`        | local, staging, production | Your admin email                                          | No         |
 
 > **Important**: `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI credentials** — they authenticate the Wrangler CLI. They are **never** pushed to the Workers as secrets. The `pnpm env:push:*` command explicitly skips these keys.
 
@@ -328,7 +332,7 @@ pnpm env:prepare:staging
 pnpm env:push:staging
 
 # 4. Apply D1 migrations
-npx wrangler d1 migrations apply bucketdrive-db-staging --remote --env staging
+pnpm db:migrate:staging -- --remote
 
 # 5. Deploy the API Worker
 npx wrangler deploy --env staging --config wrangler.toml
@@ -389,21 +393,23 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **New repos
 | `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret                                                                       |
 | `R2_ACCESS_KEY_ID`     | R2 API Token ID                                                                                  |
 | `R2_SECRET_ACCESS_KEY` | R2 API Token Secret                                                                              |
-| `R2_BUCKET_NAME`       | `bucketdrive-staging`                                                                            |
+| `R2_BUCKET_NAME`       | Staging R2 bucket name                                                                           |
 | `R2_ENDPOINT`          | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`                                                  |
 
 **Staging Environment Variables** (go to Environment → `staging` → **Add variable**):
 
-| Variable                 | Value                                 |
-| ------------------------ | ------------------------------------- |
-| `STAGING_D1_DATABASE_ID` | D1 staging database ID                |
-| `APP_URL`                | `https://staging.bucketdrive.dev`     |
-| `API_URL`                | `https://staging-api.bucketdrive.dev` |
-| `PLAYWRIGHT_BASE_URL`    | `https://staging.bucketdrive.dev`     |
-| `PAGES_PROJECT_NAME`     | `bucketdrive`                         |
-| `PAGES_BRANCH`           | `staging`                             |
-| `CUSTOM_DOMAIN`          | `staging.bucketdrive.dev`             |
-| `PLATFORM_OWNER_EMAIL`   | `admin@example.com`                   |
+| Variable                   | Value                                          |
+| -------------------------- | ---------------------------------------------- |
+| `STAGING_D1_DATABASE_ID`   | D1 staging database ID                         |
+| `STAGING_D1_DATABASE_NAME` | D1 staging database name                       |
+| `APP_URL`                  | Staging frontend URL                           |
+| `API_URL`                  | Staging API URL                                |
+| `API_WORKER_URL`           | Worker origin used by the Pages `/api/*` proxy |
+| `PLAYWRIGHT_BASE_URL`      | Staging frontend URL                           |
+| `PAGES_PROJECT_NAME`       | Cloudflare Pages project name                  |
+| `PAGES_BRANCH`             | `staging`                                      |
+| `CUSTOM_DOMAIN`            | Optional staging custom domain                 |
+| `PLATFORM_OWNER_EMAIL`     | `admin@example.com`                            |
 
 **Production Environment Secrets and Variables** — same pattern, but use the production URLs and `PRODUCTION_D1_DATABASE_ID`.
 For production, `PLATFORM_OWNER_EMAIL` should be an Environment Variable; the workflow also accepts

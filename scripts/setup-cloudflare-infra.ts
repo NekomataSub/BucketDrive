@@ -4,6 +4,38 @@ import { existsSync, readFileSync, writeFileSync } from "fs"
 
 type Environment = "staging" | "production"
 
+function readEnvFiles(environment: Environment): Record<string, string> {
+  const vars: Record<string, string> = {}
+
+  for (const file of [".dev.vars", `.env.${environment}`]) {
+    if (!existsSync(file)) continue
+
+    for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue
+      const index = trimmed.indexOf("=")
+      vars[trimmed.slice(0, index)] = stripQuotes(trimmed.slice(index + 1))
+    }
+  }
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === "string") vars[key] = value
+  }
+
+  return vars
+}
+
+function stripQuotes(value: string): string {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return value.slice(1, -1)
+  }
+
+  return value
+}
+
 function runWrangler(args: string[]): string {
   const result = spawnSync("pnpm", ["--filter", "@bucketdrive/api", "exec", "wrangler", ...args], {
     encoding: "utf8",
@@ -55,22 +87,14 @@ function getBucketNameFromWrangler(environment: string): string {
   return match ? match[1] : ""
 }
 
-function getPagesProjectName(): string {
-  const pagesProjectName = process.env.PAGES_PROJECT_NAME
-  if (pagesProjectName) return pagesProjectName
-
-  const envFile = existsSync(".env.staging")
-    ? ".env.staging"
-    : existsSync(".env.production")
-      ? ".env.production"
-      : null
-  if (envFile) {
-    const envContent = readFileSync(envFile, "utf8")
-    const match = envContent.match(/PAGES_PROJECT_NAME\s*=\s*(.+)/)
-    if (match) return match[1].trim()
-  }
-
-  return ""
+function getD1DatabaseName(vars: Record<string, string>, environment: Environment): string {
+  const environmentKey =
+    environment === "staging" ? "STAGING_D1_DATABASE_NAME" : "PRODUCTION_D1_DATABASE_NAME"
+  return (
+    vars[environmentKey]?.trim() ||
+    vars.D1_DATABASE_NAME?.trim() ||
+    (environment === "staging" ? "bucketdrive-db-staging" : "bucketdrive-db")
+  )
 }
 
 function main() {
@@ -81,10 +105,11 @@ function main() {
     process.exit(1)
   }
 
-  const dbName = environment === "staging" ? "bucketdrive-db-staging" : "bucketdrive-db"
+  const vars = readEnvFiles(environment)
+  const dbName = getD1DatabaseName(vars, environment)
   const d1Key = environment === "staging" ? "STAGING_D1_DATABASE_ID" : "PRODUCTION_D1_DATABASE_ID"
-  const bucketName = getBucketNameFromWrangler(environment)
-  const pagesProjectName = getPagesProjectName()
+  const bucketName = vars.R2_BUCKET_NAME?.trim() || getBucketNameFromWrangler(environment)
+  const pagesProjectName = vars.PAGES_PROJECT_NAME?.trim() ?? ""
 
   // --- D1 Database ---
   console.log(`\n🔍 Checking D1 database "${dbName}"...`)

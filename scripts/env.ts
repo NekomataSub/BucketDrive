@@ -134,6 +134,7 @@ function checkLocalEnv() {
   }
 
   assertOauthConfigured(vars, ".dev.vars")
+  assertApiProxyConfigured(vars, ".dev.vars")
   console.log(".dev.vars has the required local runtime keys.")
 }
 
@@ -148,6 +149,7 @@ function checkDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
   }
 
   assertOauthConfigured(vars, `${environment} env`)
+  assertApiProxyConfigured(vars, `${environment} env`)
   console.log(`${environment} env has the required deploy and runtime keys.`)
 }
 
@@ -164,6 +166,29 @@ function assertOauthConfigured(vars: Record<string, string>, source: string) {
   }
 }
 
+function assertApiProxyConfigured(vars: Record<string, string>, source: string) {
+  if (vars.API_WORKER_URL?.trim()) return
+
+  const appUrl = parseUrl(vars.APP_URL)
+  const apiUrl = parseUrl(vars.API_URL)
+  if (appUrl && apiUrl && appUrl.origin !== apiUrl.origin) return
+
+  console.error(
+    `Missing API_WORKER_URL in ${source}. Set it when API_URL shares the same origin as APP_URL to avoid a Pages /api proxy loop.`,
+  )
+  process.exit(1)
+}
+
+function parseUrl(value: string | undefined): URL | null {
+  if (!value?.trim()) return null
+
+  try {
+    return new URL(value)
+  } catch {
+    return null
+  }
+}
+
 function loadDeployVars(environment: DeployEnvironment, explicitFile?: string) {
   const envFile = getDeployEnvFile(environment, explicitFile)
   const files = existsSync(envFile) ? [envFile] : []
@@ -173,56 +198,75 @@ function loadDeployVars(environment: DeployEnvironment, explicitFile?: string) {
 function prepareDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
   const vars = loadDeployVars(environment, explicitFile)
   const d1Id = vars[getD1Key(environment)]?.trim() || vars.D1_DATABASE_ID?.trim()
-
-  if (!d1Id) {
-    console.log(`No ${getD1Key(environment)} provided; leaving Wrangler configs unchanged.`)
-    return
-  }
-
+  const d1Name = getD1Name(vars, environment)
   const appUrl = vars.APP_URL?.trim()
   const apiUrl = vars.API_URL?.trim()
   const r2BucketName = vars.R2_BUCKET_NAME?.trim()
+  const apiWorkerUrl = vars.API_WORKER_URL?.trim()
 
-  patchWranglerConfig(API_WRANGLER, environment, d1Id, appUrl, apiUrl, r2BucketName)
-  patchWranglerConfig(WORKERS_WRANGLER, environment, d1Id, appUrl, apiUrl, r2BucketName)
+  patchWranglerConfig(API_WRANGLER, environment, {
+    d1Id,
+    d1Name,
+    appUrl,
+    apiUrl,
+    r2BucketName,
+  })
+  patchWranglerConfig(WORKERS_WRANGLER, environment, {
+    d1Id,
+    d1Name,
+    appUrl,
+    apiUrl,
+    r2BucketName,
+  })
+  if (apiWorkerUrl) {
+    console.log(`API_WORKER_URL is a Pages environment variable: ${apiWorkerUrl}`)
+  }
   console.log(`Prepared Wrangler configs for ${environment} from environment values.`)
 }
 
 function patchWranglerConfig(
   configPath: string,
   environment: DeployEnvironment,
-  d1Id: string,
-  appUrl?: string,
-  apiUrl?: string,
-  r2BucketName?: string,
+  options: {
+    d1Id?: string
+    d1Name?: string
+    appUrl?: string
+    apiUrl?: string
+    r2BucketName?: string
+  },
 ) {
   if (!existsSync(configPath)) {
     throw new Error(`Missing Wrangler config: ${relative(process.cwd(), configPath)}`)
   }
 
   const current = readFileSync(configPath, "utf8")
-  const d1Pattern = new RegExp(
-    `(\\[\\[env\\.${environment}\\.d1_databases\\]\\][\\s\\S]*?database_id\\s*=\\s*")([^"]*)(")`,
-  )
-  let next = current.replace(
-    d1Pattern,
-    (_match: string, prefix: string, _current: string, suffix: string) =>
-      `${prefix}${d1Id}${suffix}`,
-  )
+  let next = current
 
-  if (next === current) {
-    throw new Error(
-      `Could not locate env.${environment}.d1_databases.database_id in ${relative(
-        process.cwd(),
-        configPath,
-      )}.`,
+  if (options.d1Id) {
+    next = replaceWranglerBinding(next, environment, "d1_databases", "database_id", options.d1Id)
+  }
+
+  if (options.d1Name) {
+    next = replaceWranglerBinding(
+      next,
+      environment,
+      "d1_databases",
+      "database_name",
+      options.d1Name,
     )
   }
 
-  if (appUrl) next = replaceWranglerVar(next, environment, "APP_URL", appUrl)
-  if (apiUrl) next = replaceWranglerVar(next, environment, "API_URL", apiUrl)
-  if (r2BucketName)
-    next = replaceWranglerBinding(next, environment, "r2_buckets", "bucket_name", r2BucketName)
+  if (options.appUrl) next = replaceWranglerVar(next, environment, "APP_URL", options.appUrl)
+  if (options.apiUrl) next = replaceWranglerVar(next, environment, "API_URL", options.apiUrl)
+  if (options.r2BucketName) {
+    next = replaceWranglerBinding(
+      next,
+      environment,
+      "r2_buckets",
+      "bucket_name",
+      options.r2BucketName,
+    )
+  }
 
   writeFileSync(configPath, next)
 }
@@ -230,8 +274,8 @@ function patchWranglerConfig(
 function replaceWranglerBinding(
   wrangler: string,
   environment: DeployEnvironment,
-  binding: "r2_buckets",
-  key: "bucket_name",
+  binding: "d1_databases" | "r2_buckets",
+  key: "database_id" | "database_name" | "bucket_name",
   value: string,
 ) {
   const pattern = new RegExp(
@@ -332,6 +376,12 @@ function pushDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
 
 function getD1Key(environment: DeployEnvironment) {
   return environment === "staging" ? "STAGING_D1_DATABASE_ID" : "PRODUCTION_D1_DATABASE_ID"
+}
+
+function getD1Name(vars: Record<string, string>, environment: DeployEnvironment) {
+  const environmentKey =
+    environment === "staging" ? "STAGING_D1_DATABASE_NAME" : "PRODUCTION_D1_DATABASE_NAME"
+  return vars[environmentKey]?.trim() || vars.D1_DATABASE_NAME?.trim()
 }
 
 function main() {

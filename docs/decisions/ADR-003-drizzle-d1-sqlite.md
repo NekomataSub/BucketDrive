@@ -39,7 +39,7 @@ O projeto já determinou:
    npx tsx scripts/migrate.ts
 
 4. Aplicar em produção (D1)
-   npx wrangler d1 migrations apply bucketdrive-db
+   npx wrangler d1 migrations apply <database name>
 ```
 
 ### Estrutura de arquivos

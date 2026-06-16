@@ -29,7 +29,7 @@ migrations_dir = "../../packages/shared/src/db/migrations"
 
 [[r2_buckets]]
 binding = "STORAGE"
-bucket_name = "bucketdrive-files"
+bucket_name = "bucketdrive-dev"
 
 [[env.staging.r2_buckets]]
 binding = "STORAGE"

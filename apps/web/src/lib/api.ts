@@ -196,9 +196,10 @@ interface PreviewUrlResponse {
 
 interface StorageStatusResponse {
   provider: "r2-s3" | "r2-binding"
-  bucketName: string
+  bucketName: string | null
   bucketBinding: boolean
   s3Credentials: boolean
+  bucketConfigured: boolean
   presignedUrls: boolean
   endpointConfigured: boolean
   expectedCorsOrigin: string

@@ -75,22 +75,14 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ vars.APP_URL }}" = "https://drive.nekomata.moe" ]; then
-            echo "❌ staging is using the production APP_URL."
-            echo "Configure vars.APP_URL in the staging GitHub Environment."
-            exit 1
-          fi
-
-          if [ "${{ vars.PLAYWRIGHT_BASE_URL }}" = "https://drive.nekomata.moe" ]; then
-            echo "❌ staging is using the production PLAYWRIGHT_BASE_URL."
-            echo "Configure vars.PLAYWRIGHT_BASE_URL in the staging GitHub Environment."
-            exit 1
-          fi
-
           echo "✅ Staging environment values look consistent."
 
       - name: Provision staging D1 database
         id: provision
+        env:
+          STAGING_D1_DATABASE_NAME: ${{ vars.STAGING_D1_DATABASE_NAME }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          PAGES_PROJECT_NAME: ${{ vars.PAGES_PROJECT_NAME }}
         run: |
           pnpm tsx scripts/setup-cloudflare-infra.ts staging
           D1_ID=$(jq -r '.d1_database_id' setup-output.json)
@@ -102,6 +94,7 @@ jobs:
           cat > .env.staging << 'EOF'
           APP_URL=${{ vars.APP_URL }}
           API_URL=${{ vars.API_URL }}
+          API_WORKER_URL=${{ vars.API_WORKER_URL }}
           BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
           BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}
           GITHUB_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
@@ -116,6 +109,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID=${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
           STAGING_D1_DATABASE_ID=${{ steps.provision.outputs.d1_database_id }}
+          STAGING_D1_DATABASE_NAME=${{ vars.STAGING_D1_DATABASE_NAME }}
           PLAYWRIGHT_BASE_URL=${{ vars.PLAYWRIGHT_BASE_URL }}
           PAGES_PROJECT_NAME=${{ vars.PAGES_PROJECT_NAME }}
           PAGES_BRANCH=${{ vars.PAGES_BRANCH }}
@@ -128,7 +122,9 @@ jobs:
         run: pnpm env:prepare:staging
 
       - name: Apply D1 migrations
-        run: pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 migrations apply bucketdrive-db-staging --remote --env staging
+        env:
+          STAGING_D1_DATABASE_NAME: ${{ vars.STAGING_D1_DATABASE_NAME }}
+        run: pnpm db:migrate:staging -- --remote
 
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
@@ -156,6 +152,13 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/web
           command: pages deploy dist --project-name=${{ vars.PAGES_PROJECT_NAME }} --branch=${{ vars.PAGES_BRANCH }}
+
+      - name: Push Pages function environment
+        run: |
+          printf "%s" "${{ vars.API_URL }}" | pnpm exec wrangler pages secret put API_URL --project-name=${{ vars.PAGES_PROJECT_NAME }}
+          if [ -n "${{ vars.API_WORKER_URL }}" ]; then
+            printf "%s" "${{ vars.API_WORKER_URL }}" | pnpm exec wrangler pages secret put API_WORKER_URL --project-name=${{ vars.PAGES_PROJECT_NAME }}
+          fi
 
       - name: Setup custom domain
         env:

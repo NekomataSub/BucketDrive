@@ -69,28 +69,30 @@ Triggered only by `workflow_dispatch`.
 
 Uses the `staging` GitHub Environment and requires the following secrets/variables:
 
-| Type                 | Key                      | Purpose                                                |
-| -------------------- | ------------------------ | ------------------------------------------------------ |
-| Repository secret    | `CLOUDFLARE_API_TOKEN`   | Wrangler CLI authentication                            |
-| Repository secret    | `CLOUDFLARE_ACCOUNT_ID`  | Wrangler CLI account scope                             |
-| Environment variable | `STAGING_D1_DATABASE_ID` | Fills `wrangler.toml` D1 binding                       |
-| Environment variable | `APP_URL`                | Frontend URL                                           |
-| Environment variable | `API_URL`                | Worker URL                                             |
-| Environment variable | `PLAYWRIGHT_BASE_URL`    | E2E target URL for staging                             |
-| Environment variable | `PAGES_PROJECT_NAME`     | Cloudflare Pages project name                          |
-| Environment variable | `PAGES_BRANCH`           | Pages branch name                                      |
-| Environment variable | `CUSTOM_DOMAIN`          | Optional Pages custom domain to auto-provision         |
-| Environment variable | `PLATFORM_OWNER_EMAIL`   | First admin email                                      |
-| Environment secret   | `BETTER_AUTH_SECRET`     | Better Auth session key                                |
-| Environment secret   | `BETTER_AUTH_URL`        | Same as `API_URL`                                      |
-| Environment secret   | `GH_CLIENT_ID`           | GitHub OAuth Client ID (GitHub prefix is reserved)     |
-| Environment secret   | `GH_CLIENT_SECRET`       | GitHub OAuth Client Secret (GitHub prefix is reserved) |
-| Environment secret   | `GOOGLE_CLIENT_ID`       | OAuth client credentials                               |
-| Environment secret   | `GOOGLE_CLIENT_SECRET`   | OAuth client credentials                               |
-| Environment secret   | `R2_ACCESS_KEY_ID`       | R2 S3 API token                                        |
-| Environment secret   | `R2_SECRET_ACCESS_KEY`   | R2 S3 API token                                        |
-| Environment secret   | `R2_BUCKET_NAME`         | R2 bucket name                                         |
-| Environment secret   | `R2_ENDPOINT`            | R2 S3 endpoint                                         |
+| Type                 | Key                        | Purpose                                                |
+| -------------------- | -------------------------- | ------------------------------------------------------ |
+| Repository secret    | `CLOUDFLARE_API_TOKEN`     | Wrangler CLI authentication                            |
+| Repository secret    | `CLOUDFLARE_ACCOUNT_ID`    | Wrangler CLI account scope                             |
+| Environment variable | `STAGING_D1_DATABASE_ID`   | Fills `wrangler.toml` D1 binding                       |
+| Environment variable | `STAGING_D1_DATABASE_NAME` | Staging D1 database name                               |
+| Environment variable | `APP_URL`                  | Frontend URL                                           |
+| Environment variable | `API_URL`                  | Worker URL                                             |
+| Environment variable | `API_WORKER_URL`           | Worker origin used by the Pages `/api/*` proxy         |
+| Environment variable | `PLAYWRIGHT_BASE_URL`      | E2E target URL for staging                             |
+| Environment variable | `PAGES_PROJECT_NAME`       | Cloudflare Pages project name                          |
+| Environment variable | `PAGES_BRANCH`             | Pages branch name                                      |
+| Environment variable | `CUSTOM_DOMAIN`            | Optional Pages custom domain to auto-provision         |
+| Environment variable | `PLATFORM_OWNER_EMAIL`     | First admin email                                      |
+| Environment secret   | `BETTER_AUTH_SECRET`       | Better Auth session key                                |
+| Environment secret   | `BETTER_AUTH_URL`          | Same as `API_URL`                                      |
+| Environment secret   | `GH_CLIENT_ID`             | GitHub OAuth Client ID (GitHub prefix is reserved)     |
+| Environment secret   | `GH_CLIENT_SECRET`         | GitHub OAuth Client Secret (GitHub prefix is reserved) |
+| Environment secret   | `GOOGLE_CLIENT_ID`         | OAuth client credentials                               |
+| Environment secret   | `GOOGLE_CLIENT_SECRET`     | OAuth client credentials                               |
+| Environment secret   | `R2_ACCESS_KEY_ID`         | R2 S3 API token                                        |
+| Environment secret   | `R2_SECRET_ACCESS_KEY`     | R2 S3 API token                                        |
+| Environment secret   | `R2_BUCKET_NAME`           | R2 bucket name                                         |
+| Environment secret   | `R2_ENDPOINT`              | R2 S3 endpoint                                         |
 
 The workflow runs:
 
@@ -124,11 +126,11 @@ If the GitHub `production` Environment has protection rules, deployment waits fo
 
 # Environments
 
-| Environment     | Frontend URL                      | Worker URL                            | D1 Database              | Purpose             |
-| --------------- | --------------------------------- | ------------------------------------- | ------------------------ | ------------------- |
-| **Development** | `http://localhost:5173`           | `http://localhost:8787`               | Local Wrangler D1        | Active development  |
-| **Staging**     | `https://staging.bucketdrive.dev` | `https://staging-api.bucketdrive.dev` | `bucketdrive-db-staging` | Pre-release testing |
-| **Production**  | `https://drive.nekomata.moe`      | `https://drive.nekomata.moe/api`      | `bucketdrive-db`         | Live users          |
+| Environment     | Frontend URL            | Worker URL              | D1 Database            | Purpose             |
+| --------------- | ----------------------- | ----------------------- | ---------------------- | ------------------- |
+| **Development** | `http://localhost:5173` | `http://localhost:8787` | Local Wrangler D1      | Active development  |
+| **Staging**     | `APP_URL` env value     | `API_URL` env value     | Staging D1 name env    | Pre-release testing |
+| **Production**  | `APP_URL` env value     | `API_URL` env value     | Production D1 name env | Live users          |
 
 ---
 
@@ -160,17 +162,18 @@ GitHub repository settings.
 
 ### Required Environment Variables
 
-| Variable                    | Staging                                         | Production                              |
-| --------------------------- | ----------------------------------------------- | --------------------------------------- |
-| `STAGING_D1_DATABASE_ID`    | `npx wrangler d1 create bucketdrive-db-staging` | —                                       |
-| `PRODUCTION_D1_DATABASE_ID` | —                                               | `npx wrangler d1 create bucketdrive-db` |
-| `APP_URL`                   | `https://staging.bucketdrive.dev`               | `https://drive.nekomata.moe`            |
-| `API_URL`                   | `https://staging-api.bucketdrive.dev`           | `https://drive.nekomata.moe/api`        |
-| `PLAYWRIGHT_BASE_URL`       | Same as `APP_URL`                               | Not required                            |
-| `PAGES_PROJECT_NAME`        | `bucketdrive`                                   | `bucketdrive`                           |
-| `PAGES_BRANCH`              | `staging`                                       | `production`                            |
-| `CUSTOM_DOMAIN`             | `staging.bucketdrive.dev`                       | `drive.nekomata.moe`                    |
-| `PLATFORM_OWNER_EMAIL`      | Admin email address                             | Admin email address                     |
+| Variable                    | Staging                                                | Production                                                |
+| --------------------------- | ------------------------------------------------------ | --------------------------------------------------------- |
+| `STAGING_D1_DATABASE_ID`    | Output of `wrangler d1 create <staging database name>` | —                                                         |
+| `PRODUCTION_D1_DATABASE_ID` | —                                                      | Output of `wrangler d1 create <production database name>` |
+| `APP_URL`                   | Staging frontend URL                                   | Production frontend URL                                   |
+| `API_URL`                   | Staging API URL                                        | Production API URL                                        |
+| `API_WORKER_URL`            | Required if `API_URL` shares origin with `APP_URL`     | Required if `API_URL` shares origin with `APP_URL`        |
+| `PLAYWRIGHT_BASE_URL`       | Same as `APP_URL`                                      | Not required                                              |
+| `PAGES_PROJECT_NAME`        | Cloudflare Pages project name                          | Cloudflare Pages project name                             |
+| `PAGES_BRANCH`              | `staging`                                              | `production`                                              |
+| `CUSTOM_DOMAIN`             | Optional staging custom domain                         | Optional production custom domain                         |
+| `PLATFORM_OWNER_EMAIL`      | Admin email address                                    | Admin email address                                       |
 
 ### Required Environment Secrets
 
@@ -261,8 +264,8 @@ automatically via GitHub Actions and stores the D1 database IDs as GitHub Enviro
 If you prefer not to use the automated workflow, create the databases manually:
 
 ```bash
-npx wrangler d1 create bucketdrive-db-staging
-npx wrangler d1 create bucketdrive-db
+npx wrangler d1 create "<staging-d1-database-name>"
+npx wrangler d1 create "<production-d1-database-name>"
 ```
 
 Store the returned `database_id` values as `STAGING_D1_DATABASE_ID` and `PRODUCTION_D1_DATABASE_ID`
@@ -273,8 +276,8 @@ environment variables in the respective GitHub Environments.
 Create the buckets and API tokens:
 
 ```bash
-npx wrangler r2 bucket create bucketdrive-staging
-npx wrangler r2 bucket create bucketdrive-files
+npx wrangler r2 bucket create "<staging-r2-bucket-name>"
+npx wrangler r2 bucket create "<production-r2-bucket-name>"
 ```
 
 Then create an R2 API token in the Cloudflare Dashboard → R2 → Manage R2 API Tokens. The token

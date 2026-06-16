@@ -178,7 +178,7 @@ git commit -m "chore(db): add file description column"
 # Merged to main → CI runs:
 pnpm db:migrate:staging
 # Which executes:
-npx wrangler d1 migrations apply bucketdrive-db-staging --env staging
+pnpm db:migrate:staging -- --remote
 ```
 
 ### Production
@@ -187,7 +187,7 @@ npx wrangler d1 migrations apply bucketdrive-db-staging --env staging
 # Tag v* pushed → CI runs:
 pnpm db:migrate:prod
 # Which executes:
-npx wrangler d1 migrations apply bucketdrive-db --env production
+pnpm db:migrate:prod -- --remote
 ```
 
 ---
@@ -202,8 +202,8 @@ pnpm install
 
 # 2. Create D1 databases (local + remote)
 pnpm db:create:local    # Creates SQLite file
-pnpm db:create:staging  # wrangler d1 create bucketdrive-db-staging
-pnpm db:create:prod     # wrangler d1 create bucketdrive-db --env production
+pnpm db:create:staging  # wrangler d1 create <staging database name>
+pnpm db:create:prod     # wrangler d1 create <production database name>
 
 # 3. Apply all migrations
 pnpm db:migrate:dev
@@ -334,8 +334,8 @@ pnpm db:reset
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate:dev": "tsx scripts/migrate.ts",
-    "db:migrate:staging": "wrangler d1 migrations apply bucketdrive-db-staging --env staging",
-    "db:migrate:prod": "wrangler d1 migrations apply bucketdrive-db --env production",
+    "db:migrate:staging": "wrangler d1 migrations apply <staging database name> --env staging",
+    "db:migrate:prod": "wrangler d1 migrations apply <production database name> --env production",
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
     "db:reset": "rm -f apps/api/.db/local.sqlite && pnpm db:migrate:dev && pnpm db:seed"
