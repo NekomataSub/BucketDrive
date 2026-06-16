@@ -2142,6 +2142,13 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - Added a language selector to Platform Settings and localized the primary app shell, settings, dashboard, trash, audit, files, members, shares, login, and platform administration entrypoints.
 > - Added essential pt-BR documentation under `docs/pt-BR/architecture/` plus `README.pt-BR.md`.
 
+## Implementation Notes - Remote D1 Migration Guard
+
+> - Fixed staging and production migration scripts so `--remote` is passed directly to Wrangler instead of being forwarded after `--`.
+> - Added deploy guardrails that fail if D1 migrations target the CI runner's local Wrangler database.
+> - Added a remote schema verification for `platform_settings.default_language` before Worker deploys continue.
+> - Changed the production smoke check to hit the public Pages API route at `${APP_URL}/api/health`.
+
 ---
 
 # Quick Reference

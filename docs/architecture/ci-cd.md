@@ -97,7 +97,7 @@ The workflow runs:
 
 1. `pnpm env:check:staging` — validates that all required keys are present
 2. `pnpm env:prepare:staging` — patches `wrangler.toml` files with the D1 ID and URLs
-3. `wrangler d1 migrations apply --remote --env staging` — applies database migrations to the remote staging database
+3. `wrangler d1 migrations apply --env staging --remote` — applies database migrations to the remote staging database and fails the deploy if Wrangler reports a local D1 target
 4. `wrangler deploy --env staging` (API Worker) — deploys the API Worker
 5. `wrangler deploy --env staging` (Workers) — deploys the background Workers
 6. `pnpm build` — builds the frontend

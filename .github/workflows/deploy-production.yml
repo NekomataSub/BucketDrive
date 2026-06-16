@@ -126,7 +126,24 @@ jobs:
       - name: Apply D1 migrations
         env:
           PRODUCTION_D1_DATABASE_NAME: ${{ vars.PRODUCTION_D1_DATABASE_NAME }}
-        run: pnpm db:migrate:prod -- --remote
+        run: |
+          set -o pipefail
+          pnpm db:migrate:prod 2>&1 | tee d1-migration.log
+
+          if grep -E "Resource location: local|Executing on local database" d1-migration.log; then
+            echo "❌ D1 migrations ran against a local database. Refusing to continue production deploy."
+            exit 1
+          fi
+
+          DB_NAME="${PRODUCTION_D1_DATABASE_NAME:-bucketdrive-db}"
+          pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 execute "$DB_NAME" --env production --remote --command "pragma table_info(platform_settings);" 2>&1 | tee d1-platform-settings-schema.log
+
+          if ! grep -q "default_language" d1-platform-settings-schema.log; then
+            echo "❌ Remote platform_settings.default_language column is missing after migrations."
+            exit 1
+          fi
+
+          echo "✅ Remote D1 migrations verified."
 
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
@@ -213,10 +230,9 @@ jobs:
       - name: Smoke check production
         env:
           APP_URL: ${{ vars.APP_URL }}
-          API_URL: ${{ vars.API_URL }}
         run: |
           echo "🔍 Checking production API health..."
-          curl -fsS --retry 3 --retry-delay 5 "${API_URL%/}/health" >/dev/null
+          curl -fsS --retry 3 --retry-delay 5 "${APP_URL%/}/api/health" >/dev/null
           echo "✅ API health check passed."
 
           echo "🔍 Checking production frontend..."

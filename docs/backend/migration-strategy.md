@@ -178,7 +178,7 @@ git commit -m "chore(db): add file description column"
 # Merged to main → CI runs:
 pnpm db:migrate:staging
 # Which executes:
-pnpm db:migrate:staging -- --remote
+wrangler d1 migrations apply <staging database name> --env staging --remote
 ```
 
 ### Production
@@ -187,7 +187,7 @@ pnpm db:migrate:staging -- --remote
 # Tag v* pushed → CI runs:
 pnpm db:migrate:prod
 # Which executes:
-pnpm db:migrate:prod -- --remote
+wrangler d1 migrations apply <production database name> --env production --remote
 ```
 
 ---
@@ -334,8 +334,8 @@ pnpm db:reset
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate:dev": "tsx scripts/migrate.ts",
-    "db:migrate:staging": "wrangler d1 migrations apply <staging database name> --env staging",
-    "db:migrate:prod": "wrangler d1 migrations apply <production database name> --env production",
+    "db:migrate:staging": "wrangler d1 migrations apply <staging database name> --env staging --remote",
+    "db:migrate:prod": "wrangler d1 migrations apply <production database name> --env production --remote",
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
     "db:reset": "rm -f apps/api/.db/local.sqlite && pnpm db:migrate:dev && pnpm db:seed"

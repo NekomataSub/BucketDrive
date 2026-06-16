@@ -123,7 +123,24 @@ jobs:
       - name: Apply D1 migrations
         env:
           STAGING_D1_DATABASE_NAME: ${{ vars.STAGING_D1_DATABASE_NAME }}
-        run: pnpm db:migrate:staging -- --remote
+        run: |
+          set -o pipefail
+          pnpm db:migrate:staging 2>&1 | tee d1-migration.log
+
+          if grep -E "Resource location: local|Executing on local database" d1-migration.log; then
+            echo "❌ D1 migrations ran against a local database. Refusing to continue staging deploy."
+            exit 1
+          fi
+
+          DB_NAME="${STAGING_D1_DATABASE_NAME:-bucketdrive-db-staging}"
+          pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 execute "$DB_NAME" --env staging --remote --command "pragma table_info(platform_settings);" 2>&1 | tee d1-platform-settings-schema.log
+
+          if ! grep -q "default_language" d1-platform-settings-schema.log; then
+            echo "❌ Remote platform_settings.default_language column is missing after migrations."
+            exit 1
+          fi
+
+          echo "✅ Remote D1 migrations verified."
 
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
