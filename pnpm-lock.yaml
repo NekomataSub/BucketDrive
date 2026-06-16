@@ -117,6 +117,9 @@ importers:
       "@bucketdrive/shared":
         specifier: workspace:*
         version: link:../../packages/shared
+      "@cloudflare/pages-plugin-vercel-og":
+        specifier: ^0.1.2
+        version: 0.1.2
       "@dnd-kit/core":
         specifier: ^6.3.0
         version: 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -150,6 +153,9 @@ importers:
       "@tanstack/react-virtual":
         specifier: ^3.14.2
         version: 3.14.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      "@vercel/og":
+        specifier: 0.4.1
+        version: 0.4.1
       client-zip:
         specifier: ^2.5.0
         version: 2.5.0
@@ -199,6 +205,9 @@ importers:
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.8(@types/node@25.6.2)(vite@8.0.16(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4))
 
   apps/workers:
     dependencies:
@@ -366,6 +375,12 @@ packages:
     resolution:
       {
         integrity: sha512-9d/I3JFv1IpQFYOrIw5RQShQPyuZRw9DyeBylF39Uj/MH7my8+EzKDPpUCHiqZ5O7tZS/A6zwP08egpeI5NBhA==,
+      }
+
+  "@cloudflare/pages-plugin-vercel-og@0.1.2":
+    resolution:
+      {
+        integrity: sha512-aWA2pHu1R2UbOJIcSASCuViyYVEhYkZ3tWTrTnr+yLosBfksOzjecHQkCkPv/jy75hGPrn1BbtsQR+oWVFkp1g==,
       }
 
   "@cf-wasm/photon@0.3.6":
@@ -2028,6 +2043,13 @@ packages:
         integrity: sha512-xnXE7wG13PI+cxieVssYXlQJuYVRhH9NBoxt3KNwzghDIA69GMm7d4wXRouHIYjE+KvS6U/MsMO73NdS2MH9ZA==,
       }
 
+  "@resvg/resvg-wasm@2.4.1":
+    resolution:
+      {
+        integrity: sha512-yi6R0HyHtsoWTRA06Col4WoDs7SvlXU3DLMNP2bdAgs7HK18dTEVl1weXgxRzi8gwLteGUbIg29zulxIB3GSdg==,
+      }
+    engines: { node: ">= 10" }
+
   "@rolldown/binding-android-arm64@1.0.3":
     resolution:
       {
@@ -2215,6 +2237,14 @@ packages:
         integrity: sha512-zCKpyDIWKHwtervNK2ZlaK8mMV7gVUijAgFeJStH+CU/imcdquizV3pFLlSQYRswG+Lbyd6CT/LGRh3IbtkCFw==,
       }
     engines: { node: ">=8" }
+
+  "@shuding/opentype.js@1.4.0-beta.0":
+    resolution:
+      {
+        integrity: sha512-3NgmNyH3l/Hv6EvsWJbsvpcpUba6R8IREQ83nH83cyakCw7uM1arZKNfHwv1Wz6jgqrF/j4x5ELvR6PnK9nTcA==,
+      }
+    engines: { node: ">= 8.0.0" }
+    hasBin: true
 
   "@sindresorhus/is@7.2.0":
     resolution:
@@ -2665,6 +2695,13 @@ packages:
       }
     engines: { node: ^18.18.0 || ^20.9.0 || >=21.1.0 }
 
+  "@vercel/og@0.4.1":
+    resolution:
+      {
+        integrity: sha512-N8SXkbmQQRK0iHpqwUe50Fe8JO3sx2ByV6hgPTi16ONiMdqOM9uzE4QMWoY1Oa0uYZuUVA30sEB84mVMn+gT3w==,
+      }
+    engines: { node: ">=16" }
+
   "@vitejs/plugin-react@6.0.2":
     resolution:
       {
@@ -2944,6 +2981,13 @@ packages:
       {
         integrity: sha512-Kccpc7ACfXaxfeInfqKcZtW4pT5YBn1mesc4sCsun6sRwtbJ4h+sNOaksUpYEJUKfN65YWC6Bw2OJEFiKxq8nQ==,
       }
+
+  base64-js@0.0.8:
+    resolution:
+      {
+        integrity: sha512-3XSA2cR/h/73EzlXXdU6YNycmYI7+kicTxks4eJg2g39biHR84slg2+des+p7iHYhbRg/udIS4TD53WabcOUkw==,
+      }
+    engines: { node: ">= 0.4" }
 
   base64-js@1.5.1:
     resolution:
@@ -3332,6 +3376,31 @@ packages:
         integrity: sha512-EL/iN9etCTzw/fBnp0/uj0f5BOOGvZut2mzsiiBZ/FdT6gFQCKRO/tmcKOxn5drWZ2Ndm/xBb1SI4zwWbGtmIw==,
       }
 
+  css-background-parser@0.1.0:
+    resolution:
+      {
+        integrity: sha512-2EZLisiZQ+7m4wwur/qiYJRniHX4K5Tc9w93MT3AS0WS1u5kaZ4FKXlOTBhOjc+CgEgPiGY+fX1yWD8UwpEqUA==,
+      }
+
+  css-box-shadow@1.0.0-3:
+    resolution:
+      {
+        integrity: sha512-9jaqR6e7Ohds+aWwmhe6wILJ99xYQbfmK9QQB9CcMjDbTxPZjwEmUQpU91OG05Xgm8BahT5fW+svbsQGjS/zPg==,
+      }
+
+  css-color-keywords@1.0.0:
+    resolution:
+      {
+        integrity: sha512-FyyrDHZKEjXDpNJYvVsV960FiqQyXc/LlYmsxl2BcdMb2WPx0OGRVgTg55rPSyLSNMqP52R9r8geSp7apN3Ofg==,
+      }
+    engines: { node: ">=4" }
+
+  css-to-react-native@3.2.0:
+    resolution:
+      {
+        integrity: sha512-e8RKaLXMOFii+02mOlqwjbD00KSEKqblnpO9e++1aXS1fPQOpS1YoqdVHBqPjHNoxeF2mimzVqawm2KCbEdtHQ==,
+      }
+
   csstype@3.2.3:
     resolution:
       {
@@ -3587,6 +3656,12 @@ packages:
     resolution:
       {
         integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==,
+      }
+
+  emoji-regex@10.6.0:
+    resolution:
+      {
+        integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==,
       }
 
   emoji-regex@8.0.0:
@@ -3878,6 +3953,12 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.7.4:
+    resolution:
+      {
+        integrity: sha512-5u2V/CDW15QM1XbbgS+0DfPxVB+jUKhWEKuuFuHncbk3tEEqzmoXL+2KyOFuKGqOnmdIy0/davWF1CkuwtibCw==,
+      }
 
   fflate@0.8.3:
     resolution:
@@ -4570,6 +4651,12 @@ packages:
       }
     engines: { node: ">= 12.0.0" }
 
+  linebreak@1.1.0:
+    resolution:
+      {
+        integrity: sha512-MHp03UImeVhB7XZtjd0E4n6+3xr5Dq/9xI/5FptGk5FrbDR3zagPa2DS6U8ks/3HjbKWG9Q1M2ufOzxV2qLYSQ==,
+      }
+
   localforage@1.10.0:
     resolution:
       {
@@ -4970,6 +5057,12 @@ packages:
         integrity: sha512-5NPgf87AT2STgwa2ntRMr45jTKrYBGkVU36yT0ig/n/GMAa3oPqhZfIQ2kMEimReg0+t9kZViDVZ83qfVUlckg==,
       }
     engines: { node: ">= 14" }
+
+  pako@0.2.9:
+    resolution:
+      {
+        integrity: sha512-NUcwaKxUxWrZLpDG+z/xZaCgQITkA/Dv4V/T6bw7VON6l1Xz/VnrBqrYjZQ12TamKHzITTfOEIYUj48y2KXImA==,
+      }
 
   parse-cache-control@1.0.1:
     resolution:
@@ -5379,6 +5472,13 @@ packages:
         integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==,
       }
 
+  satori@0.4.1:
+    resolution:
+      {
+        integrity: sha512-uQm4+vQj57E9PO/ASAlxsRb+78fHkRUmkNLBBmfuEeGNLGqJ9ufYU7TzYP4XH60PLHYt9Wz1jSsgcAe2cz7+ng==,
+      }
+    engines: { node: ">=16" }
+
   scheduler@0.27.0:
     resolution:
       {
@@ -5750,6 +5850,12 @@ packages:
         integrity: sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==,
       }
 
+  tiny-inflate@1.0.3:
+    resolution:
+      {
+        integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==,
+      }
+
   tinybench@2.9.0:
     resolution:
       {
@@ -5934,6 +6040,12 @@ packages:
     resolution:
       {
         integrity: sha512-i7qRCmY42zmCwnYlh9H2SvLEypEFGye5iRmEMKjcGi7zk9UquigRjFtTLz0TYqr0ZGLZhaMHl/foy1bZR+Cwlw==,
+      }
+
+  unicode-trie@2.0.0:
+    resolution:
+      {
+        integrity: sha512-x7bc76x0bm4prf1VLg79uhAzKw8DVboClSN5VxJuQ+LKDOVEW9CdH+VY7SP+vX7xCYQqzzgQpFqz15zeLvAtZQ==,
       }
 
   unique-string@2.0.0:
@@ -6297,6 +6409,18 @@ packages:
       }
     engines: { node: ">=10" }
 
+  yoga-wasm-web@0.3.0:
+    resolution:
+      {
+        integrity: sha512-rD3L4jyMlO1m+RWU60lNwZQK5zmzglCV5fI1gTRikmpv3YzmNIZQbjyfE6cMNb9Xaly/C1SwemYGbsiOekMvnQ==,
+      }
+
+  yoga-wasm-web@0.3.3:
+    resolution:
+      {
+        integrity: sha512-N+d4UJSJbt/R3wqY7Coqs5pcV0aUj2j9IaQ3rNj9bVCLld8tTGKRa2USARjnvZJWVx1NDmQev8EknoczaOQDOA==,
+      }
+
   youch-core@0.3.3:
     resolution:
       {
@@ -6408,6 +6532,8 @@ snapshots:
   "@better-fetch/fetch@1.1.21": {}
 
   "@cf-wasm/internals@0.1.2": {}
+
+  "@cloudflare/pages-plugin-vercel-og@0.1.2": {}
 
   "@cf-wasm/photon@0.3.6":
     dependencies:
@@ -7413,6 +7539,8 @@ snapshots:
 
   "@radix-ui/rect@1.1.2": {}
 
+  "@resvg/resvg-wasm@2.4.1": {}
+
   "@rolldown/binding-android-arm64@1.0.3":
     optional: true
 
@@ -7495,6 +7623,11 @@ snapshots:
   "@sentry/utils@7.120.4":
     dependencies:
       "@sentry/types": 7.120.4
+
+  "@shuding/opentype.js@1.4.0-beta.0":
+    dependencies:
+      fflate: 0.7.4
+      string.prototype.codepointat: 0.2.1
 
   "@sindresorhus/is@7.2.0": {}
 
@@ -7768,6 +7901,12 @@ snapshots:
       "@typescript-eslint/types": 8.61.0
       eslint-visitor-keys: 5.0.1
 
+  "@vercel/og@0.4.1":
+    dependencies:
+      "@resvg/resvg-wasm": 2.4.1
+      satori: 0.4.1
+      yoga-wasm-web: 0.3.0
+
   "@vitejs/plugin-react@6.0.2(vite@8.0.16(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4))":
     dependencies:
       "@rolldown/pluginutils": 1.0.1
@@ -7909,6 +8048,8 @@ snapshots:
   bare-url@2.4.3:
     dependencies:
       bare-path: 3.0.1
+
+  base64-js@0.0.8: {}
 
   base64-js@1.5.1: {}
 
@@ -8154,6 +8295,18 @@ snapshots:
 
   csp_evaluator@1.1.5: {}
 
+  css-background-parser@0.1.0: {}
+
+  css-box-shadow@1.0.0-3: {}
+
+  css-color-keywords@1.0.0: {}
+
+  css-to-react-native@3.2.0:
+    dependencies:
+      camelize: 1.0.1
+      css-color-keywords: 1.0.0
+      postcss-value-parser: 4.2.0
+
   csstype@3.2.3: {}
 
   data-uri-to-buffer@6.0.2: {}
@@ -8230,6 +8383,8 @@ snapshots:
       gopd: 1.2.0
 
   ee-first@1.1.1: {}
+
+  emoji-regex@10.6.0: {}
 
   emoji-regex@8.0.0: {}
 
@@ -8392,6 +8547,8 @@ snapshots:
   expand-template@2.0.3: {}
 
   expect-type@1.3.0: {}
+
+  fflate@0.7.4: {}
 
   express@4.22.2:
     dependencies:
@@ -8683,6 +8840,11 @@ snapshots:
   ip-address@10.2.0: {}
 
   ipaddr.js@1.9.1: {}
+
+  linebreak@1.1.0:
+    dependencies:
+      base64-js: 0.0.8
+      unicode-trie: 2.0.0
 
   is-docker@2.2.1: {}
 
@@ -9072,6 +9234,8 @@ snapshots:
       degenerator: 5.0.1
       netmask: 2.1.1
 
+  pako@0.2.9: {}
+
   parse-cache-control@1.0.1: {}
 
   parseurl@1.3.3: {}
@@ -9292,6 +9456,17 @@ snapshots:
   safe-buffer@5.2.1: {}
 
   safer-buffer@2.1.2: {}
+
+  satori@0.4.1:
+    dependencies:
+      "@shuding/opentype.js": 1.4.0-beta.0
+      css-background-parser: 0.1.0
+      css-box-shadow: 1.0.0-3
+      css-to-react-native: 3.2.0
+      emoji-regex: 10.6.0
+      linebreak: 1.1.0
+      postcss-value-parser: 4.2.0
+      yoga-wasm-web: 0.3.3
 
   scheduler@0.27.0: {}
 
@@ -9565,6 +9740,8 @@ snapshots:
 
   through@2.3.8: {}
 
+  tiny-inflate@1.0.3: {}
+
   tinybench@2.9.0: {}
 
   tinyexec@1.1.2: {}
@@ -9664,6 +9841,11 @@ snapshots:
   unenv@2.0.0-rc.24:
     dependencies:
       pathe: 2.0.3
+
+  unicode-trie@2.0.0:
+    dependencies:
+      pako: 0.2.9
+      tiny-inflate: 1.0.3
 
   unique-string@2.0.0:
     dependencies:
@@ -9868,6 +10050,10 @@ snapshots:
       fd-slicer: 1.1.0
 
   yocto-queue@0.1.0: {}
+
+  yoga-wasm-web@0.3.0: {}
+
+  yoga-wasm-web@0.3.3: {}
 
   youch-core@0.3.3:
     dependencies:

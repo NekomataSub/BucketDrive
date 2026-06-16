@@ -9,6 +9,12 @@ verifiable result.
 
 ## Status Overview
 
+> **Share OpenGraph/noindex pass — 2026-06-16:**
+>
+> - Added global noindex metadata and `robots.txt` blocking so BucketDrive pages are not indexed.
+> - Added Pages Functions for `/share/:shareId` OpenGraph/Twitter metadata injection and dynamic `/og/share/:shareId.png` preview images.
+> - Added shared metadata helpers, web unit coverage, and validated the Pages Functions bundle.
+
 > **v1 documentation alignment pass — 2026-06-16:**
 >
 > - Reframed the documented product scope around the current single-bucket v1 implementation.

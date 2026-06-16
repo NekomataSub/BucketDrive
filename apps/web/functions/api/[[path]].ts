@@ -1,16 +1,15 @@
+import { getApiOrigin, type ApiOriginEnv } from "../_lib/api-origin"
+
 interface PagesFunctionContext {
   request: Request
-  env: {
-    API_WORKER_URL?: string
-    API_URL?: string
-  }
+  env: ApiOriginEnv
 }
 
 type PagesFunctionHandler = (context: PagesFunctionContext) => Promise<Response>
 
 export const onRequest: PagesFunctionHandler = async (context) => {
   const requestUrl = new URL(context.request.url)
-  const apiWorkerUrl = getProxyOrigin(context.env, requestUrl)
+  const apiWorkerUrl = getApiOrigin(context.env, requestUrl)
   if (!apiWorkerUrl) {
     return new Response(
       "Missing API_WORKER_URL Pages environment variable. API_URL can only be used when it points to a different origin than the Pages app.",
@@ -34,22 +33,4 @@ export const onRequest: PagesFunctionHandler = async (context) => {
   })
 
   return fetch(request)
-}
-
-function getProxyOrigin(env: PagesFunctionContext["env"], requestUrl: URL): string | null {
-  const explicitWorkerUrl = env.API_WORKER_URL?.trim()
-  if (explicitWorkerUrl) return explicitWorkerUrl
-
-  const apiUrl = env.API_URL?.trim()
-  if (!apiUrl) return null
-
-  let parsedApiUrl: URL
-  try {
-    parsedApiUrl = new URL(apiUrl)
-  } catch {
-    return null
-  }
-
-  if (parsedApiUrl.origin === requestUrl.origin) return null
-  return parsedApiUrl.origin
 }
