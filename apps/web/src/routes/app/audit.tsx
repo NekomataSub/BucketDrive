@@ -7,7 +7,13 @@ import { StyledSelect } from "@/components/shared/styled-select"
 import { useI18n } from "@/lib/i18n"
 
 export function AuditPage() {
-  const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
+  const {
+    workspace,
+    workspaceId,
+    isLoading: workspacesLoading,
+    isError: workspacesError,
+    error: workspacesErrorDetail,
+  } = useCurrentWorkspace()
   const [action, setAction] = useState("")
   const [resourceType, setResourceType] = useState("")
   const { t, formatDate } = useI18n()
@@ -31,6 +37,16 @@ export function AuditPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (workspacesError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-error text-sm">
+          {workspacesErrorDetail?.message ?? t("platform.loadError")}
+        </p>
       </div>
     )
   }

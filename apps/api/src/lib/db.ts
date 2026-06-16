@@ -32,10 +32,12 @@ function wrapD1Binding(binding: D1Database): D1Database {
 }
 
 let db: ReturnType<typeof drizzle<typeof schema>> | undefined
+let d1Binding: D1Database | undefined
 
 export function createD1DB(binding: D1Database) {
   if (!db) {
-    db = drizzle(wrapD1Binding(binding), { schema })
+    d1Binding = wrapD1Binding(binding)
+    db = drizzle(d1Binding, { schema })
   }
   return db
 }
@@ -45,9 +47,15 @@ export function getDB() {
   return db
 }
 
+export function getD1Binding() {
+  if (!d1Binding) throw new Error("Database not initialized. Call createD1DB first.")
+  return d1Binding
+}
+
 export function resetD1DBForTests() {
   if (process.env.NODE_ENV !== "test") {
     throw new Error("resetD1DBForTests can only be used in tests")
   }
   db = undefined
+  d1Binding = undefined
 }

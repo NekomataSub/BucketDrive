@@ -13,7 +13,7 @@ import {
   type WorkspaceRole,
 } from "@bucketdrive/shared"
 import { platformSettings } from "@bucketdrive/shared/db/schema"
-import { getDB } from "../../lib/db"
+import { getD1Binding, getDB } from "../../lib/db"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePlatformAdmin } from "../../middleware/platform-admin"
 import { createStorageProvider } from "../../services/storage"
@@ -48,6 +48,18 @@ interface PlatformVariables {
 
 const platform = new Hono<{ Bindings: PlatformEnv; Variables: PlatformVariables }>()
 const PLATFORM_SETTINGS_ID = "default"
+const DEFAULT_LANGUAGE = "en-US"
+
+interface PlatformSettingsRow {
+  id: string
+  platformName: string
+  enablePublicSignup: boolean
+  defaultLanguage?: string | null
+  logoKey: string | null
+  faviconKey: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 platform.get("/me", authMiddleware, (c) => {
   const currentUser = c.get("user")
@@ -96,7 +108,7 @@ platform.patch("/settings", authMiddleware, requirePlatformAdmin, async (c) => {
     .set({
       platformName: nextPlatformName,
       enablePublicSignup: body.enablePublicSignup ?? settings.enablePublicSignup,
-      defaultLanguage: body.defaultLanguage ?? settings.defaultLanguage,
+      defaultLanguage: body.defaultLanguage ?? settings.defaultLanguage ?? DEFAULT_LANGUAGE,
       updatedAt: now,
     })
     .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
@@ -202,37 +214,105 @@ platform.post("/invitations/:token/accept", authMiddleware, async (c) => {
 })
 
 async function ensurePlatformSettings() {
-  const db = getDB()
-  const existing = await db
-    .select()
-    .from(platformSettings)
-    .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
-    .get()
+  const existing = await readPlatformSettingsRow()
   if (existing) return existing
 
   const now = new Date().toISOString()
+  const db = getDB()
   const created = {
     id: PLATFORM_SETTINGS_ID,
     platformName: DEFAULT_BRAND_NAME,
     enablePublicSignup: true,
-    defaultLanguage: "en-US",
+    defaultLanguage: DEFAULT_LANGUAGE,
     logoKey: null,
     faviconKey: null,
     createdAt: now,
     updatedAt: now,
   }
-  await db.insert(platformSettings).values(created).run()
+  if (await hasPlatformSettingsColumn("default_language")) {
+    await db.insert(platformSettings).values(created).run()
+  } else {
+    await getD1Binding()
+      .prepare(
+        `insert into platform_settings
+          (id, platform_name, enable_public_signup, logo_key, favicon_key, created_at, updated_at)
+        values (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        created.id,
+        created.platformName,
+        created.enablePublicSignup ? 1 : 0,
+        created.logoKey,
+        created.faviconKey,
+        created.createdAt,
+        created.updatedAt,
+      )
+      .run()
+  }
   return created
 }
 
 function toPlatformSettingsResponse(settings: Awaited<ReturnType<typeof ensurePlatformSettings>>) {
+  const defaultLanguage = settings.defaultLanguage === "pt-BR" ? "pt-BR" : DEFAULT_LANGUAGE
+
   return {
     platformName: settings.platformName,
     enablePublicSignup: settings.enablePublicSignup,
-    defaultLanguage: settings.defaultLanguage,
+    defaultLanguage,
     platformLogoUrl: settings.logoKey ? `/api/platform/assets/logo?v=${settings.updatedAt}` : null,
     faviconUrl: settings.faviconKey ? `/api/platform/assets/favicon?v=${settings.updatedAt}` : null,
   }
+}
+
+async function readPlatformSettingsRow(): Promise<PlatformSettingsRow | null> {
+  const d1 = getD1Binding()
+  const hasDefaultLanguage = await hasPlatformSettingsColumn("default_language")
+  const defaultLanguageSelect = hasDefaultLanguage ? "default_language" : "'en-US'"
+  const row = await d1
+    .prepare(
+      `select id,
+        platform_name as platformName,
+        enable_public_signup as enablePublicSignup,
+        ${defaultLanguageSelect} as defaultLanguage,
+        logo_key as logoKey,
+        favicon_key as faviconKey,
+        created_at as createdAt,
+        updated_at as updatedAt
+      from platform_settings
+      where id = ?
+      limit 1`,
+    )
+    .bind(PLATFORM_SETTINGS_ID)
+    .first<Record<string, unknown>>()
+
+  if (!row) return null
+
+  return {
+    id: String(row.id),
+    platformName: String(row.platformName),
+    enablePublicSignup: Boolean(row.enablePublicSignup),
+    defaultLanguage:
+      typeof row.defaultLanguage === "string" ? row.defaultLanguage : DEFAULT_LANGUAGE,
+    logoKey: typeof row.logoKey === "string" ? row.logoKey : null,
+    faviconKey: typeof row.faviconKey === "string" ? row.faviconKey : null,
+    createdAt: String(row.createdAt),
+    updatedAt: String(row.updatedAt),
+  }
+}
+
+async function hasPlatformSettingsColumn(columnName: string): Promise<boolean> {
+  const columnsResult: unknown = await getD1Binding()
+    .prepare("pragma table_info(platform_settings)")
+    .all()
+  if (typeof columnsResult !== "object" || columnsResult === null) return false
+
+  const results = (columnsResult as { results?: unknown }).results
+  if (!Array.isArray(results)) return false
+
+  return results.some((row) => {
+    if (typeof row !== "object" || row === null) return false
+    return (row as { name?: unknown }).name === columnName
+  })
 }
 
 function parseAssetKind(value: string | undefined): "logo" | "favicon" | null {

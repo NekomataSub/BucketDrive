@@ -6,7 +6,7 @@ export const LanguageCode = z.enum(["en-US", "pt-BR"])
 export const PlatformSettingsResponse = z.object({
   platformName: z.string(),
   enablePublicSignup: z.boolean(),
-  defaultLanguage: LanguageCode,
+  defaultLanguage: LanguageCode.catch("en-US").default("en-US"),
   platformLogoUrl: z.url().or(z.string().startsWith("/")).nullable(),
   faviconUrl: z.url().or(z.string().startsWith("/")).nullable(),
 })

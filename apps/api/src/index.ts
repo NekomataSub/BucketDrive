@@ -49,7 +49,39 @@ interface Env {
   E2E_TEST_AUTH?: string
 }
 
-const app = new Hono<{ Bindings: Env }>()
+interface AppVariables {
+  requestId: string
+  startedAt: number
+}
+
+const app = new Hono<{ Bindings: Env; Variables: AppVariables }>()
+
+function requestContext(c: { req: { raw: Request; method: string; url: string } }) {
+  const url = new URL(c.req.url)
+  const requestId =
+    c.req.raw.headers.get("x-request-id") ?? c.req.raw.headers.get("cf-ray") ?? crypto.randomUUID()
+
+  return {
+    requestId,
+    method: c.req.method,
+    path: url.pathname,
+    cfRay: c.req.raw.headers.get("cf-ray"),
+  }
+}
+
+function logRequestEvent(level: "warn" | "error", event: Record<string, unknown>): void {
+  const payload = {
+    service: "bucketdrive-api",
+    timestamp: new Date().toISOString(),
+    ...event,
+  }
+
+  if (level === "error") {
+    console.error(payload)
+    return
+  }
+  console.warn(payload)
+}
 
 app.use("*", securityHeaders)
 app.use(
@@ -66,6 +98,29 @@ app.use(
     maxAge: 86400,
   }),
 )
+
+app.use("*", async (c, next) => {
+  const context = requestContext(c)
+  const startedAt = Date.now()
+  c.set("requestId", context.requestId)
+  c.set("startedAt", startedAt)
+  c.header("X-Request-Id", context.requestId)
+
+  try {
+    await next()
+  } finally {
+    const status = c.res.status
+    const durationMs = Date.now() - startedAt
+    if (status >= 400) {
+      logRequestEvent(status >= 500 ? "error" : "warn", {
+        event: "api.request_failed",
+        ...context,
+        status,
+        durationMs,
+      })
+    }
+  }
+})
 
 app.use("*", async (c, next) => {
   createD1DB(c.env.DB)
@@ -161,7 +216,21 @@ app.notFound((c) => {
 })
 
 app.onError((err, c) => {
+  const context = requestContext(c)
+  const requestId = c.get("requestId")
+  const startedAt = c.get("startedAt")
+  const durationMs = typeof startedAt === "number" ? Date.now() - startedAt : undefined
+
   if (err instanceof ZodError) {
+    logRequestEvent("warn", {
+      event: "api.zod_error",
+      ...context,
+      requestId,
+      status: 400,
+      durationMs,
+      issues: err.issues,
+    })
+
     return c.json(
       {
         code: "VALIDATION_ERROR",
@@ -174,7 +243,16 @@ app.onError((err, c) => {
     )
   }
 
-  console.error("Unhandled error:", err)
+  logRequestEvent("error", {
+    event: "api.unhandled_error",
+    ...context,
+    requestId,
+    status: 500,
+    durationMs,
+    errorName: err instanceof Error ? err.name : "UnknownError",
+    errorMessage: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  })
   return c.json(
     {
       code: "INTERNAL_ERROR",

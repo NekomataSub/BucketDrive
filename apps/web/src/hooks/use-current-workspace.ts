@@ -34,7 +34,7 @@ function setStoredWorkspaceId(id: string | null) {
 }
 
 export function useCurrentWorkspace() {
-  const { data: workspacesData, isLoading } = useWorkspaces()
+  const { data: workspacesData, isLoading, isError, error } = useWorkspaces()
   const workspaces = useMemo(() => workspacesData?.data ?? [], [workspacesData])
   const [currentId, setCurrentId] = useState<string | null>(getStoredWorkspaceId)
 
@@ -63,6 +63,8 @@ export function useCurrentWorkspace() {
     workspaceId,
     role,
     isLoading,
+    isError,
+    error,
     currentId,
     setCurrentId,
     workspaces,

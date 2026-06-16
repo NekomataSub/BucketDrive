@@ -51,7 +51,13 @@ type MemberConfirmAction =
 
 export function MembersPage() {
   const { t } = useI18n()
-  const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
+  const {
+    workspace,
+    workspaceId,
+    isLoading: workspacesLoading,
+    isError: workspacesError,
+    error: workspacesErrorDetail,
+  } = useCurrentWorkspace()
   const currentUserRole = workspace?.role ?? "viewer"
   const canInviteMembers = can(currentUserRole, "users.invite")
   const canManageMembers = can(currentUserRole, "users.update_roles")
@@ -78,6 +84,16 @@ export function MembersPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (workspacesError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-error text-sm">
+          {workspacesErrorDetail?.message ?? t("platform.loadError")}
+        </p>
       </div>
     )
   }

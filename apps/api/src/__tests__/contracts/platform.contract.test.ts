@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   AcceptPlatformInvitationResponse,
   CreatePlatformInvitationResponse,
@@ -71,6 +71,18 @@ describe("platform contracts", () => {
     expect(asset.headers.get("content-type")).toContain("image/png")
   })
 
+  it("falls back to English when stored platform language is invalid", async () => {
+    const ctx = createContractTestContext()
+    ctx.sqlite
+      .prepare("update platform_settings set default_language = ? where id = 'default'")
+      .run("fr-FR")
+
+    const readSettings = await ctx.request("/api/platform/settings", { userId: null })
+    expect(readSettings.status).toBe(200)
+    const parsedReadSettings = PlatformSettingsResponse.parse(await ctx.json(readSettings))
+    expect(parsedReadSettings.defaultLanguage).toBe("en-US")
+  })
+
   it("lists, creates, and accepts platform invitations", async () => {
     const ctx = createContractTestContext()
 
@@ -125,12 +137,22 @@ describe("platform contracts", () => {
     expect(invalid.status).toBe(400)
     expectApiError(await ctx.json(invalid))
 
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
     const invalidLanguage = await ctx.request("/api/platform/settings", {
       method: "PATCH",
       body: JSON.stringify({ defaultLanguage: "es-ES" }),
     })
     expect(invalidLanguage.status).toBe(400)
     expectApiError(await ctx.json(invalidLanguage))
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "api.zod_error",
+        method: "PATCH",
+        path: "/api/platform/settings",
+        status: 400,
+      }),
+    )
+    warn.mockRestore()
 
     const invalidInvitation = await ctx.request("/api/platform/invitations", {
       method: "POST",

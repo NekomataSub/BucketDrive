@@ -10,7 +10,14 @@ import { can } from "@bucketdrive/shared"
 import { useI18n } from "@/lib/i18n"
 
 export function DashboardPage() {
-  const { workspace, workspaceId, role, isLoading: workspacesLoading } = useCurrentWorkspace()
+  const {
+    workspace,
+    workspaceId,
+    role,
+    isLoading: workspacesLoading,
+    isError: workspacesError,
+    error: workspacesErrorDetail,
+  } = useCurrentWorkspace()
   const isAdmin = can(role ?? "viewer", "analytics.read")
   const navigate = useNavigate()
   const { t, formatNumber, formatDate } = useI18n()
@@ -27,6 +34,16 @@ export function DashboardPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (workspacesError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-error text-sm">
+          {workspacesErrorDetail?.message ?? t("platform.loadError")}
+        </p>
       </div>
     )
   }

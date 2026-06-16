@@ -8,7 +8,13 @@ import { getWorkspaceCapabilities, normalizeWorkspaceRole } from "@/lib/workspac
 import { useI18n } from "@/lib/i18n"
 
 export function SettingsPage() {
-  const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
+  const {
+    workspace,
+    workspaceId,
+    isLoading: workspacesLoading,
+    isError: workspacesError,
+    error: workspacesErrorDetail,
+  } = useCurrentWorkspace()
   const settingsQuery = useDashboardSettings(workspaceId)
   const updateSettings = useUpdateDashboardSettings(workspaceId)
   const capabilities = getWorkspaceCapabilities(
@@ -43,6 +49,16 @@ export function SettingsPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (workspacesError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-error text-sm">
+          {workspacesErrorDetail?.message ?? t("platform.loadError")}
+        </p>
       </div>
     )
   }

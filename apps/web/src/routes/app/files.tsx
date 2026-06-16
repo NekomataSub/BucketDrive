@@ -190,7 +190,12 @@ export function FilesPage() {
     dashboardSearch.favoriteOnly ||
     dashboardSearch.selectedTagIds.length > 0
 
-  const { data: workspacesData, isLoading: wsLoading } = useWorkspaces()
+  const {
+    data: workspacesData,
+    isLoading: wsLoading,
+    isError: workspacesError,
+    error: workspacesErrorDetail,
+  } = useWorkspaces()
 
   const workspace = workspacesData?.data?.[0] ?? null
   const workspaceId = workspace?.id ?? null
@@ -1117,6 +1122,16 @@ export function FilesPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (workspacesError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-error text-sm">
+          {workspacesErrorDetail?.message ?? t("platform.loadError")}
+        </p>
       </div>
     )
   }
