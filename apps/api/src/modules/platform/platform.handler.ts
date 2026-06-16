@@ -1,5 +1,5 @@
 import { Hono } from "hono"
-import { and, eq, gte } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { DEFAULT_BRAND_NAME } from "@bucketdrive/shared/constants"
 import {
   AcceptPlatformInvitationResponse,
@@ -12,13 +12,19 @@ import {
   UpdatePlatformSettingsResponse,
   type WorkspaceRole,
 } from "@bucketdrive/shared"
-import { bucketInvitation, platformSettings, user } from "@bucketdrive/shared/db/schema"
+import { platformSettings } from "@bucketdrive/shared/db/schema"
 import { getDB } from "../../lib/db"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePlatformAdmin } from "../../middleware/platform-admin"
 import { createStorageProvider } from "../../services/storage"
 import { readUploadedBrandingImage, sanitizeAssetName } from "../../lib/branding-assets"
 import { syncDefaultBucketName } from "../../lib/bucket"
+import {
+  acceptInvitation,
+  createInvitation,
+  inviteLink,
+  listPendingInvitations,
+} from "../members/invitation-service"
 
 interface PlatformEnv {
   DB: D1Database
@@ -36,7 +42,7 @@ interface PlatformVariables {
     email: string
     name: string
     isPlatformAdmin: boolean
-    role: string
+    role: WorkspaceRole
   }
 }
 
@@ -149,16 +155,7 @@ platform.post("/join", authMiddleware, async (c) => {
 
 platform.get("/invitations", authMiddleware, requirePlatformAdmin, async (c) => {
   const db = getDB()
-  const rows = await db
-    .select()
-    .from(bucketInvitation)
-    .where(
-      and(
-        eq(bucketInvitation.status, "pending"),
-        gte(bucketInvitation.expiresAt, new Date().toISOString()),
-      ),
-    )
-    .all()
+  const rows = await listPendingInvitations(db)
 
   return c.json(
     ListPlatformInvitationsResponse.parse({
@@ -167,8 +164,8 @@ platform.get("/invitations", authMiddleware, requirePlatformAdmin, async (c) => 
         email: row.email,
         role: row.role,
         status: row.status,
-        expiresAt: toIsoDateTime(row.expiresAt),
-        createdAt: toIsoDateTime(row.createdAt),
+        expiresAt: row.expiresAt,
+        createdAt: row.createdAt,
         inviteLink: inviteLink(c.env.APP_URL, row.token),
       })),
     }),
@@ -179,101 +176,28 @@ platform.post("/invitations", authMiddleware, requirePlatformAdmin, async (c) =>
   const actor = c.get("user")
   const db = getDB()
   const body = CreatePlatformInvitationRequest.parse(await c.req.json())
-  const email = body.email.toLowerCase()
-
-  const targetUser = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).get()
-  if (targetUser) {
-    return c.json({ code: "USER_ALREADY_MEMBER", message: "User already exists" }, 409)
-  }
-
-  const existingInvite = await db
-    .select({ id: bucketInvitation.id })
-    .from(bucketInvitation)
-    .where(and(eq(bucketInvitation.email, email), eq(bucketInvitation.status, "pending")))
-    .get()
-  if (existingInvite) {
-    return c.json(
-      { code: "CONFLICT", message: "Pending invitation already exists for this email" },
-      409,
-    )
-  }
-
-  const now = new Date()
-  const token = crypto.randomUUID()
-  const created = {
-    id: crypto.randomUUID(),
-    email,
-    token,
-    role: body.role,
-    invitedBy: actor.id,
-    status: "pending",
-    expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    acceptedAt: null,
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-  }
-
-  await db.insert(bucketInvitation).values(created).run()
+  const result = await createInvitation(db, actor, body, c.env.APP_URL)
+  if ("error" in result) return c.json(result.error.body, result.error.status)
 
   return c.json(
     CreatePlatformInvitationResponse.parse({
-      id: created.id,
-      email: created.email,
-      role: created.role,
-      status: created.status,
-      expiresAt: created.expiresAt,
-      createdAt: created.createdAt,
-      inviteLink: inviteLink(c.env.APP_URL, token),
+      id: result.raw.id,
+      email: result.raw.email,
+      role: result.raw.role,
+      status: result.raw.status,
+      expiresAt: result.raw.expiresAt,
+      createdAt: result.raw.createdAt,
+      inviteLink: result.data.inviteLink,
     }),
     201,
   )
 })
 
 platform.post("/invitations/:token/accept", authMiddleware, async (c) => {
-  const db = getDB()
-  const currentUser = c.get("user")
-  const token = c.req.param("token")
-  const now = new Date().toISOString()
-  const invite = await db
-    .select()
-    .from(bucketInvitation)
-    .where(and(eq(bucketInvitation.token, token), eq(bucketInvitation.status, "pending")))
-    .get()
+  const result = await acceptInvitation(getDB(), c.req.param("token"), c.get("user"))
+  if ("error" in result) return c.json(result.error.body, result.error.status)
 
-  if (!invite) {
-    return c.json({ code: "NOT_FOUND", message: "Invitation not found or already used" }, 404)
-  }
-
-  if (new Date(invite.expiresAt).getTime() < Date.now()) {
-    await db
-      .update(bucketInvitation)
-      .set({ status: "expired", updatedAt: now })
-      .where(eq(bucketInvitation.id, invite.id))
-      .run()
-    return c.json({ code: "SHARE_EXPIRED", message: "Invitation has expired" }, 410)
-  }
-
-  if (invite.email.toLowerCase() !== currentUser.email.toLowerCase()) {
-    return c.json(
-      { code: "FORBIDDEN", message: "This invitation is for a different email address" },
-      403,
-    )
-  }
-
-  await db
-    .update(user)
-    .set({ role: invite.role, updatedAt: now })
-    .where(eq(user.id, currentUser.id))
-    .run()
-  await db
-    .update(bucketInvitation)
-    .set({ status: "accepted", acceptedAt: now, updatedAt: now })
-    .where(eq(bucketInvitation.id, invite.id))
-    .run()
-
-  return c.json(
-    AcceptPlatformInvitationResponse.parse({ success: true, role: invite.role as WorkspaceRole }),
-  )
+  return c.json(AcceptPlatformInvitationResponse.parse(result.data))
 })
 
 async function ensurePlatformSettings() {
@@ -310,19 +234,6 @@ function toPlatformSettingsResponse(settings: Awaited<ReturnType<typeof ensurePl
 
 function parseAssetKind(value: string | undefined): "logo" | "favicon" | null {
   return value === "logo" || value === "favicon" ? value : null
-}
-
-function inviteLink(appUrl: string | undefined, token: string) {
-  const base = appUrl?.replace(/\/$/, "") ?? ""
-  return `${base}/join?token=${token}`
-}
-
-function toIsoDateTime(value: string): string {
-  const sqliteTimestamp = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
-  const normalized = sqliteTimestamp.test(value) ? `${value.replace(" ", "T")}Z` : value
-  const date = new Date(normalized)
-
-  return Number.isNaN(date.getTime()) ? value : date.toISOString()
 }
 
 export const platformHandler = platform

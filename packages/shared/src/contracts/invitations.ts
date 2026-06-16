@@ -18,6 +18,7 @@ export const InvitationListItemSchema = z.object({
   status: InvitationStatus,
   expiresAt: z.iso.datetime(),
   createdAt: z.iso.datetime(),
+  inviteLink: z.string().optional(),
 })
 
 export const ListInvitationsResponse = PaginatedResponseSchema(InvitationListItemSchema)
@@ -30,6 +31,10 @@ export const InvitationDetailResponse = z.object({
   status: InvitationStatus,
   expiresAt: z.iso.datetime(),
   createdAt: z.iso.datetime(),
+})
+
+export const CreateInvitationResponse = InvitationDetailResponse.extend({
+  inviteLink: z.string(),
 })
 
 export const AcceptInvitationRequest = z.object({
@@ -62,3 +67,4 @@ export const OwnershipTransferResponse = z.object({
 
 export type InvitationListItem = z.infer<typeof InvitationListItemSchema>
 export type InvitationDetail = z.infer<typeof InvitationDetailResponse>
+export type CreateInvitation = z.infer<typeof CreateInvitationResponse>

@@ -1765,7 +1765,7 @@ export function useAddMember(
   >({
     mutationFn: (body) =>
       api.post<CreateInvitationResponse>(
-        buildWorkspacePath(requireId(workspaceId, "workspaceId"), "/members"),
+        buildWorkspacePath(requireId(workspaceId, "workspaceId"), "/invitations"),
         body,
       ),
     onSuccess: () => {
@@ -1842,20 +1842,20 @@ export function useAcceptInvitation(): UseMutationResult<
 export function useTransferOwnership(
   workspaceId: string | null,
 ): UseMutationResult<
-  { success: true; workspaceId: string; previousOwnerId: string; newOwnerId: string },
+  { success: true; previousOwnerId: string; newOwnerId: string },
   ApiRequestError,
   { newOwnerId: string }
 > {
   const queryClient = useQueryClient()
 
   return useMutation<
-    { success: true; workspaceId: string; previousOwnerId: string; newOwnerId: string },
+    { success: true; previousOwnerId: string; newOwnerId: string },
     ApiRequestError,
     { newOwnerId: string }
   >({
     mutationFn: ({ newOwnerId }) =>
-      api.post<{ success: true; workspaceId: string; previousOwnerId: string; newOwnerId: string }>(
-        buildWorkspacePath(workspaceId, "/transfer-ownership"),
+      api.post<{ success: true; previousOwnerId: string; newOwnerId: string }>(
+        `/api/workspaces/${requireId(workspaceId, "workspaceId")}/transfer-ownership`,
         { newOwnerId },
       ),
     onSuccess: () => {

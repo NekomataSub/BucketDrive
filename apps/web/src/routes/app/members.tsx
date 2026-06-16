@@ -4,8 +4,10 @@ import {
   useAddMember,
   useInvitations,
   useMembers,
+  usePlatformMe,
   useRemoveMember,
   useRevokeInvitation,
+  useTransferOwnership,
   useUpdateMemberRole,
 } from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
@@ -17,17 +19,34 @@ import {
 } from "@/components/shared/page-layout"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { StyledSelect } from "@/components/shared/styled-select"
-import { can, type WorkspaceRole } from "@bucketdrive/shared"
+import {
+  can,
+  canAssignWorkspaceRole,
+  canManageWorkspaceRole,
+  type WorkspaceRole,
+} from "@bucketdrive/shared"
 
-const editableRoles: WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer"]
-const inviteRoles: Array<Exclude<WorkspaceRole, "owner">> = ["admin", "manager", "editor", "viewer"]
+const editableRoles: Array<Exclude<WorkspaceRole, "owner">> = [
+  "admin",
+  "manager",
+  "editor",
+  "viewer",
+  "guest",
+]
+const inviteRoles: Array<Exclude<WorkspaceRole, "owner">> = [
+  "admin",
+  "manager",
+  "editor",
+  "viewer",
+  "guest",
+]
 const inviteRoleOptions = inviteRoles.map((entry) => ({ value: entry, label: entry }))
-const editableRoleOptions = editableRoles.map((entry) => ({ value: entry, label: entry }))
 
 type Tab = "members" | "invitations"
 type MemberConfirmAction =
   | { type: "member"; id: string; name: string }
   | { type: "invitation"; id: string; email: string }
+  | { type: "transfer"; id: string; name: string }
 
 export function MembersPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -41,6 +60,8 @@ export function MembersPage() {
   const updateMemberRole = useUpdateMemberRole(workspaceId)
   const removeMember = useRemoveMember(workspaceId)
   const revokeInvitation = useRevokeInvitation(workspaceId)
+  const transferOwnership = useTransferOwnership(workspaceId)
+  const meQuery = usePlatformMe()
 
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<Exclude<WorkspaceRole, "owner">>("editor")
@@ -69,6 +90,13 @@ export function MembersPage() {
 
   const members = membersQuery.data?.data ?? []
   const invitations = invitationsQuery.data?.data ?? []
+  const currentUserId = meQuery.data?.id ?? null
+  const editableRoleOptions = editableRoles
+    .filter((entry) => canAssignWorkspaceRole(currentUserRole, entry))
+    .map((entry) => ({ value: entry, label: entry }))
+  const filteredInviteRoleOptions = inviteRoleOptions.filter((entry) =>
+    canAssignWorkspaceRole(currentUserRole, entry.value),
+  )
 
   const handleConfirmAction = () => {
     if (!confirmAction) return
@@ -76,6 +104,14 @@ export function MembersPage() {
     if (confirmAction.type === "member") {
       removeMember.mutate(
         { memberId: confirmAction.id },
+        { onSuccess: () => setConfirmAction(null) },
+      )
+      return
+    }
+
+    if (confirmAction.type === "transfer") {
+      transferOwnership.mutate(
+        { newOwnerId: confirmAction.id },
         { onSuccess: () => setConfirmAction(null) },
       )
       return
@@ -95,6 +131,14 @@ export function MembersPage() {
         description: `${confirmAction.name} will lose access to this bucket.`,
         confirmLabel: "Remove",
         loadingLabel: "Removing...",
+      }
+    }
+    if (confirmAction.type === "transfer") {
+      return {
+        title: "Transfer ownership?",
+        description: `${confirmAction.name} will become the bucket owner and you will become an admin.`,
+        confirmLabel: "Transfer",
+        loadingLabel: "Transferring...",
       }
     }
     return {
@@ -147,7 +191,7 @@ export function MembersPage() {
             <StyledSelect
               value={role}
               onValueChange={setRole}
-              options={inviteRoleOptions}
+              options={filteredInviteRoleOptions}
               triggerClassName="bg-bg-tertiary py-2.5"
             />
             <ActionButton
@@ -239,19 +283,35 @@ export function MembersPage() {
                         role: nextRole,
                       })
                     }
-                    disabled={!canManageMembers}
+                    disabled={
+                      !canManageMembers ||
+                      entry.id === currentUserId ||
+                      !canManageWorkspaceRole(currentUserRole, entry.role)
+                    }
                     options={editableRoleOptions}
                     triggerClassName="bg-bg-tertiary capitalize"
                     contentClassName="capitalize"
                   />
-                  {can(currentUserRole, "users.remove") && (
+                  {can(currentUserRole, "users.remove") &&
+                    entry.id !== currentUserId &&
+                    canManageWorkspaceRole(currentUserRole, entry.role) && (
+                      <button
+                        onClick={() => {
+                          setConfirmAction({ type: "member", id: entry.id, name: entry.name })
+                        }}
+                        className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  {currentUserRole === "owner" && entry.role === "admin" && (
                     <button
                       onClick={() => {
-                        setConfirmAction({ type: "member", id: entry.id, name: entry.name })
+                        setConfirmAction({ type: "transfer", id: entry.id, name: entry.name })
                       }}
-                      className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+                      className="border-accent/40 text-accent hover:bg-accent/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                     >
-                      Remove
+                      Transfer ownership
                     </button>
                   )}
                 </div>
@@ -306,7 +366,11 @@ export function MembersPage() {
                           role: nextRole,
                         })
                       }
-                      disabled={!canManageMembers}
+                      disabled={
+                        !canManageMembers ||
+                        entry.id === currentUserId ||
+                        !canManageWorkspaceRole(currentUserRole, entry.role)
+                      }
                       options={editableRoleOptions}
                       triggerClassName="bg-bg-tertiary capitalize"
                       contentClassName="capitalize"
@@ -314,16 +378,28 @@ export function MembersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {can(currentUserRole, "users.remove") && (
+                      {currentUserRole === "owner" && entry.role === "admin" && (
                         <button
                           onClick={() => {
-                            setConfirmAction({ type: "member", id: entry.id, name: entry.name })
+                            setConfirmAction({ type: "transfer", id: entry.id, name: entry.name })
                           }}
-                          className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+                          className="border-accent/40 text-accent hover:bg-accent/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                         >
-                          Remove
+                          Transfer
                         </button>
                       )}
+                      {can(currentUserRole, "users.remove") &&
+                        entry.id !== currentUserId &&
+                        canManageWorkspaceRole(currentUserRole, entry.role) && (
+                          <button
+                            onClick={() => {
+                              setConfirmAction({ type: "member", id: entry.id, name: entry.name })
+                            }}
+                            className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
                     </div>
                   </td>
                 </tr>
@@ -357,8 +433,8 @@ export function MembersPage() {
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <button
                     onClick={() => {
-                      const baseUrl = window.location.origin
-                      const link = `${baseUrl}/join?token=${entry.id}`
+                      const link =
+                        entry.inviteLink ?? `${window.location.origin}/join?token=${entry.id}`
                       void navigator.clipboard.writeText(link)
                       setCopiedInviteId(entry.id)
                       window.setTimeout(
@@ -422,8 +498,8 @@ export function MembersPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => {
-                          const baseUrl = window.location.origin
-                          const link = `${baseUrl}/join?token=${entry.id}`
+                          const link =
+                            entry.inviteLink ?? `${window.location.origin}/join?token=${entry.id}`
                           void navigator.clipboard.writeText(link)
                           setCopiedInviteId(entry.id)
                           window.setTimeout(
@@ -468,12 +544,14 @@ export function MembersPage() {
       {(membersQuery.isError ||
         updateMemberRole.isError ||
         removeMember.isError ||
-        revokeInvitation.isError) && (
+        revokeInvitation.isError ||
+        transferOwnership.isError) && (
         <div className="border-error/40 bg-error/10 text-error rounded-xl border px-4 py-3 text-sm">
           {membersQuery.error?.message ??
             updateMemberRole.error?.message ??
             removeMember.error?.message ??
-            revokeInvitation.error?.message}
+            revokeInvitation.error?.message ??
+            transferOwnership.error?.message}
         </div>
       )}
 
@@ -484,7 +562,9 @@ export function MembersPage() {
           description={confirmCopy.description}
           confirmLabel={confirmCopy.confirmLabel}
           loadingLabel={confirmCopy.loadingLabel}
-          loading={removeMember.isPending || revokeInvitation.isPending}
+          loading={
+            removeMember.isPending || revokeInvitation.isPending || transferOwnership.isPending
+          }
           onConfirm={handleConfirmAction}
           onOpenChange={(open) => {
             if (!open) setConfirmAction(null)

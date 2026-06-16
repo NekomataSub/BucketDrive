@@ -2,14 +2,20 @@ import { Hono } from "hono"
 import { eq } from "drizzle-orm"
 import {
   AddMemberRequest,
+  CreateInvitationResponse,
   ListMembersResponse,
   RemoveMemberResponse,
   UpdateMemberRoleRequest,
+  canAssignWorkspaceRole,
+  canManageWorkspaceRole,
+  normalizeWorkspaceRole,
+  type WorkspaceRole,
 } from "@bucketdrive/shared"
-import { auditLog, bucketInvitation, user } from "@bucketdrive/shared/db/schema"
+import { auditLog, user } from "@bucketdrive/shared/db/schema"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
+import { createInvitation } from "./invitation-service"
 
 interface MembersEnv {
   DB: D1Database
@@ -17,7 +23,7 @@ interface MembersEnv {
 }
 
 interface MembersVariables {
-  user: { id: string; email: string; name: string; role: string }
+  user: { id: string; email: string; name: string; role: WorkspaceRole }
   session: { id: string; userId: string; expiresAt: Date }
 }
 
@@ -53,44 +59,14 @@ members.post("/", requirePermission("users.invite"), async (c) => {
   const actor = c.get("user")
   const db = getDB()
   const body = AddMemberRequest.parse(await c.req.json())
-  const targetUser = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.email, body.email.toLowerCase()))
-    .get()
-  if (targetUser)
-    return c.json({ code: "USER_ALREADY_MEMBER", message: "User already exists" }, 409)
-  const existingInvite = await db
-    .select({ id: bucketInvitation.id })
-    .from(bucketInvitation)
-    .where(eq(bucketInvitation.email, body.email.toLowerCase()))
-    .get()
-  if (existingInvite)
-    return c.json({ code: "CONFLICT", message: "Invitation already exists for this email" }, 409)
-  const now = new Date()
-  const token = crypto.randomUUID()
-  const created = {
-    id: crypto.randomUUID(),
-    email: body.email.toLowerCase(),
-    token,
-    role: body.role,
-    invitedBy: actor.id,
-    status: "pending",
-    expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    acceptedAt: null,
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
+  if (!canAssignWorkspaceRole(actor.role, body.role)) {
+    return c.json({ code: "ROLE_TOO_LOW", message: "Cannot invite a role above your own" }, 403)
   }
-  await db.insert(bucketInvitation).values(created).run()
-  await writeAudit(db, actor.id, "member.invited", created.id, {
-    email: body.email,
-    role: body.role,
-  })
-  const baseUrl = c.env.APP_URL?.replace(/\/$/, "") ?? ""
-  return c.json(
-    { ...created, invitedByName: actor.name, inviteLink: `${baseUrl}/join?token=${token}` },
-    201,
-  )
+
+  const result = await createInvitation(db, actor, body, c.env.APP_URL)
+  if ("error" in result) return c.json(result.error.body, result.error.status)
+
+  return c.json(CreateInvitationResponse.parse(result.data), 201)
 })
 
 members.patch("/:memberId", requirePermission("users.update_roles"), async (c) => {
@@ -100,12 +76,24 @@ members.patch("/:memberId", requirePermission("users.update_roles"), async (c) =
   const body = UpdateMemberRoleRequest.parse(await c.req.json())
   const target = await db.select().from(user).where(eq(user.id, memberId)).get()
   if (!target) return c.json({ code: "NOT_FOUND", message: "Member not found" }, 404)
-  if (target.role === "owner" && body.role !== "owner") {
-    const owners = (await db.select({ id: user.id }).from(user).where(eq(user.role, "owner")).all())
-      .length
-    if (owners <= 1)
-      return c.json({ code: "FORBIDDEN", message: "Cannot demote the last owner" }, 403)
+  if (memberId === actor.id) {
+    return c.json({ code: "FORBIDDEN", message: "You cannot change your own role" }, 403)
   }
+
+  const targetRole = normalizeWorkspaceRole(target.role)
+  if (targetRole === "owner") {
+    return c.json(
+      { code: "OWNER_REQUIRED", message: "Use ownership transfer to change the owner" },
+      403,
+    )
+  }
+  if (!canManageWorkspaceRole(actor.role, targetRole)) {
+    return c.json({ code: "ROLE_TOO_LOW", message: "Cannot manage this member role" }, 403)
+  }
+  if (!canAssignWorkspaceRole(actor.role, body.role)) {
+    return c.json({ code: "ROLE_TOO_LOW", message: "Cannot assign a role above your own" }, 403)
+  }
+
   await db
     .update(user)
     .set({ role: body.role, updatedAt: new Date().toISOString() })
@@ -138,12 +126,18 @@ members.delete("/:memberId", requirePermission("users.remove"), async (c) => {
   const db = getDB()
   const target = await db.select().from(user).where(eq(user.id, memberId)).get()
   if (!target) return c.json({ code: "NOT_FOUND", message: "Member not found" }, 404)
-  if (target.role === "owner") {
-    const owners = (await db.select({ id: user.id }).from(user).where(eq(user.role, "owner")).all())
-      .length
-    if (owners <= 1)
-      return c.json({ code: "FORBIDDEN", message: "Cannot remove the last owner" }, 403)
+  if (memberId === actor.id) {
+    return c.json({ code: "FORBIDDEN", message: "You cannot remove your own account" }, 403)
   }
+
+  const targetRole = normalizeWorkspaceRole(target.role)
+  if (targetRole === "owner") {
+    return c.json({ code: "OWNER_REQUIRED", message: "Cannot remove the bucket owner" }, 403)
+  }
+  if (!canManageWorkspaceRole(actor.role, targetRole)) {
+    return c.json({ code: "ROLE_TOO_LOW", message: "Cannot remove this member role" }, 403)
+  }
+
   await db.delete(user).where(eq(user.id, memberId)).run()
   await writeAudit(db, actor.id, "member.removed", memberId, {
     userId: target.id,

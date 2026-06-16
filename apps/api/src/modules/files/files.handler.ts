@@ -37,7 +37,6 @@ import {
   ToggleFavoriteResponse,
   UpdateFileRequest,
   UpdateFileTagsRequest,
-  can,
 } from "@bucketdrive/shared"
 import type { WorkspaceRole } from "@bucketdrive/shared"
 
@@ -308,11 +307,6 @@ files.post("/batch-upload", requirePermission("files.upload"), async (c) => {
 })
 
 files.post("/import-r2", requirePermission("bucket.settings.update"), async (c) => {
-  const role = c.get("bucketRole") ?? c.get("user").role
-  if (!c.get("user").isPlatformAdmin && role !== "owner" && role !== "admin") {
-    return c.json({ code: "FORBIDDEN", message: "Only bucket admins can import R2 objects" }, 403)
-  }
-
   const body = ImportR2Request.parse(await c.req.json().catch(() => ({})))
   const service = new R2ImportService(createStorageProvider(c.env))
   try {
@@ -569,14 +563,7 @@ files.post("/:fileId/restore", requirePermission("files.restore"), async (c) => 
   }
 })
 
-files.delete("/:fileId/permanent", async (c) => {
-  const role = c.get("user").role
-  if (!can(role, "trash.permanent_delete")) {
-    return c.json(
-      { code: "FORBIDDEN", message: "Only owners and admins can permanently delete files" },
-      403,
-    )
-  }
+files.delete("/:fileId/permanent", requirePermission("trash.permanent_delete"), async (c) => {
   try {
     return c.json(
       await new TrashService(getDB(), createStorageProvider(c.env)).permanentlyDeleteFile({

@@ -72,4 +72,47 @@ describe("invitations contracts", () => {
     expect(invalid.status).toBe(400)
     expectApiError(await ctx.json(invalid))
   })
+
+  it("expires stale invitations on read and allows a new invite for the same email", async () => {
+    const ctx = createContractTestContext()
+    const stale = ctx.seedInvitation({
+      email: "expired@example.com",
+      token: "expired-token",
+      expiresAt: "2020-01-01T00:00:00.000Z",
+    })
+
+    const detail = await ctx.request(`/api/invitations/${stale.token}`, { userId: null })
+    expect(detail.status).toBe(410)
+    expectApiError(await ctx.json(detail))
+    expect(
+      ctx.sqlite.prepare("select status from bucket_invitation where id = ?").get(stale.id),
+    ).toMatchObject({ status: "expired" })
+
+    const create = await ctx.request(`/api/workspaces/${ctx.workspaceId}/invitations`, {
+      method: "POST",
+      body: JSON.stringify({ email: "expired@example.com", role: "viewer" }),
+    })
+    expect(create.status).toBe(201)
+    InvitationDetailResponse.extend({ inviteLink: z.string() }).parse(await ctx.json(create))
+  })
+
+  it("accepting a lower-role invitation does not downgrade an existing higher-role user", async () => {
+    const ctx = createContractTestContext()
+    const invite = ctx.seedInvitation({
+      email: ctx.admin.email,
+      token: "admin-lower-role-token",
+      role: "viewer",
+    })
+
+    const accept = await ctx.request(`/api/invitations/${invite.token}/accept`, {
+      method: "POST",
+      userId: ctx.admin.id,
+    })
+    expect(accept.status).toBe(200)
+    const body = AcceptInvitationResponse.parse(await ctx.json(accept))
+    expect(body.role).toBe("admin")
+    expect(
+      ctx.sqlite.prepare("select role from user where id = ?").get(ctx.admin.id),
+    ).toMatchObject({ role: "admin" })
+  })
 })

@@ -17,8 +17,12 @@ import { notificationsHandler } from "./modules/notifications/notifications.hand
 import { trashHandler } from "./modules/trash/trash.handler"
 import { platformHandler } from "./modules/platform/platform.handler"
 import { batchHandler } from "./modules/batch/batch.handler"
-import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
+import {
+  transferOwnershipHandler,
+  workspacesHandler,
+} from "./modules/workspaces/workspaces.handler"
 import { authMiddleware } from "./middleware/auth"
+import { requirePermission } from "./middleware/rbac"
 import { getAllowedOrigins } from "./lib/origins"
 import {
   e2eCreateFile,
@@ -110,6 +114,12 @@ app.get("/api/storage/status", authMiddleware, (c) => {
 })
 
 app.route("/api/workspaces", workspacesHandler)
+app.post(
+  "/api/transfer-ownership",
+  authMiddleware,
+  requirePermission("users.update_roles"),
+  transferOwnershipHandler,
+)
 app.route("/api/workspaces/:workspaceId/files", filesHandler)
 app.route("/api/workspaces/:workspaceId/folders", foldersHandler)
 app.route("/api/workspaces/:workspaceId/members", membersHandler)

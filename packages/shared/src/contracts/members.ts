@@ -20,7 +20,7 @@ export const AddMemberRequest = z.object({
 })
 
 export const UpdateMemberRoleRequest = z.object({
-  role: WorkspaceRole,
+  role: WorkspaceRole.exclude(["owner"]),
 })
 
 export const RemoveMemberResponse = z.object({

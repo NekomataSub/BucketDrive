@@ -9,7 +9,6 @@ import { createStorageProvider } from "../../services/storage"
 import { TrashService, TrashServiceError } from "../../services/trash.service"
 import {
   BreadcrumbItemSchema,
-  can,
   CreateFolderRequest,
   ListFoldersRequest,
   UpdateFolderRequest,
@@ -211,13 +210,7 @@ folders.post("/:folderId/restore", requirePermission("folders.restore"), async (
   }
 })
 
-folders.delete("/:folderId/permanent", async (c) => {
-  if (!can(c.get("user").role, "trash.permanent_delete")) {
-    return c.json(
-      { code: "FORBIDDEN", message: "Only owners and admins can permanently delete folders" },
-      403,
-    )
-  }
+folders.delete("/:folderId/permanent", requirePermission("trash.permanent_delete"), async (c) => {
   try {
     return c.json(
       await new TrashService(getDB(), createStorageProvider(c.env)).permanentlyDeleteFolder({

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest"
 import { can, canWithInheritance } from "../can"
+import {
+  canAssignWorkspaceRole,
+  canManageWorkspaceRole,
+  compareWorkspaceRoles,
+  normalizeWorkspaceRole,
+} from "../roles"
 import type { WorkspaceRole } from "../../schemas/common"
 import type { Permission } from "../permissions"
 import { ALL_PERMISSIONS, ROLE_PERMISSIONS } from "../permissions"
@@ -326,5 +332,36 @@ describe("can() — RBAC permission evaluation", () => {
         expect(ROLE_PERMISSIONS[role].length).toBeGreaterThan(0)
       }
     })
+  })
+})
+
+describe("workspace role hierarchy", () => {
+  it("orders roles from guest through owner", () => {
+    expect(compareWorkspaceRoles("owner", "admin")).toBeGreaterThan(0)
+    expect(compareWorkspaceRoles("admin", "manager")).toBeGreaterThan(0)
+    expect(compareWorkspaceRoles("manager", "editor")).toBeGreaterThan(0)
+    expect(compareWorkspaceRoles("editor", "viewer")).toBeGreaterThan(0)
+    expect(compareWorkspaceRoles("viewer", "guest")).toBeGreaterThan(0)
+  })
+
+  it("allows managing only lower non-owner roles", () => {
+    expect(canManageWorkspaceRole("owner", "admin")).toBe(true)
+    expect(canManageWorkspaceRole("admin", "manager")).toBe(true)
+    expect(canManageWorkspaceRole("admin", "admin")).toBe(false)
+    expect(canManageWorkspaceRole("admin", "owner")).toBe(false)
+  })
+
+  it("allows assigning own-or-lower non-owner roles", () => {
+    expect(canAssignWorkspaceRole("owner", "admin")).toBe(true)
+    expect(canAssignWorkspaceRole("admin", "admin")).toBe(true)
+    expect(canAssignWorkspaceRole("admin", "owner")).toBe(false)
+    expect(canAssignWorkspaceRole("editor", "manager")).toBe(false)
+  })
+
+  it("normalizes unknown roles to viewer", () => {
+    expect(normalizeWorkspaceRole("manager")).toBe("manager")
+    expect(normalizeWorkspaceRole("manager,viewer")).toBe("manager")
+    expect(normalizeWorkspaceRole("unknown")).toBe("viewer")
+    expect(normalizeWorkspaceRole(undefined)).toBe("viewer")
   })
 })

@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
   InvitationDetailResponse,
   ListMembersResponse,
+  OwnershipTransferResponse,
   RemoveMemberResponse,
   WorkspaceMemberListItemSchema,
 } from "@bucketdrive/shared"
@@ -85,5 +86,76 @@ describe("members contracts", () => {
     })
     expect(invalid.status).toBe(400)
     expectApiError(await ctx.json(invalid))
+  })
+
+  it("enforces role hierarchy and self-management guards", async () => {
+    const ctx = createContractTestContext()
+    const adminPeer = ctx.seedUser({
+      email: "admin-peer@example.com",
+      name: "Admin Peer",
+      role: "admin",
+    })
+
+    const selfUpdate = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/members/${ctx.owner.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ role: "admin" }),
+      },
+    )
+    expect(selfUpdate.status).toBe(403)
+    expectApiError(await ctx.json(selfUpdate))
+
+    const selfRemove = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/members/${ctx.owner.id}`,
+      {
+        method: "DELETE",
+      },
+    )
+    expect(selfRemove.status).toBe(403)
+    expectApiError(await ctx.json(selfRemove))
+
+    const peerUpdate = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/members/${adminPeer.id}`,
+      {
+        method: "PATCH",
+        userId: ctx.admin.id,
+        body: JSON.stringify({ role: "manager" }),
+      },
+    )
+    expect(peerUpdate.status).toBe(403)
+    expectApiError(await ctx.json(peerUpdate))
+
+    const ownerRole = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/members/${ctx.admin.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ role: "owner" }),
+      },
+    )
+    expect(ownerRole.status).toBe(400)
+    expectApiError(await ctx.json(ownerRole))
+  })
+
+  it("transfers ownership from the owner to an admin", async () => {
+    const ctx = createContractTestContext()
+
+    const transfer = await ctx.request(`/api/workspaces/${ctx.workspaceId}/transfer-ownership`, {
+      method: "POST",
+      body: JSON.stringify({ newOwnerId: ctx.admin.id }),
+    })
+    expect(transfer.status).toBe(200)
+    OwnershipTransferResponse.parse(await ctx.json(transfer))
+
+    expect(
+      ctx.sqlite.prepare("select role from user where id = ?").get(ctx.owner.id),
+    ).toMatchObject({
+      role: "admin",
+    })
+    expect(
+      ctx.sqlite.prepare("select role from user where id = ?").get(ctx.admin.id),
+    ).toMatchObject({
+      role: "owner",
+    })
   })
 })
