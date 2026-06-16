@@ -94,7 +94,6 @@ jobs:
           cat > .env.staging << 'EOF'
           APP_URL=${{ vars.APP_URL }}
           API_URL=${{ vars.API_URL }}
-          API_WORKER_URL=${{ vars.API_WORKER_URL }}
           BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
           BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}
           GITHUB_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
@@ -152,13 +151,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/web
           command: pages deploy dist --project-name=${{ vars.PAGES_PROJECT_NAME }} --branch=${{ vars.PAGES_BRANCH }}
-
-      - name: Push Pages function environment
-        run: |
-          printf "%s" "${{ vars.API_URL }}" | pnpm exec wrangler pages secret put API_URL --project-name=${{ vars.PAGES_PROJECT_NAME }}
-          if [ -n "${{ vars.API_WORKER_URL }}" ]; then
-            printf "%s" "${{ vars.API_WORKER_URL }}" | pnpm exec wrangler pages secret put API_WORKER_URL --project-name=${{ vars.PAGES_PROJECT_NAME }}
-          fi
 
       - name: Setup custom domain
         env:

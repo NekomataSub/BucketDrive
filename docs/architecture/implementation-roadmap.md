@@ -34,6 +34,15 @@ verifiable result.
 > - Removed `PLAYWRIGHT_BASE_URL` and full Playwright runs from production deploy requirements.
 > - Replaced production E2E/a11y steps with frontend and API smoke checks.
 
+> **Pages Function Service Binding fix — 2026-06-15:**
+>
+> - Replaced the Pages `/api/*` proxy HTTP fetch with a Cloudflare Service Binding (`API_SERVICE`) to the API Worker.
+> - Eliminated the need for `API_WORKER_URL` entirely: the Pages Function now calls the Worker internally via `context.env.API_SERVICE.fetch(request)`.
+> - Removed `API_WORKER_URL` from `.env.example`, `scripts/env.ts`, `scripts/env-utils.ts`, GitHub Actions workflows, and all documentation.
+> - Created `apps/web/wrangler.toml` with `[[services]]` bindings for local, staging, and production environments.
+> - Updated `api/[[path]].ts`, `share/[shareId].ts`, and `og/share/[shareId].png.ts` to use the Service Binding instead of external HTTP fetch.
+> - Deleted the now-obsolete `apps/web/functions/_lib/api-origin.ts`.
+
 > **Production deploy simplification pass — 2026-06-15:**
 >
 > - Changed production deployment to run automatically on push to `main`.
@@ -2123,7 +2132,7 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 
 > - Removed the committed real D1 database ID and personal R2 bucket from Wrangler config; local Wrangler uses placeholders/defaults and deploy values are prepared from env.
 > - Added configurable D1 database names, R2 bucket propagation, and Pages API proxy settings through `.env.*`, GitHub Actions env files, and `pnpm env:prepare:*`.
-> - Replaced the Pages `/api/*` proxy's fixed Workers URL with `API_WORKER_URL`, falling back to `API_URL` only when it points to a different origin than the Pages app.
+> - Replaced the Pages `/api/*` proxy's external HTTP fetch with a Cloudflare Service Binding (`API_SERVICE`) to the API Worker, eliminating the need for `API_WORKER_URL` entirely.
 > - Removed the operational `DEFAULT_R2_BUCKET_NAME` fallback so signed R2 URLs require explicit `R2_BUCKET_NAME`.
 
 ---

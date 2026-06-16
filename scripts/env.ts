@@ -134,7 +134,6 @@ function checkLocalEnv() {
   }
 
   assertOauthConfigured(vars, ".dev.vars")
-  assertApiProxyConfigured(vars, ".dev.vars")
   console.log(".dev.vars has the required local runtime keys.")
 }
 
@@ -149,7 +148,6 @@ function checkDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
   }
 
   assertOauthConfigured(vars, `${environment} env`)
-  assertApiProxyConfigured(vars, `${environment} env`)
   console.log(`${environment} env has the required deploy and runtime keys.`)
 }
 
@@ -164,19 +162,6 @@ function assertOauthConfigured(vars: Record<string, string>, source: string) {
     )
     process.exit(1)
   }
-}
-
-function assertApiProxyConfigured(vars: Record<string, string>, source: string) {
-  if (vars.API_WORKER_URL?.trim()) return
-
-  const appUrl = parseUrl(vars.APP_URL)
-  const apiUrl = parseUrl(vars.API_URL)
-  if (appUrl && apiUrl && appUrl.origin !== apiUrl.origin) return
-
-  console.error(
-    `Missing API_WORKER_URL in ${source}. Set it when API_URL shares the same origin as APP_URL to avoid a Pages /api proxy loop.`,
-  )
-  process.exit(1)
 }
 
 function parseUrl(value: string | undefined): URL | null {
@@ -202,7 +187,6 @@ function prepareDeployEnv(environment: DeployEnvironment, explicitFile?: string)
   const appUrl = vars.APP_URL?.trim()
   const apiUrl = vars.API_URL?.trim()
   const r2BucketName = vars.R2_BUCKET_NAME?.trim()
-  const apiWorkerUrl = vars.API_WORKER_URL?.trim()
 
   patchWranglerConfig(API_WRANGLER, environment, {
     d1Id,
@@ -218,9 +202,6 @@ function prepareDeployEnv(environment: DeployEnvironment, explicitFile?: string)
     apiUrl,
     r2BucketName,
   })
-  if (apiWorkerUrl) {
-    console.log(`API_WORKER_URL is a Pages environment variable: ${apiWorkerUrl}`)
-  }
   console.log(`Prepared Wrangler configs for ${environment} from environment values.`)
 }
 

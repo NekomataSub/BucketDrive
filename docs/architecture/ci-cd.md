@@ -77,7 +77,6 @@ Uses the `staging` GitHub Environment and requires the following secrets/variabl
 | Environment variable | `STAGING_D1_DATABASE_NAME` | Staging D1 database name                               |
 | Environment variable | `APP_URL`                  | Frontend URL                                           |
 | Environment variable | `API_URL`                  | Worker URL                                             |
-| Environment variable | `API_WORKER_URL`           | Worker origin used by the Pages `/api/*` proxy         |
 | Environment variable | `PLAYWRIGHT_BASE_URL`      | E2E target URL for staging                             |
 | Environment variable | `PAGES_PROJECT_NAME`       | Cloudflare Pages project name                          |
 | Environment variable | `PAGES_BRANCH`             | Pages branch name                                      |
@@ -168,7 +167,6 @@ GitHub repository settings.
 | `PRODUCTION_D1_DATABASE_ID` | —                                                      | Output of `wrangler d1 create <production database name>` |
 | `APP_URL`                   | Staging frontend URL                                   | Production frontend URL                                   |
 | `API_URL`                   | Staging API URL                                        | Production API URL                                        |
-| `API_WORKER_URL`            | Required if `API_URL` shares origin with `APP_URL`     | Required if `API_URL` shares origin with `APP_URL`        |
 | `PLAYWRIGHT_BASE_URL`       | Same as `APP_URL`                                      | Not required                                              |
 | `PAGES_PROJECT_NAME`        | Cloudflare Pages project name                          | Cloudflare Pages project name                             |
 | `PAGES_BRANCH`              | `staging`                                              | `production`                                              |

@@ -1,4 +1,3 @@
-import { buildApiUrl, type ApiOriginEnv } from "../_lib/api-origin"
 import {
   buildShareHeadTags,
   buildShareMetadata,
@@ -6,9 +5,14 @@ import {
   type ShareInfo,
 } from "../_lib/share-metadata"
 
+interface ApiServiceBinding {
+  fetch(request: Request): Promise<Response>
+}
+
 interface PagesFunctionContext {
   request: Request
-  env: ApiOriginEnv & {
+  env: {
+    API_SERVICE: ApiServiceBinding
     ASSETS: {
       fetch: typeof fetch
     }
@@ -30,14 +34,16 @@ export const onRequest: PagesFunctionHandler = async (context) => {
 
   const requestUrl = new URL(context.request.url)
   const shareId = getParam(context.params.shareId)
-  const info = shareId ? await fetchShareInfo(context.env, requestUrl, shareId) : null
+  const info = shareId ? await fetchShareInfo(context.env, shareId) : null
   const metadata = buildShareMetadata(info)
   const pageUrl = requestUrl.origin + requestUrl.pathname
   const imageUrl = `${requestUrl.origin}/og/share/${encodeURIComponent(shareId ?? "unknown")}.png`
   const headTags = buildShareHeadTags({ metadata, pageUrl, imageUrl })
-  const indexResponse = await context.env.ASSETS.fetch(new Request(new URL("/", requestUrl), {
-    method: "GET",
-  }))
+  const indexResponse = await context.env.ASSETS.fetch(
+    new Request(new URL("/", requestUrl), {
+      method: "GET",
+    }),
+  )
 
   if (!indexResponse.ok) return indexResponse
 
@@ -53,17 +59,20 @@ export const onRequest: PagesFunctionHandler = async (context) => {
 }
 
 async function fetchShareInfo(
-  env: ApiOriginEnv,
-  requestUrl: URL,
+  env: { API_SERVICE: ApiServiceBinding },
   shareId: string,
 ): Promise<ShareInfo | null> {
-  const apiUrl = buildApiUrl(env, requestUrl, `/api/shares/${encodeURIComponent(shareId)}`)
-  if (!apiUrl) return null
+  const apiUrl = new URL(
+    `/api/shares/${encodeURIComponent(shareId)}`,
+    "https://api.internal/",
+  )
 
   try {
-    const response = await fetch(apiUrl, {
-      headers: { Accept: "application/json" },
-    })
+    const response = await env.API_SERVICE.fetch(
+      new Request(apiUrl, {
+        headers: { Accept: "application/json" },
+      }),
+    )
     if (!response.ok) return null
     return (await response.json()) as ShareInfo
   } catch {

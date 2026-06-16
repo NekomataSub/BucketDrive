@@ -1,0 +1,21 @@
+"$schema" = "./node_modules/wrangler/config-schema.json"
+
+name = "bucketdrive"
+pages_build_output_dir = "./dist"
+
+# Set this to today's date
+compatibility_date = "2025-01-01"
+compatibility_flags = [ "nodejs_compat" ]
+
+# Local development bindings
+[[services]]
+binding = "API_SERVICE"
+service = "bucketdrive-api"
+
+[[env.staging.services]]
+binding = "API_SERVICE"
+service = "bucketdrive-api-staging"
+
+[[env.production.services]]
+binding = "API_SERVICE"
+service = "bucketdrive-api-production"

@@ -264,7 +264,6 @@ For staging and production, create `.env.staging` and `.env.production` at the r
 | ---------------------- | -------------------------- | --------------------------------------------------------------------------------- | ---------- |
 | `APP_URL`              | local, staging, production | Your public frontend URL                                                          | No         |
 | `API_URL`              | local, staging, production | Your public API/worker URL                                                        | No         |
-| `API_WORKER_URL`       | local, staging, production | Origin for the Pages `/api/*` proxy; use the Worker origin, not the Pages app URL | No         |
 | `BETTER_AUTH_SECRET`   | local, staging, production | Run `openssl rand -base64 64`                                                     | **Yes**    |
 | `BETTER_AUTH_URL`      | local, staging, production | Same as `API_URL`                                                                 | No         |
 | `GITHUB_CLIENT_ID`     | local, staging, production | GitHub OAuth App settings                                                         | **Yes**    |
@@ -404,7 +403,6 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **New repos
 | `STAGING_D1_DATABASE_NAME` | D1 staging database name                       |
 | `APP_URL`                  | Staging frontend URL                           |
 | `API_URL`                  | Staging API URL                                |
-| `API_WORKER_URL`           | Worker origin used by the Pages `/api/*` proxy |
 | `PLAYWRIGHT_BASE_URL`      | Staging frontend URL                           |
 | `PAGES_PROJECT_NAME`       | Cloudflare Pages project name                  |
 | `PAGES_BRANCH`             | `staging`                                      |

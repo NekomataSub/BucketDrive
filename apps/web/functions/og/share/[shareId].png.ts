@@ -1,6 +1,5 @@
 import { ImageResponse } from "@cloudflare/pages-plugin-vercel-og/api"
 import React from "react"
-import { buildApiUrl, type ApiOriginEnv } from "../../_lib/api-origin"
 import {
   DEFAULT_BRAND_NAME,
   OG_IMAGE_HEIGHT,
@@ -10,9 +9,15 @@ import {
   type ShareMetadata,
 } from "../../_lib/share-metadata"
 
+interface ApiServiceBinding {
+  fetch(request: Request): Promise<Response>
+}
+
 interface PagesFunctionContext {
   request: Request
-  env: ApiOriginEnv
+  env: {
+    API_SERVICE: ApiServiceBinding
+  }
   params: {
     shareId?: string | string[]
   }
@@ -28,15 +33,17 @@ export const onRequest: PagesFunctionHandler = async (context) => {
     })
   }
 
-  const requestUrl = new URL(context.request.url)
   const shareId = getParam(context.params.shareId)
-  const info = shareId ? await fetchShareInfo(context.env, requestUrl, shareId) : null
+  const info = shareId ? await fetchShareInfo(context.env, shareId) : null
   const metadata = buildShareMetadata(info)
 
-  const response: Response = new ImageResponse(React.createElement(ShareOgImage, { metadata }), {
-    width: OG_IMAGE_WIDTH,
-    height: OG_IMAGE_HEIGHT,
-  })
+  const response: Response = new ImageResponse(
+    React.createElement(ShareOgImage, { metadata }),
+    {
+      width: OG_IMAGE_WIDTH,
+      height: OG_IMAGE_HEIGHT,
+    },
+  )
   response.headers.set("Cache-Control", "public, max-age=300, stale-while-revalidate=86400")
   return response
 }
@@ -194,17 +201,20 @@ function ShareOgImage({ metadata }: { metadata: ShareMetadata }) {
 }
 
 async function fetchShareInfo(
-  env: ApiOriginEnv,
-  requestUrl: URL,
+  env: { API_SERVICE: ApiServiceBinding },
   shareId: string,
 ): Promise<ShareInfo | null> {
-  const apiUrl = buildApiUrl(env, requestUrl, `/api/shares/${encodeURIComponent(shareId)}`)
-  if (!apiUrl) return null
+  const apiUrl = new URL(
+    `/api/shares/${encodeURIComponent(shareId)}`,
+    "https://api.internal/",
+  )
 
   try {
-    const response = await fetch(apiUrl, {
-      headers: { Accept: "application/json" },
-    })
+    const response = await env.API_SERVICE.fetch(
+      new Request(apiUrl, {
+        headers: { Accept: "application/json" },
+      }),
+    )
     if (!response.ok) return null
     return (await response.json()) as ShareInfo
   } catch {
