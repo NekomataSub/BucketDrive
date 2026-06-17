@@ -123,7 +123,7 @@ function UploadQueueItem({
   onRetry: () => void
   onRemove: () => void
 }) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const doneChunks = item.chunks.filter((c) => c.status === "done").length
   const totalChunks = item.totalChunks ?? 0
   const showChunkProgress = totalChunks > 1 && item.status === "uploading"
