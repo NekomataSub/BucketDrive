@@ -106,6 +106,7 @@ CREATE TABLE platform_settings (
   id text PRIMARY KEY NOT NULL,
   platform_name text DEFAULT 'BucketDrive' NOT NULL,
   enable_public_signup integer DEFAULT 1 NOT NULL,
+  default_language text DEFAULT 'en-US' NOT NULL,
   logo_key text,
   favicon_key text,
   created_at text DEFAULT (current_timestamp) NOT NULL,
