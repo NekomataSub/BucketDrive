@@ -47,7 +47,7 @@ async function runScheduledJobs(env: Env) {
 }
 
 async function runThumbnailBackfill(env: Env) {
-  const thumbnailService = new ThumbnailService({ storage: env.STORAGE })
+  const thumbnailService = new ThumbnailService({ storage: createStorageProvider(env) })
   const result = await thumbnailService.processPending({ limit: 25 })
 
   console.warn(

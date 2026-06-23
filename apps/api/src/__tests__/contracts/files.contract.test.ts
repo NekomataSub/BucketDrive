@@ -97,17 +97,46 @@ describe("files contracts", () => {
     expect(tags.status).toBe(200)
     UpdateFileTagsResponse.parse(await ctx.json(tags))
 
+    const thumbnailFileId = "00000000-0000-4000-8000-999999999001"
+    const thumbnailKey = `bucket/thumbnails/${thumbnailFileId}.webp`
+    await ctx.env.STORAGE.put(thumbnailKey, new Uint8Array([1, 2, 3]), {
+      httpMetadata: { contentType: "image/webp" },
+    })
     const thumbnailFile = ctx.seedFile({
+      id: thumbnailFileId,
       originalName: "Image.png",
       mimeType: "image/png",
       extension: "png",
-      thumbnailKey: "thumbs/image.webp",
+      thumbnailKey,
     })
     const thumbnail = await ctx.request(
       `/api/workspaces/${ctx.workspaceId}/files/${thumbnailFile.id}/thumbnail`,
     )
     expect(thumbnail.status).toBe(200)
     ThumbnailUrlResponse.parse(await ctx.json(thumbnail))
+
+    const invalidThumbnailFile = ctx.seedFile({
+      originalName: "Corrupt.png",
+      mimeType: "image/png",
+      extension: "png",
+      thumbnailKey: "bucket/platform/logo.webp",
+    })
+    await ctx.env.STORAGE.put("bucket/platform/logo.webp", new Uint8Array([1, 2, 3]), {
+      httpMetadata: { contentType: "image/webp" },
+    })
+    const invalidThumbnail = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/files/${invalidThumbnailFile.id}/thumbnail`,
+    )
+    expect(invalidThumbnail.status).toBe(404)
+    expectApiError(await ctx.json(invalidThumbnail))
+    const invalidThumbnailRow = ctx.sqlite
+      .prepare("select thumbnail_key from file_object where id = ?")
+      .get(invalidThumbnailFile.id) as { thumbnail_key: string | null }
+    expect(invalidThumbnailRow.thumbnail_key).not.toBe("bucket/platform/logo.webp")
+    expect(
+      invalidThumbnailRow.thumbnail_key === null ||
+        invalidThumbnailRow.thumbnail_key === `bucket/thumbnails/${invalidThumbnailFile.id}.webp`,
+    ).toBe(true)
 
     const deleted = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/${existing.id}`, {
       method: "DELETE",

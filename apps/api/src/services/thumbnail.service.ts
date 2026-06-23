@@ -2,16 +2,11 @@ import { PhotonImage, resize, SamplingFilter } from "@cf-wasm/photon/workerd"
 import { and, eq, isNull, like, or } from "drizzle-orm"
 import { fileObject } from "@bucketdrive/shared"
 import { getDB } from "../lib/db"
+import type { StorageProvider } from "./storage"
 
 export interface ThumbnailServiceDeps {
-  storage: R2Bucket
+  storage: StorageProvider
 }
-
-type ThumbnailPut = (
-  key: string,
-  value: Uint8Array,
-  options: { httpMetadata: { contentType: string } },
-) => Promise<unknown>
 
 export interface ThumbnailBackfillResult {
   scanned: number
@@ -34,15 +29,19 @@ export class ThumbnailService {
     if (!this.isImage(params.mimeType)) {
       return false
     }
+    if (!params.storageKey.startsWith("bucket/files/")) {
+      console.warn(`Thumbnail: refusing source outside file storage prefix ${params.storageKey}`)
+      return false
+    }
 
     try {
-      const object = await this.deps.storage.get(params.storageKey)
+      const object = await this.deps.storage.getObject(params.storageKey)
       if (!object) {
         console.warn(`Thumbnail: source object not found for key ${params.storageKey}`)
         return false
       }
 
-      const sourceBytes = new Uint8Array(await object.arrayBuffer())
+      const sourceBytes = new Uint8Array(await new Response(object.body).arrayBuffer())
       if (sourceBytes.byteLength > this.MAX_SOURCE_BYTES) {
         console.warn(`Thumbnail: skipping image > ${String(this.MAX_SOURCE_BYTES)} bytes`)
         return false
@@ -119,9 +118,10 @@ export class ThumbnailService {
   }
 
   private async putThumbnail(key: string, bytes: Uint8Array): Promise<void> {
-    const put: ThumbnailPut = this.deps.storage.put.bind(this.deps.storage)
-    await put(key, bytes, {
-      httpMetadata: { contentType: "image/webp" },
+    await this.deps.storage.upload({
+      key,
+      body: bytes,
+      contentType: "image/webp",
     })
   }
 

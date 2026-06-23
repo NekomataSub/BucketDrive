@@ -378,16 +378,20 @@ function createR2BucketMock(): R2Bucket {
         writeHttpMetadata: vi.fn(),
       })
     }),
-    head: vi.fn((key: string) =>
-      Promise.resolve({
+    head: vi.fn((key: string) => {
+      const body = objects.get(key)
+      if (!body) return Promise.resolve(null)
+
+      return Promise.resolve({
         key,
-        size: objects.get(key)?.byteLength ?? 4,
+        size: body.byteLength,
         etag: "etag-test",
         httpEtag: '"etag-test"',
         uploaded: new Date("2026-06-02T12:00:00.000Z"),
+        httpMetadata: { contentType: contentTypes.get(key) },
         writeHttpMetadata: vi.fn(),
-      }),
-    ),
+      })
+    }),
     delete: vi.fn(() => Promise.resolve(undefined)),
     list: vi.fn(() => Promise.resolve({ objects: [], truncated: false, delimitedPrefixes: [] })),
     createMultipartUpload: vi.fn((key: string) =>

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { ThumbnailService } from "../thumbnail.service"
+import type { StorageProvider } from "../storage"
 
 const mockGetDB = vi.hoisted(() => vi.fn())
 
@@ -57,15 +58,22 @@ function createMockDB(
 }
 
 function createMockStorage() {
-  const get = vi.fn().mockResolvedValue({
-    arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3, 4]).buffer),
+  const getObject = vi.fn<StorageProvider["getObject"]>().mockResolvedValue({
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array([1, 2, 3, 4]))
+        controller.close()
+      },
+    }),
+    size: 4,
+    contentType: "image/png",
   })
-  const put = vi.fn().mockResolvedValue({})
+  const upload = vi.fn<StorageProvider["upload"]>().mockResolvedValue(undefined)
 
   return {
-    storage: { get, put } as unknown as R2Bucket,
-    get,
-    put,
+    storage: { getObject, upload } as unknown as StorageProvider,
+    getObject,
+    upload,
   }
 }
 
@@ -77,7 +85,7 @@ describe("ThumbnailService", () => {
   it("generates a webp thumbnail for images and updates the file row", async () => {
     const { db, run } = createMockDB()
     mockGetDB.mockReturnValue(db)
-    const { storage, put } = createMockStorage()
+    const { storage, upload } = createMockStorage()
     const service = new ThumbnailService({ storage })
 
     const generated = await service.generate({
@@ -87,16 +95,20 @@ describe("ThumbnailService", () => {
     })
 
     expect(generated).toBe(true)
-    expect(put).toHaveBeenCalledWith("bucket/thumbnails/file-1.webp", expect.any(Uint8Array), {
-      httpMetadata: { contentType: "image/webp" },
+    expect(upload).toHaveBeenCalledOnce()
+    const [uploadInput] = upload.mock.calls[0] ?? []
+    expect(uploadInput).toMatchObject({
+      key: "bucket/thumbnails/file-1.webp",
+      contentType: "image/webp",
     })
+    expect(uploadInput?.body).toBeInstanceOf(Uint8Array)
     expect(run).toHaveBeenCalled()
   })
 
   it("does not generate thumbnails for non-image mime types", async () => {
     const { db } = createMockDB()
     mockGetDB.mockReturnValue(db)
-    const { storage, get, put } = createMockStorage()
+    const { storage, getObject, upload } = createMockStorage()
     const service = new ThumbnailService({ storage })
 
     const generated = await service.generate({
@@ -106,8 +118,25 @@ describe("ThumbnailService", () => {
     })
 
     expect(generated).toBe(false)
-    expect(get).not.toHaveBeenCalled()
-    expect(put).not.toHaveBeenCalled()
+    expect(getObject).not.toHaveBeenCalled()
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it("refuses to generate thumbnails from non-file storage prefixes", async () => {
+    const { db } = createMockDB()
+    mockGetDB.mockReturnValue(db)
+    const { storage, getObject, upload } = createMockStorage()
+    const service = new ThumbnailService({ storage })
+
+    const generated = await service.generate({
+      fileId: "file-1",
+      storageKey: "bucket/platform/logo.webp",
+      mimeType: "image/webp",
+    })
+
+    expect(generated).toBe(false)
+    expect(getObject).not.toHaveBeenCalled()
+    expect(upload).not.toHaveBeenCalled()
   })
 
   it("processes pending image thumbnails and skips videos in backfill", async () => {

@@ -23,6 +23,7 @@ export const ErrorCode = z.enum([
   "REQUIRED_FIELD",
   "INVALID_EMAIL",
   "FILE_TOO_LARGE",
+  "THUMBNAIL_NOT_FOUND",
   "QUOTA_EXCEEDED",
   "BLOCKED_EXTENSION",
   "BLOCKED_MIME",

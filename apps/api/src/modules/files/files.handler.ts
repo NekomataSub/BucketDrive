@@ -148,7 +148,7 @@ files.post("/upload/complete", requirePermission("files.upload"), async (c) => {
 
     if (result.storageKey && result.mimeType.startsWith("image/")) {
       c.executionCtx.waitUntil(
-        new ThumbnailService({ storage: c.env.STORAGE }).generate({
+        new ThumbnailService({ storage: createStorageProvider(c.env) }).generate({
           fileId: result.id,
           storageKey: result.storageKey,
           mimeType: result.mimeType,
@@ -579,12 +579,13 @@ files.delete("/:fileId/permanent", requirePermission("trash.permanent_delete"), 
 })
 
 files.get("/:fileId/thumbnail", requirePermission("files.read"), async (c) => {
+  const db = getDB()
   const file = await getActiveFile(c.req.param("fileId"))
   if (!file) return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
   if (!file.thumbnailKey) {
     if (file.mimeType.startsWith("image/") && file.storageKey) {
       c.executionCtx.waitUntil(
-        new ThumbnailService({ storage: c.env.STORAGE }).generate({
+        new ThumbnailService({ storage: createStorageProvider(c.env) }).generate({
           fileId: file.id,
           storageKey: file.storageKey,
           mimeType: file.mimeType,
@@ -593,12 +594,43 @@ files.get("/:fileId/thumbnail", requirePermission("files.read"), async (c) => {
     }
     return c.json({ code: "THUMBNAIL_NOT_FOUND", message: "Thumbnail not yet generated" }, 404)
   }
+
+  const expectedThumbnailKey = `bucket/thumbnails/${file.id}.webp`
+  const storage = createStorageProvider(c.env)
+  const thumbnailObject =
+    file.thumbnailKey === expectedThumbnailKey ? await storage.headObject(file.thumbnailKey) : null
+  const contentType = thumbnailObject?.contentType
+  const validThumbnail =
+    thumbnailObject &&
+    file.thumbnailKey === expectedThumbnailKey &&
+    contentType?.startsWith("image/") === true
+
+  if (!validThumbnail) {
+    await db
+      .update(fileObject)
+      .set({
+        thumbnailKey: null,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(fileObject.id, file.id))
+      .run()
+
+    if (file.mimeType.startsWith("image/") && file.storageKey) {
+      c.executionCtx.waitUntil(
+        new ThumbnailService({ storage }).generate({
+          fileId: file.id,
+          storageKey: file.storageKey,
+          mimeType: file.mimeType,
+        }),
+      )
+    }
+
+    return c.json({ code: "THUMBNAIL_NOT_FOUND", message: "Thumbnail not yet generated" }, 404)
+  }
+
   return c.json(
     ThumbnailUrlResponse.parse({
-      signedUrl: await createStorageProvider(c.env).generateSignedDownloadUrl(
-        file.thumbnailKey,
-        300,
-      ),
+      signedUrl: await storage.generateSignedDownloadUrl(file.thumbnailKey, 300),
       expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     }),
   )
@@ -610,7 +642,10 @@ files.post("/:fileId/thumbnail", requirePermission("files.upload"), async (c) =>
   const blob = await c.req.blob()
   if (blob.size === 0)
     return c.json({ code: "VALIDATION_ERROR", message: "Thumbnail blob is required" }, 400)
-  await new ThumbnailService({ storage: c.env.STORAGE }).uploadVideoFrame({ fileId: file.id, blob })
+  await new ThumbnailService({ storage: createStorageProvider(c.env) }).uploadVideoFrame({
+    fileId: file.id,
+    blob,
+  })
   return c.json({ success: true })
 })
 
